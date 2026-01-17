@@ -437,9 +437,9 @@ def main():
             endpoint = os.getenv("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")
             # Determine the dashboard URL based on endpoint
             if "eu.api.smith" in endpoint:
-                dashboard_url = f"https://eu.smith.langchain.com/o/default/projects/p/{project}"
+                dashboard_url = "https://eu.smith.langchain.com/"
             else:
-                dashboard_url = f"https://smith.langchain.com/o/default/projects/p/{project}"
+                dashboard_url = "https://smith.langchain.com/"
             st.success(f"LangSmith tracing: **{project}**")
             st.markdown(f"[View traces]({dashboard_url})")
 
