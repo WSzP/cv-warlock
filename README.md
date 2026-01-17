@@ -1,2 +1,2 @@
-# cv-warlock
-Job tailored AI CV creator
+# CV Warlock
+Job-tailored AI CV creator
