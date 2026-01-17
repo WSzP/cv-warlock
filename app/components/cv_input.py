@@ -103,20 +103,14 @@ def render_cv_input() -> str:
             )
 
         if fetch_clicked and linkedin_url:
-            with st.spinner("Fetching LinkedIn profile..."):
+            with st.spinner("Fetching LinkedIn profile (using Jina Reader)..."):
                 cv_text, error = fetch_linkedin_profile(linkedin_url)
 
                 if error:
                     st.error(error)
-                    st.info(
-                        "**Tip:** LinkedIn may block automated access. You can:\n"
-                        "1. Use LinkedIn's 'Save to PDF' feature\n"
-                        "2. Copy your profile text manually\n"
-                        "3. Switch to 'Paste Text' mode"
-                    )
                 elif cv_text:
                     st.session_state.cv_text_area = cv_text
-                    st.success("Profile imported successfully!")
+                    st.success("Profile imported! Review and edit the content below.")
                     st.rerun()
 
         # Show editable text area with imported content
