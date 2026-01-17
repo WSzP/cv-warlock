@@ -43,6 +43,14 @@ We're looking for a Senior Python Developer to join our growing engineering team
 """
 
 
+def on_sample_job_change():
+    """Handle sample job checkbox change."""
+    if st.session_state.use_sample_job_checkbox:
+        st.session_state.job_text_area = SAMPLE_JOB
+    else:
+        st.session_state.job_text_area = ""
+
+
 def render_job_input() -> str:
     """Render the job specification input component.
 
@@ -51,23 +59,24 @@ def render_job_input() -> str:
     """
     st.subheader("Job Specification")
 
-    # Option to use sample
-    use_sample = st.checkbox("Use sample job posting", key="use_sample_job")
+    # Initialize text area state if needed
+    if "job_text_area" not in st.session_state:
+        st.session_state.job_text_area = ""
 
-    if use_sample:
-        job_text = st.text_area(
-            "Paste the job posting here",
-            value=SAMPLE_JOB,
-            height=400,
-            key="job_input",
-        )
-    else:
-        job_text = st.text_area(
-            "Paste the job posting here",
-            placeholder="Paste the job description here...",
-            height=400,
-            key="job_input",
-        )
+    # Checkbox with callback
+    st.checkbox(
+        "Use sample job posting",
+        key="use_sample_job_checkbox",
+        on_change=on_sample_job_change,
+    )
+
+    # Text area
+    job_text = st.text_area(
+        "Paste the job posting here",
+        placeholder="Paste the job description here...",
+        height=400,
+        key="job_text_area",
+    )
 
     if job_text:
         word_count = len(job_text.split())

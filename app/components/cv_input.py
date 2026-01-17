@@ -34,6 +34,14 @@ Python, JavaScript, TypeScript, React, Node.js, FastAPI, PostgreSQL, AWS, Docker
 """
 
 
+def on_sample_cv_change():
+    """Handle sample CV checkbox change."""
+    if st.session_state.use_sample_cv_checkbox:
+        st.session_state.cv_text_area = SAMPLE_CV
+    else:
+        st.session_state.cv_text_area = ""
+
+
 def render_cv_input() -> str:
     """Render the CV input component.
 
@@ -42,23 +50,24 @@ def render_cv_input() -> str:
     """
     st.subheader("Your CV")
 
-    # Option to use sample
-    use_sample = st.checkbox("Use sample CV", key="use_sample_cv")
+    # Initialize text area state if needed
+    if "cv_text_area" not in st.session_state:
+        st.session_state.cv_text_area = ""
 
-    if use_sample:
-        cv_text = st.text_area(
-            "Paste your CV here (Markdown or plain text)",
-            value=SAMPLE_CV,
-            height=400,
-            key="cv_input",
-        )
-    else:
-        cv_text = st.text_area(
-            "Paste your CV here (Markdown or plain text)",
-            placeholder="Paste your CV content here...",
-            height=400,
-            key="cv_input",
-        )
+    # Checkbox with callback
+    st.checkbox(
+        "Use sample CV",
+        key="use_sample_cv_checkbox",
+        on_change=on_sample_cv_change,
+    )
+
+    # Text area
+    cv_text = st.text_area(
+        "Paste your CV here (Markdown or plain text)",
+        placeholder="Paste your CV content here...",
+        height=400,
+        key="cv_text_area",
+    )
 
     if cv_text:
         word_count = len(cv_text.split())

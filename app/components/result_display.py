@@ -1,11 +1,11 @@
 """Result display component for Streamlit UI."""
 
+from typing import Any
+
 import streamlit as st
 
-from cv_warlock.models.state import CVWarlockState
 
-
-def render_result(result: CVWarlockState) -> None:
+def render_result(result: dict[str, Any]) -> None:
     """Render the tailoring result.
 
     Args:
@@ -33,7 +33,7 @@ def render_result(result: CVWarlockState) -> None:
         render_tailoring_plan(result)
 
 
-def render_tailored_cv(result: CVWarlockState) -> None:
+def render_tailored_cv(result: dict[str, Any]) -> None:
     """Render the tailored CV tab."""
     if not result.get("tailored_cv"):
         st.warning("No tailored CV was generated.")
@@ -53,7 +53,7 @@ def render_tailored_cv(result: CVWarlockState) -> None:
     )
 
 
-def render_match_analysis(result: CVWarlockState) -> None:
+def render_match_analysis(result: dict[str, Any]) -> None:
     """Render the match analysis tab."""
     if not result.get("match_analysis"):
         st.warning("No match analysis available.")
@@ -97,7 +97,7 @@ def render_match_analysis(result: CVWarlockState) -> None:
             st.markdown(f"- {item}")
 
 
-def render_tailoring_plan(result: CVWarlockState) -> None:
+def render_tailoring_plan(result: dict[str, Any]) -> None:
     """Render the tailoring plan tab."""
     if not result.get("tailoring_plan"):
         st.warning("No tailoring plan available.")
