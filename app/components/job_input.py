@@ -51,6 +51,13 @@ def on_sample_job_change():
         st.session_state.job_text_area = ""
 
 
+def on_job_text_change():
+    """Handle job text area change - triggers rerun on paste."""
+    # This empty callback forces a Streamlit rerun when content changes,
+    # enabling the button immediately after paste (not just on blur)
+    pass
+
+
 def render_job_input() -> str:
     """Render the job specification input component.
 
@@ -74,12 +81,13 @@ def render_job_input() -> str:
         on_change=on_sample_job_change,
     )
 
-    # Text area
+    # Text area with on_change to enable button immediately after paste
     job_text = st.text_area(
         "Paste the job posting here",
         placeholder="Paste the job description here...",
         height=400,
         key="job_text_area",
+        on_change=on_job_text_change,
     )
 
     if job_text:
