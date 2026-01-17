@@ -14,76 +14,86 @@ POPPINS_PRECONNECT = """
 """
 
 # Poppins font CSS - applies the font throughout the UI
+# Uses !important to override Streamlit's default "Source Sans" font
 POPPINS_CSS = """
 <style>
+    /* Global override - force Poppins everywhere */
+    *, *::before, *::after {
+        font-family: 'Poppins', sans-serif !important;
+    }
 
     /* Apply Poppins to all elements */
-    html, body, [class*="css"] {
-        font-family: 'Poppins', sans-serif;
+    html, body, [class*="css"], [class*="st-"] {
+        font-family: 'Poppins', sans-serif !important;
     }
 
     /* Headings */
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 600;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 600 !important;
     }
 
     /* Main title */
     .stApp h1 {
-        font-weight: 700;
+        font-weight: 700 !important;
     }
 
     /* Subheaders */
     .stApp h2, .stApp h3 {
-        font-weight: 600;
+        font-weight: 600 !important;
     }
 
     /* Text areas and inputs */
     .stTextArea textarea, .stTextInput input {
-        font-family: 'Poppins', sans-serif;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     /* Buttons */
-    .stButton button {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 500;
+    .stButton button, button {
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 500 !important;
     }
 
     /* Tabs */
     .stTabs [data-baseweb="tab"] {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 500 !important;
     }
 
     /* Sidebar */
-    [data-testid="stSidebar"] {
-        font-family: 'Poppins', sans-serif;
+    [data-testid="stSidebar"], [data-testid="stSidebar"] * {
+        font-family: 'Poppins', sans-serif !important;
     }
 
     /* Metrics */
-    [data-testid="stMetric"] {
-        font-family: 'Poppins', sans-serif;
+    [data-testid="stMetric"], [data-testid="stMetric"] * {
+        font-family: 'Poppins', sans-serif !important;
     }
 
     /* Download buttons */
     .stDownloadButton button {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 500 !important;
     }
 
     /* Expanders */
     .streamlit-expanderHeader {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 500;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 500 !important;
     }
 
     /* Markdown content */
-    .stMarkdown {
-        font-family: 'Poppins', sans-serif;
+    .stMarkdown, .stMarkdown * {
+        font-family: 'Poppins', sans-serif !important;
     }
 
-    /* Code blocks should keep monospace */
-    code, pre, .stCode {
+    /* Selectbox and other inputs */
+    [data-baseweb="select"], [data-baseweb="input"] {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    /* Code blocks should keep monospace - this overrides the global rule */
+    code, pre, .stCode, code *, pre * {
         font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
     }
 </style>
