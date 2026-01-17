@@ -24,7 +24,7 @@ uv run ruff check .
 uv run mypy src/cv_warlock
 
 # Start web UI
-uv run streamlit run app/app.py
+uv run warlock-streamlit
 
 # CLI usage
 uv run cv-warlock tailor my_cv.md job.txt -o tailored_cv.md

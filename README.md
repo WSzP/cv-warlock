@@ -108,7 +108,7 @@ uv run cv-warlock version
 ### Web UI (Streamlit)
 
 ```bash
-uv run streamlit run app/app.py
+uv run warlock-streamlit
 ```
 
 Then open http://localhost:8501 in your browser.
