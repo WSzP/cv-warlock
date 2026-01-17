@@ -184,19 +184,19 @@ def main():
             "**High Quality** with Chain-of-Thought (CoT) Reasoning",
             value=True,
             help="Enable multi-step reasoning for higher quality output. "
-            "Each section goes through: Reason → Generate → Critique → Refine. "
-            "Produces better results but takes 3-4x longer.",
+            "Each section goes through: Reason → Generate. "
+            "Experiences are processed in parallel for faster execution.",
             key="use_cot",
         )
 
         if use_cot:
             st.info(
-                "CoT enabled: Generation will be slower but produces "
-                "significantly higher quality tailored CVs."
+                "CoT enabled (optimized): Reasoning-guided generation with "
+                "parallel experience processing."
             )
         else:
             st.warning(
-                "CoT disabled: Faster generation but lower quality. "
+                "CoT disabled: Fastest generation but lower quality. "
                 "Use for quick iterations."
             )
 

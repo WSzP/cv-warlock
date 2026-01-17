@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     model: str = "gpt-4o"
     temperature: float = Field(default=0.3, ge=0.0, le=1.0)
 
+
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 

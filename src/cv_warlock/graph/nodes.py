@@ -18,15 +18,16 @@ from cv_warlock.processors.tailor import CVTailor
 
 
 # Step descriptions for UI display
+# CoT mode now uses optimized balanced approach: REASON→GENERATE (no critique/refine)
 STEP_DESCRIPTIONS = {
     "validate_inputs": "Validating inputs...",
     "extract_cv": "Extracting CV data...",
     "extract_job": "Analyzing job requirements...",
     "analyze_match": "Analyzing CV-job match...",
     "create_plan": "Creating tailoring strategy...",
-    "tailor_summary": "Crafting professional summary (CoT: reasoning, generating, critiquing)...",
-    "tailor_experiences": "Tailoring work experiences (CoT: reasoning, generating, critiquing)...",
-    "tailor_skills": "Optimizing skills section for ATS (CoT: reasoning, generating, critiquing)...",
+    "tailor_summary": "Crafting professional summary (reasoning → generating)...",
+    "tailor_experiences": "Tailoring work experiences in parallel (reasoning → generating)...",
+    "tailor_skills": "Optimizing skills section for ATS (reasoning → generating)...",
     "assemble_cv": "Assembling final CV...",
 }
 
