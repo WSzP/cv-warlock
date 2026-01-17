@@ -2,11 +2,8 @@
 
 import streamlit as st
 
-from utils.linkedin_fetcher import fetch_linkedin_profile
 from utils.pdf_parser import extract_text_from_pdf
 
-
-SAMPLE_LINKEDIN_URL = "https://www.linkedin.com/in/wszabopeter/"
 
 SAMPLE_CV = """# John Doe
 **Software Engineer**
@@ -47,14 +44,6 @@ def on_sample_cv_change():
         st.session_state.cv_text_area = ""
 
 
-def on_sample_linkedin_change():
-    """Handle sample LinkedIn URL checkbox change."""
-    if st.session_state.use_sample_linkedin_checkbox:
-        st.session_state.linkedin_url_input = SAMPLE_LINKEDIN_URL
-    else:
-        st.session_state.linkedin_url_input = ""
-
-
 def render_cv_input() -> str:
     """Render the CV input component.
 
@@ -66,22 +55,20 @@ def render_cv_input() -> str:
     # Initialize session state
     if "cv_text_area" not in st.session_state:
         st.session_state.cv_text_area = ""
-    if "linkedin_url_input" not in st.session_state:
-        st.session_state.linkedin_url_input = ""
 
     # Input method selection
     input_method = st.radio(
         "Input method",
-        options=["Paste Text", "Upload PDF", "Import from LinkedIn"],
+        options=["Paste Text", "Upload PDF"],
         horizontal=True,
         key="cv_input_method",
     )
 
     if input_method == "Upload PDF":
-        # PDF upload mode (best for LinkedIn exports)
+        # PDF upload mode
         st.info(
-            "**Recommended for LinkedIn:** Go to your LinkedIn profile → "
-            "Click 'More' → Select 'Save to PDF' → Upload the PDF here."
+            "**From LinkedIn:** Go to your profile → Click 'More' → "
+            "Select 'Save to PDF' → Upload here."
         )
 
         uploaded_file = st.file_uploader(
@@ -108,68 +95,6 @@ def render_cv_input() -> str:
                 value=st.session_state.cv_text_area,
                 height=300,
                 key="pdf_cv_preview",
-                label_visibility="collapsed",
-            )
-            st.session_state.cv_text_area = cv_text
-
-            if cv_text:
-                word_count = len(cv_text.split())
-                st.caption(f"{word_count} words")
-
-            return cv_text
-
-        return st.session_state.cv_text_area
-
-    elif input_method == "Import from LinkedIn":
-        # LinkedIn URL import mode (may be blocked)
-        st.warning(
-            "⚠️ LinkedIn often blocks automated access. "
-            "If this doesn't work, use **Upload PDF** instead."
-        )
-
-        st.checkbox(
-            "Use sample LinkedIn URL",
-            key="use_sample_linkedin_checkbox",
-            on_change=on_sample_linkedin_change,
-        )
-
-        col1, col2 = st.columns([3, 1])
-
-        with col1:
-            linkedin_url = st.text_input(
-                "LinkedIn Profile URL",
-                placeholder="https://www.linkedin.com/in/username/",
-                key="linkedin_url_input",
-            )
-
-        with col2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            fetch_clicked = st.button(
-                "Fetch CV",
-                type="primary",
-                disabled=not linkedin_url,
-                use_container_width=True,
-            )
-
-        if fetch_clicked and linkedin_url:
-            with st.spinner("Fetching LinkedIn profile..."):
-                cv_text, error = fetch_linkedin_profile(linkedin_url)
-
-                if error:
-                    st.error(error)
-                elif cv_text:
-                    st.session_state.cv_text_area = cv_text
-                    st.success("Profile imported! Review and edit the content below.")
-                    st.rerun()
-
-        # Show editable text area with imported content
-        if st.session_state.cv_text_area:
-            st.markdown("**Imported CV** (edit below if needed):")
-            cv_text = st.text_area(
-                "CV content",
-                value=st.session_state.cv_text_area,
-                height=300,
-                key="linkedin_cv_preview",
                 label_visibility="collapsed",
             )
             st.session_state.cv_text_area = cv_text
