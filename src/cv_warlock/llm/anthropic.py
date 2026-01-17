@@ -8,7 +8,7 @@ from cv_warlock.llm.base import LLMProvider
 # Default timeout in seconds for API requests
 # Set conservative timeout to prevent hanging on slow responses
 DEFAULT_TIMEOUT = 120.0  # 2 minutes per request
-DEFAULT_MAX_RETRIES = 1  # 1 retry = 2 total attempts max
+DEFAULT_MAX_RETRIES = 3  # 3 retries = 4 total attempts (handles transient connection errors)
 
 
 class AnthropicProvider(LLMProvider):

@@ -1,82 +1,49 @@
-# Senior Python Developer
+# Engineering Lead (relocation to Uganda)
 
-**Company:** Acme Technologies
-**Location:** Remote (US)
-**Type:** Full-time
-**Salary:** $150,000 - $200,000
+This is an on-site role. The office is in Kampala, Uganda.
+✈️ If your current country is different, the relocation is mandatory.
+❌ No hybrid, no remote.
 
----
 
-## About Acme Technologies
+ACME Inc. is a global company creating end-to-end tech products for clients across Fintech, Retail and Marketing. Young, ambitious, and unstoppable, we've already taken Africa, Europe, and GCC by storm. Our team consists of 2,300 amazing minds creating innovative ideas and products. We don’t follow formats. We shape them. We build what works, launch it fast, and make sure it hits the mark.
 
-Acme Technologies is a fast-growing AI startup building the next generation of developer tools. We're backed by top-tier VCs and are looking for talented engineers to join our mission.
 
----
+We are looking for an Engineering Lead to join our team in Kampala, Uganda.
 
-## About the Role
+The mission is to own the strategy, tooling, and culture that make every BrainRocket engineer faster and happier. You will lead the Engineering team, own our Internal Developer Platform (IDP), and establish measurable, self‑service practices around build, release, and observability.
 
-We're looking for a Senior Python Developer to join our Platform team. You'll work on building scalable backend services that power our AI-driven products. This is a high-impact role where you'll shape the technical direction of our core infrastructure.
 
----
+✅ Requirements:
 
-## Responsibilities
+✔️ 5+ years leading dev teams; proven track record hiring and mentoring engineers.
+✔️ Strong skills in Node.js & TypeScript, plus experience with one or more additional languages (Go, Python, or Rust) for tooling and automation.
+✔️ Clear storyteller who can influence execs, partner teams, and individual contributors.
+✔️ Prior experience working on AI projects
+✔️ Familiarity with tools like Port.io, Cortex, Backstage, etc.
+✔️ Understanding of microservices architectures and team/service ownership models.
 
-- Design and implement scalable backend services and APIs
-- Write clean, maintainable, well-tested code
-- Lead technical discussions and architecture decisions
-- Mentor junior team members and conduct code reviews
-- Collaborate with product, design, and ML teams
-- Participate in on-call rotation for production systems
-- Contribute to technical documentation and best practices
 
----
+✅ Key responsibilities: 
 
-## Requirements
+✔️ Closely communicate and collaborate with all engineering departments and teams to identify pain points and solutions on how to improve the way we develop, test, and deliver our products, ensuring security and reliability.
+✔️ Accumulate best practices and wrap them up in a reusable company-wide solution.
+✔️ Lead the architecture of an Internal Developer Portal (IDP).
+✔️ Provide scorecards and golden paths for all development teams regarding toolset, plugins, frameworks, and processes.
+✔️ Drive the TechRadar initiative and all processes around, i.e., trialing, assessing, adopting, and putting solutions on hold.
+✔️ Collect developer-centric KPIs, run satisfaction surveys, and iterate on tooling to cut lead time and cognitive load, establish feedback loop (surveys, Slack AMA, interviews).
+✔️ Develop and deliver internal training programs, workshops, and documentation to onboard new developers and upskill existing teams. Identify and promote learning resources, conferences, and certifications that help developers grow in their careers.
+✔️ Establish mentorship opportunities and cultivate an environment that encourages knowledge sharing.
 
-### Required
 
-- 5+ years of professional software development experience
-- Strong proficiency in Python
-- Experience with FastAPI, Django, or similar web frameworks
-- Solid understanding of PostgreSQL or similar relational databases
-- Experience with cloud platforms (AWS preferred)
-- Experience with Docker and containerization
-- Strong communication and collaboration skills
-- Experience with CI/CD pipelines and DevOps practices
+✅ We offer excellent benefits, including but not limited to:
 
-### Preferred
+🦁 Free teambuilding activities in safari locations, in the wilderness. Lions included for free.
+📚 Opportunity to develop language skills, with full compensation for the cost of Swahili classes (for localisation purposes).
+💻 Learning and development opportunities.
+🏥 Global coverage health insurance (fully covers lion related accidents)
+🏝 Time for proper rest, with 33 working days of annual vacation and additional paid sick days.
+✈️ Relocation package (tickets, staying in the best five star hotel of Kampala for 6 weeks).
+📈 Competitive remuneration level with annual review.
+💸 Payment in EURO or US Dollars. (Upon request up to 20% of payment can be in Ugandan Shilling.)
 
-- Experience with LangChain or similar AI/ML frameworks
-- Knowledge of TypeScript and React
-- Experience with Kubernetes
-- Contributions to open source projects
-- Experience with real-time systems (WebSockets, message queues)
-- Prior startup experience
-
----
-
-## Tech Stack
-
-- Backend: Python, FastAPI, PostgreSQL
-- Frontend: React, TypeScript
-- Infrastructure: AWS, Docker, Kubernetes
-- AI/ML: LangChain, OpenAI APIs
-- Tools: GitHub, Linear, Notion
-
----
-
-## Benefits
-
-- Competitive salary and equity package
-- Remote-first culture with flexible hours
-- Comprehensive health, dental, and vision insurance
-- $2,000 annual learning budget
-- Home office stipend
-- Unlimited PTO
-- Regular team offsites
-
----
-
-## How to Apply
-
-Send your resume and a brief note about why you're interested to careers@acmetech.io
+Uganda awaits your energy and spirit! Come, join us tomorrow, so we build the day after tomorrow together in Uganda.
