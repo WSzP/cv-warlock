@@ -419,8 +419,6 @@ def main():
             st.success(f"LangSmith tracing: **{project}**")
             st.markdown(f"[View traces]({dashboard_url})")
 
-        st.divider()
-
         st.markdown(
             """
             ### How it works

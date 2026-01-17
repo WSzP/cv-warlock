@@ -1,7 +1,3 @@
-[theme]
-# CV Warlock custom theme with Poppins font
-primaryColor = "#6366f1"  # Indigo
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f8fafc"
-textColor = "#1e293b"
-font = "sans serif"  # Will be overridden by custom CSS for Poppins
+# Theme is controlled by user via Settings menu (hamburger → Settings → Theme)
+# Options: Light, Dark, Use system setting
+# No custom theme settings here to preserve user choice
