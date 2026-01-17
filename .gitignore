@@ -206,3 +206,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Saved CVs (user data)
+app/data/cvs/*.md
+!app/data/cvs/.gitkeep
