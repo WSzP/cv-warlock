@@ -152,11 +152,22 @@ def main():
             )
             return
 
-        # Run tailoring
-        with st.spinner("Tailoring your CV... This may take a minute."):
-            try:
-                # Import here to avoid loading dependencies until needed
-                from cv_warlock.graph.workflow import run_cv_tailoring
+        # Run tailoring with detailed progress
+        try:
+            # Import here to avoid loading dependencies until needed
+            from cv_warlock.graph.workflow import run_cv_tailoring
+
+            # Progress tracking with st.status
+            with st.status("Tailoring your CV...", expanded=True) as status:
+                progress_container = st.empty()
+                current_step = {"name": "", "desc": "Starting..."}
+
+                def update_progress(step_name: str, description: str):
+                    current_step["name"] = step_name
+                    current_step["desc"] = description
+                    progress_container.markdown(f"**{description}**")
+
+                update_progress("start", "Initializing...")
 
                 result = run_cv_tailoring(
                     raw_cv=raw_cv,
@@ -164,14 +175,22 @@ def main():
                     provider=provider,
                     model=model,
                     api_key=effective_api_key,
+                    progress_callback=update_progress,
                 )
 
-                # Store result in session state
-                st.session_state["result"] = result
+                # Update status on completion
+                if result.get("errors"):
+                    status.update(label="CV tailoring failed", state="error")
+                else:
+                    status.update(label="CV tailored successfully!", state="complete")
+                    progress_container.markdown("**Done!**")
 
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-                return
+            # Store result in session state
+            st.session_state["result"] = result
+
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+            return
 
     # Display results if available
     if "result" in st.session_state:

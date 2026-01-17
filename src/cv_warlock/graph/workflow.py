@@ -1,6 +1,6 @@
 """Main LangGraph workflow assembly."""
 
-from typing import Literal
+from typing import Callable, Literal
 
 from langgraph.graph import StateGraph, START, END
 
@@ -103,6 +103,7 @@ def run_cv_tailoring(
     provider: Literal["openai", "anthropic"] | None = None,
     model: str | None = None,
     api_key: str | None = None,
+    progress_callback: Callable[[str, str], None] | None = None,
 ) -> CVWarlockState:
     """Run the CV tailoring workflow.
 
@@ -112,6 +113,7 @@ def run_cv_tailoring(
         provider: LLM provider to use.
         model: Model name to use.
         api_key: API key for the provider.
+        progress_callback: Optional callback function(step_name, description) for progress updates.
 
     Returns:
         Final workflow state with tailored CV.
@@ -134,5 +136,29 @@ def run_cv_tailoring(
         "errors": [],
     }
 
-    result = graph.invoke(initial_state)
-    return result
+    # Step descriptions for progress updates
+    step_descriptions = {
+        "validate_inputs": "Validating inputs...",
+        "extract_cv": "Extracting CV structure (skills, experience, education)...",
+        "extract_job": "Analyzing job requirements and keywords...",
+        "analyze_match": "Matching your profile to job requirements...",
+        "create_plan": "Creating tailoring strategy...",
+        "tailor_summary": "Rewriting professional summary...",
+        "tailor_experiences": "Tailoring work experiences...",
+        "tailor_skills": "Optimizing skills section for ATS...",
+        "assemble_cv": "Assembling final CV...",
+    }
+
+    if progress_callback:
+        # Use streaming to get node-by-node updates
+        final_state = dict(initial_state)
+        for event in graph.stream(initial_state, stream_mode="updates"):
+            for node_name, node_output in event.items():
+                if node_name in step_descriptions:
+                    progress_callback(node_name, step_descriptions[node_name])
+                # Merge node output into state
+                if isinstance(node_output, dict):
+                    final_state.update(node_output)
+        return final_state
+    else:
+        return graph.invoke(initial_state)

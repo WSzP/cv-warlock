@@ -197,14 +197,22 @@ def render_cv_input() -> str:
         )
 
         if uploaded_file is not None:
-            with st.spinner("Extracting text from PDF..."):
-                cv_text, error = extract_text_from_pdf(uploaded_file, fix_romanian=fix_romanian)
+            # Track which file we've processed to avoid re-processing on every rerun
+            file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+            if st.session_state.get("last_pdf_id") != file_id:
+                with st.spinner("Extracting text from PDF..."):
+                    cv_text, error = extract_text_from_pdf(uploaded_file, fix_romanian=fix_romanian)
 
-                if error:
-                    st.error(f"Error reading PDF: {error}")
-                elif cv_text:
-                    st.session_state.cv_text_area = cv_text
-                    st.success("PDF content extracted!")
+                    if error:
+                        st.error(f"Error reading PDF: {error}")
+                    elif cv_text:
+                        st.session_state.cv_text_area = cv_text
+                        st.session_state.last_pdf_id = file_id
+                        # Clear the text area widget state to force refresh
+                        if "pdf_cv_preview" in st.session_state:
+                            del st.session_state["pdf_cv_preview"]
+                        st.success("PDF content extracted!")
+                        st.rerun()
 
         # Show editable text area with extracted content
         if st.session_state.cv_text_area:
