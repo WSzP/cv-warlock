@@ -2,6 +2,10 @@
 
 import streamlit as st
 
+from utils.linkedin_fetcher import fetch_linkedin_profile
+
+
+SAMPLE_LINKEDIN_URL = "https://www.linkedin.com/in/wszabopeter/"
 
 SAMPLE_CV = """# John Doe
 **Software Engineer**
@@ -42,6 +46,14 @@ def on_sample_cv_change():
         st.session_state.cv_text_area = ""
 
 
+def on_sample_linkedin_change():
+    """Handle sample LinkedIn URL checkbox change."""
+    if st.session_state.use_sample_linkedin_checkbox:
+        st.session_state.linkedin_url_input = SAMPLE_LINKEDIN_URL
+    else:
+        st.session_state.linkedin_url_input = ""
+
+
 def render_cv_input() -> str:
     """Render the CV input component.
 
@@ -50,27 +62,92 @@ def render_cv_input() -> str:
     """
     st.subheader("Your CV")
 
-    # Initialize text area state if needed
+    # Initialize session state
     if "cv_text_area" not in st.session_state:
         st.session_state.cv_text_area = ""
+    if "linkedin_url_input" not in st.session_state:
+        st.session_state.linkedin_url_input = ""
+    if "cv_input_method" not in st.session_state:
+        st.session_state.cv_input_method = "Paste Text"
 
-    # Checkbox with callback
-    st.checkbox(
-        "Use sample CV",
-        key="use_sample_cv_checkbox",
-        on_change=on_sample_cv_change,
+    # Input method selection
+    input_method = st.radio(
+        "Input method",
+        options=["Paste Text", "Import from LinkedIn"],
+        horizontal=True,
+        key="cv_input_method",
     )
 
-    # Text area
-    cv_text = st.text_area(
-        "Paste your CV here (Markdown or plain text)",
-        placeholder="Paste your CV content here...",
-        height=400,
-        key="cv_text_area",
-    )
+    if input_method == "Import from LinkedIn":
+        # LinkedIn import mode
+        st.checkbox(
+            "Use sample LinkedIn URL",
+            key="use_sample_linkedin_checkbox",
+            on_change=on_sample_linkedin_change,
+        )
 
-    if cv_text:
-        word_count = len(cv_text.split())
-        st.caption(f"{word_count} words")
+        col1, col2 = st.columns([3, 1])
 
-    return cv_text
+        with col1:
+            linkedin_url = st.text_input(
+                "LinkedIn Profile URL",
+                placeholder="https://www.linkedin.com/in/username/",
+                key="linkedin_url_input",
+            )
+
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)  # Align button
+            fetch_clicked = st.button(
+                "Fetch CV",
+                type="primary",
+                disabled=not linkedin_url,
+                use_container_width=True,
+            )
+
+        if fetch_clicked and linkedin_url:
+            with st.spinner("Fetching LinkedIn profile..."):
+                cv_text, error = fetch_linkedin_profile(linkedin_url)
+
+                if error:
+                    st.error(error)
+                    st.info(
+                        "**Tip:** LinkedIn may block automated access. You can:\n"
+                        "1. Use LinkedIn's 'Save to PDF' feature\n"
+                        "2. Copy your profile text manually\n"
+                        "3. Switch to 'Paste Text' mode"
+                    )
+                elif cv_text:
+                    st.session_state.cv_text_area = cv_text
+                    st.success("Profile imported! You can edit the text below.")
+                    # Switch to paste mode to show the text
+                    st.session_state.cv_input_method = "Paste Text"
+                    st.rerun()
+
+        # Show current CV text if any (read-only preview)
+        if st.session_state.cv_text_area:
+            st.markdown("**Current CV content:**")
+            with st.expander("Preview", expanded=False):
+                st.markdown(st.session_state.cv_text_area)
+
+        return st.session_state.cv_text_area
+
+    else:
+        # Paste text mode
+        st.checkbox(
+            "Use sample CV",
+            key="use_sample_cv_checkbox",
+            on_change=on_sample_cv_change,
+        )
+
+        cv_text = st.text_area(
+            "Paste your CV here (Markdown or plain text)",
+            placeholder="Paste your CV content here...",
+            height=400,
+            key="cv_text_area",
+        )
+
+        if cv_text:
+            word_count = len(cv_text.split())
+            st.caption(f"{word_count} words")
+
+        return cv_text
