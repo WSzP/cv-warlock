@@ -8,6 +8,7 @@ significantly better tailored CVs.
 import copy
 import time
 
+from cv_warlock.config import get_settings
 from cv_warlock.extractors.cv_extractor import CVExtractor
 from cv_warlock.extractors.job_extractor import JobExtractor
 from cv_warlock.llm.base import LLMProvider
@@ -18,16 +19,16 @@ from cv_warlock.processors.tailor import CVTailor
 
 
 # Step descriptions for UI display
-# CoT mode now uses optimized balanced approach: REASON→GENERATE (no critique/refine)
+# New order: skills → experiences → summary
 STEP_DESCRIPTIONS = {
     "validate_inputs": "Validating inputs...",
     "extract_cv": "Extracting CV data...",
     "extract_job": "Analyzing job requirements...",
     "analyze_match": "Analyzing CV-job match...",
     "create_plan": "Creating tailoring strategy...",
-    "tailor_summary": "Crafting professional summary (reasoning → generating)...",
-    "tailor_experiences": "Tailoring work experiences in parallel (reasoning → generating)...",
-    "tailor_skills": "Optimizing skills section for ATS (reasoning → generating)...",
+    "tailor_skills": "Adding job skills to CV (reasoning → generating)...",
+    "tailor_experiences": "Tailoring recent experiences in parallel...",
+    "tailor_summary": "Crafting summary from tailored content...",
     "assemble_cv": "Assembling final CV...",
 }
 
@@ -37,9 +38,9 @@ STEP_DESCRIPTIONS_FAST = {
     "extract_job": "Analyzing job requirements...",
     "analyze_match": "Analyzing CV-job match...",
     "create_plan": "Creating tailoring strategy...",
+    "tailor_skills": "Adding job skills to CV...",
+    "tailor_experiences": "Tailoring recent work experiences...",
     "tailor_summary": "Crafting professional summary...",
-    "tailor_experiences": "Tailoring work experiences...",
-    "tailor_skills": "Optimizing skills section...",
     "assemble_cv": "Assembling final CV...",
 }
 
@@ -198,29 +199,32 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
         return _end_step(state, step_name, result)
 
     def tailor_summary(state: CVWarlockState) -> dict:
-        """Tailor the professional summary with optional CoT reasoning."""
+        """Tailor the professional summary (LAST in pipeline - has full context)."""
         step_name = "tailor_summary"
         result = _start_step(state, step_name, use_cot)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
 
+        # Summary is LAST: has access to tailored skills and experiences
+        tailored_skills = state.get("tailored_skills", [""])[0] if state.get("tailored_skills") else ""
+
         try:
             if use_cot:
                 # Full CoT with reasoning output
+                # Summary receives context from skills and experiences
                 cot_result = cv_tailor.tailor_summary_with_cot(
                     state["cv_data"],
                     state["job_requirements"],
                     state["tailoring_plan"],
                     context=state.get("generation_context"),
+                    tailored_skills_preview=tailored_skills,
                 )
 
-                # Initialize generation context for downstream sections
-                context = GenerationContext(
-                    established_identity=cot_result.reasoning.hook_strategy,
-                    key_metric_used=cot_result.reasoning.strongest_metric,
-                    primary_keywords_used=cot_result.reasoning.key_keywords_to_include,
-                )
+                # Update context (summary is last, so just for completeness)
+                context = state.get("generation_context") or GenerationContext()
+                context.established_identity = cot_result.reasoning.hook_strategy
+                context.key_metric_used = cot_result.reasoning.strongest_metric
 
                 result["tailored_summary"] = cot_result.final_summary
                 result["summary_reasoning_result"] = cot_result
@@ -238,6 +242,7 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
                     state["cv_data"],
                     state["job_requirements"],
                     state["tailoring_plan"],
+                    tailored_skills_preview=tailored_skills,
                 )
                 result["tailored_summary"] = tailored
         except Exception as e:
@@ -246,21 +251,25 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
         return _end_step(state, step_name, result)
 
     def tailor_experiences(state: CVWarlockState) -> dict:
-        """Tailor experience entries with optional CoT reasoning."""
+        """Tailor experience entries with lookback filtering (SECOND in pipeline)."""
         step_name = "tailor_experiences"
         result = _start_step(state, step_name, use_cot)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
 
+        # Get lookback_years from state or settings default
+        lookback_years = state.get("lookback_years") or get_settings().lookback_years
+
         try:
             if use_cot:
-                # Full CoT with reasoning outputs
+                # Full CoT with reasoning outputs and lookback filtering
                 tailored_texts, exp_results, updated_context = cv_tailor.tailor_experiences_with_cot(
                     state["cv_data"],
                     state["job_requirements"],
                     state["tailoring_plan"],
                     context=state.get("generation_context"),
+                    lookback_years=lookback_years,
                 )
 
                 result["tailored_experiences"] = tailored_texts
@@ -278,11 +287,12 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
                     quality_scores[f"experience_{i}"] = exp_result.critique.quality_level.value
                 result["quality_scores"] = quality_scores
             else:
-                # Direct generation (faster)
+                # Direct generation with lookback filtering
                 tailored = cv_tailor.tailor_experiences(
                     state["cv_data"],
                     state["job_requirements"],
                     state["tailoring_plan"],
+                    lookback_years=lookback_years,
                 )
                 result["tailored_experiences"] = tailored
         except Exception as e:
@@ -291,7 +301,7 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
         return _end_step(state, step_name, result)
 
     def tailor_skills(state: CVWarlockState) -> dict:
-        """Tailor the skills section with optional CoT reasoning."""
+        """Tailor the skills section (FIRST in new pipeline order)."""
         step_name = "tailor_skills"
         result = _start_step(state, step_name, use_cot)
 
@@ -301,14 +311,23 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
         try:
             if use_cot:
                 # Full CoT with reasoning output
+                # Skills is FIRST now, so no prior context
                 cot_result = cv_tailor.tailor_skills_with_cot(
                     state["cv_data"],
                     state["job_requirements"],
-                    context=state.get("generation_context"),
+                    context=None,  # Skills is first in the pipeline
+                )
+
+                # Initialize context for downstream sections (experiences, summary)
+                context = GenerationContext(
+                    skills_demonstrated=cot_result.reasoning.required_skills_matched
+                    + cot_result.reasoning.preferred_skills_matched,
+                    primary_keywords_used=cot_result.reasoning.required_skills_matched[:5],
                 )
 
                 result["tailored_skills"] = [cot_result.final_skills]
                 result["skills_reasoning_result"] = cot_result
+                result["generation_context"] = context  # Pass to downstream nodes
                 result["total_refinement_iterations"] = (
                     state.get("total_refinement_iterations", 0) + cot_result.refinement_count
                 )
@@ -323,6 +342,8 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
                     state["job_requirements"],
                 )
                 result["tailored_skills"] = [tailored]
+                # Initialize basic context for downstream
+                result["generation_context"] = GenerationContext()
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"Skills tailoring failed: {e!s}"]
 

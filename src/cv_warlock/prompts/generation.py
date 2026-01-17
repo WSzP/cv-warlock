@@ -1,77 +1,30 @@
 """CV generation prompt templates (optimized for speed and token efficiency).
 
-These prompts use minimal tokens while maintaining quality output.
-For detailed reasoning-based generation, see reasoning.py (CoT mode).
+These prompts implement a section-by-section tailoring strategy:
+1. Skills first - Add job requirements to existing skills
+2. Experiences second - Rewrite bullets to emphasize requested skills (preserve headers)
+3. Summary last - Reference tailored content from skills and experiences
 """
 
-SUMMARY_TAILORING_PROMPT = """Tailor this professional summary for the target role.
+SKILLS_TAILORING_PROMPT = """Create an ATS-optimized skills section for this CV.
 
-ORIGINAL: {original_summary}
+CANDIDATE'S EXISTING SKILLS: {all_skills}
 
-TARGET: {job_title} at {company}
-REQUIREMENTS: {key_requirements}
-STRENGTHS: {relevant_strengths}
+JOB REQUIREMENTS:
+Required: {required_skills}
+Preferred: {preferred_skills}
 
-FORMAT (2-4 sentences):
-1. Hook: [Title] + [years] + [domain] + [differentiator]
-2. Value: One quantified achievement (%, $, scale)
-3. Fit: Connect to THIS role's needs
+STRATEGY: Add relevant skills from job requirements to the candidate's existing skills.
 
 RULES:
-- Include 1+ hard metric from their background
-- Mirror 2-3 exact terms from job posting
-- No fluff words (passionate, driven, motivated, dedicated)
-- No "I am/have" openings
-- Only reframe existing facts, never fabricate
-
-Example: "Senior Backend Engineer with 7+ years building distributed systems, including payment infrastructure processing $2B annually. Specialized in Python/Go microservices and event-driven architectures."
-
-Output ONLY the summary."""
-
-
-EXPERIENCE_TAILORING_PROMPT = """Tailor this experience for the target role.
-
-EXPERIENCE:
-Title: {title}
-Company: {company}
-Period: {period}
-Description: {description}
-Achievements: {achievements}
-
-TARGET: {target_requirements}
-EMPHASIZE: {skills_to_emphasize}
-
-BULLET FORMULA: [Power Verb] + [Action] + [Result with metric] + [Scale/Context]
-
-GOOD: "Reduced API latency 40% via Redis caching, improving UX for 2M+ daily users"
-BAD: "Responsible for API performance" (no metric, passive)
-
-RULES:
-- 3-5 bullets, most relevant first
-- Start each with strong past-tense verb
-- Include metrics where data exists (never fabricate)
-- Weave in 2-3 job posting keywords naturally
-- Under 20 words per bullet
-
-Output ONLY bullet points:
-- [Bullet 1]
-- [Bullet 2]
-..."""
-
-
-SKILLS_TAILORING_PROMPT = """Create an ATS-optimized skills section.
-
-CANDIDATE SKILLS: {all_skills}
-REQUIRED: {required_skills}
-PREFERRED: {preferred_skills}
-
-RULES:
-- Use EXACT job posting terminology (React.js not React, CI/CD not continuous integration)
-- Include dual formats for acronyms: "Amazon Web Services (AWS)"
-- Order: Required matches > Preferred matches > Transferable
-- Group logically (Languages, Frameworks, Cloud/DevOps, Databases, Tools)
-- Omit irrelevant skills (they dilute ATS score)
-- Never add skills candidate doesn't have
+1. Start with all required skills from job posting (candidate claims these)
+2. Add preferred skills that match candidate's background
+3. Include candidate's existing skills that are relevant to the role
+4. Use EXACT job posting terminology (React.js not React, CI/CD not continuous integration)
+5. Include dual formats for acronyms: "Amazon Web Services (AWS)"
+6. Group logically: Languages, Frameworks, Cloud/DevOps, Databases, Tools
+7. Order: Required matches > Preferred matches > Relevant existing
+8. Omit irrelevant skills that dilute ATS score
 
 FORMAT:
 **Technical Skills**
@@ -83,12 +36,79 @@ Databases: PostgreSQL, MongoDB, Redis
 Output ONLY the skills section."""
 
 
+EXPERIENCE_TAILORING_PROMPT = """Rewrite the job description bullets to emphasize relevant skills.
+
+EXPERIENCE (IMMUTABLE - DO NOT CHANGE):
+Title: {title}
+Company: {company}
+Period: {period}
+
+ORIGINAL DESCRIPTION/BULLETS:
+{description}
+{achievements}
+
+TARGET SKILLS TO EMPHASIZE: {skills_to_emphasize}
+KEYWORDS TO INCORPORATE: {target_requirements}
+
+CRITICAL RULES:
+1. DO NOT change title, company, or dates - they are IMMUTABLE
+2. ONLY rewrite the bullet points/description text
+3. Emphasize skills from the target list naturally
+4. Use power verbs: Led, Built, Reduced, Implemented, Designed, Optimized
+5. Keep metrics if they exist - NEVER fabricate numbers
+6. 3-5 bullets, most impactful first
+7. Under 20 words per bullet
+8. Only reframe existing facts, never fabricate experience
+
+BULLET FORMULA: [Power Verb] + [Action] + [Result with metric] + [Scale/Context]
+
+GOOD: "Reduced API latency 40% via Redis caching, improving UX for 2M+ daily users"
+BAD: "Responsible for API performance" (no metric, passive)
+
+Output ONLY bullet points:
+- [Bullet 1]
+- [Bullet 2]
+..."""
+
+
+SUMMARY_TAILORING_PROMPT = """Create a professional summary that introduces the tailored CV.
+
+ORIGINAL SUMMARY: {original_summary}
+
+TARGET: {job_title} at {company}
+
+TAILORED SKILLS AVAILABLE:
+{tailored_skills_preview}
+
+KEY REQUIREMENTS: {key_requirements}
+RELEVANT STRENGTHS: {relevant_strengths}
+
+STRATEGY: The summary should preview the value demonstrated in the CV sections below it.
+
+FORMAT (2-4 sentences):
+1. Hook: [Title] + [years] + [domain expertise]
+2. Value: Key achievement with metric from experiences
+3. Fit: Connect skills to THIS role's needs
+
+RULES:
+- Reference skills that appear in the tailored skills section
+- Include 1+ hard metric from their background
+- Mirror 2-3 exact terms from job posting
+- No fluff words (passionate, driven, motivated, dedicated)
+- No "I am/have" openings
+- Only reframe existing facts, never fabricate
+
+Example: "Senior Backend Engineer with 7+ years building distributed systems, including payment infrastructure processing $2B annually. Specialized in Python/Go microservices and event-driven architectures."
+
+Output ONLY the summary."""
+
+
 CV_ASSEMBLY_PROMPT = """Assemble these sections into a clean, ATS-compatible CV in Markdown.
 
 CONTACT: {contact}
 SUMMARY: {tailored_summary}
-EXPERIENCE: {tailored_experiences}
 SKILLS: {tailored_skills}
+EXPERIENCE: {tailored_experiences}
 EDUCATION: {education}
 PROJECTS: {projects}
 CERTIFICATIONS: {certifications}

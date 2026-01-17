@@ -100,12 +100,12 @@ def create_cv_warlock_graph(
         },
     )
 
-    # Sequential tailoring pipeline
+    # Sequential tailoring pipeline (new order: skills → experiences → summary)
     workflow.add_edge("analyze_match", "create_plan")
-    workflow.add_edge("create_plan", "tailor_summary")
-    workflow.add_edge("tailor_summary", "tailor_experiences")
-    workflow.add_edge("tailor_experiences", "tailor_skills")
-    workflow.add_edge("tailor_skills", "assemble_cv")
+    workflow.add_edge("create_plan", "tailor_skills")  # Skills FIRST
+    workflow.add_edge("tailor_skills", "tailor_experiences")  # Experiences second
+    workflow.add_edge("tailor_experiences", "tailor_summary")  # Summary LAST
+    workflow.add_edge("tailor_summary", "assemble_cv")
     workflow.add_edge("assemble_cv", END)
 
     return workflow.compile()
@@ -121,6 +121,7 @@ def run_cv_tailoring(
     assume_all_tech_skills: bool = True,
     use_cot: bool = True,
     temperature: float | None = None,
+    lookback_years: int | None = None,
 ) -> CVWarlockState:
     """Run the CV tailoring workflow.
 
@@ -136,6 +137,8 @@ def run_cv_tailoring(
         use_cot: If True, uses chain-of-thought reasoning for higher quality (slower).
                  If False, uses direct generation (faster but lower quality).
         temperature: Model temperature (0.0-1.0). If None, uses settings default.
+        lookback_years: Only tailor jobs ending within this many years. If None, uses
+                       settings default (4 years).
 
     Returns:
         Final workflow state with tailored CV.
@@ -145,7 +148,7 @@ def run_cv_tailoring(
     )
 
     # Step descriptions for progress updates
-    # CoT mode now uses optimized balanced approach: REASON→GENERATE only (no critique/refine)
+    # New order: skills → experiences → summary
     # Experience tailoring runs in parallel for significant time savings
     if use_cot:
         step_descriptions = {
@@ -154,9 +157,9 @@ def run_cv_tailoring(
             "extract_job": "Analyzing job requirements...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
-            "tailor_summary": "Crafting summary (reasoning → generating)...",
-            "tailor_experiences": "Tailoring experiences in parallel (reasoning → generating)...",
-            "tailor_skills": "Optimizing skills for ATS (reasoning → generating)...",
+            "tailor_skills": "Adding job skills to CV (reasoning → generating)...",
+            "tailor_experiences": "Tailoring recent experiences in parallel...",
+            "tailor_summary": "Crafting summary from tailored content...",
             "assemble_cv": "Assembling final CV...",
         }
     else:
@@ -166,9 +169,9 @@ def run_cv_tailoring(
             "extract_job": "Analyzing job requirements...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
+            "tailor_skills": "Adding job skills to CV...",
+            "tailor_experiences": "Tailoring recent work experiences...",
             "tailor_summary": "Crafting professional summary...",
-            "tailor_experiences": "Tailoring work experiences...",
-            "tailor_skills": "Optimizing skills section...",
             "assemble_cv": "Assembling final CV...",
         }
 
@@ -177,6 +180,7 @@ def run_cv_tailoring(
         "raw_job_spec": raw_job_spec,
         "assume_all_tech_skills": assume_all_tech_skills,
         "use_cot": use_cot,
+        "lookback_years": lookback_years,
         "cv_data": None,
         "job_requirements": None,
         "match_analysis": None,

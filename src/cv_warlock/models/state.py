@@ -59,6 +59,7 @@ class CVWarlockState(TypedDict):
     # Settings
     assume_all_tech_skills: bool  # If True, assume user has all tech skills from job spec
     use_cot: bool  # If True, use chain-of-thought reasoning (slower but better quality)
+    lookback_years: int | None  # Override for lookback window (None = use settings default)
 
     # Extracted structured data
     cv_data: CVData | None
