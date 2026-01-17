@@ -53,6 +53,7 @@ dev = [
 
 [project.scripts]
 cv-warlock = "cv_warlock.main:app"
+warlock-streamlit = "app.run:main"
 
 [build-system]
 requires = ["hatchling"]
