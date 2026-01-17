@@ -210,3 +210,6 @@ __marimo__/
 # Saved CVs (user data)
 app/data/cvs/*.md
 !app/data/cvs/.gitkeep
+
+# Test results (test outputs)
+test_results/

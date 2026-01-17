@@ -6,7 +6,8 @@ from typing import Annotated, Literal
 from dotenv import load_dotenv
 
 # Load environment variables from .env.local (including LangSmith config)
-load_dotenv(Path(__file__).parent.parent.parent.parent / ".env.local")
+# Path: main.py -> cv_warlock/ -> src/ -> project root
+load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
 import typer
 from rich.console import Console
@@ -79,8 +80,9 @@ def tailor(
         console.print()
 
     # Run the tailoring workflow
+    # Use ASCII spinner for Windows compatibility
     with Progress(
-        SpinnerColumn(),
+        SpinnerColumn(spinner_name="line"),
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
@@ -149,8 +151,9 @@ def analyze(
     raw_job_spec = read_file(job)
 
     # Run analysis (the full workflow, but we'll just show analysis)
+    # Use ASCII spinner for Windows compatibility
     with Progress(
-        SpinnerColumn(),
+        SpinnerColumn(spinner_name="line"),
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:

@@ -7,9 +7,33 @@ and generation results for each CV section. This enables:
 - Cross-section context for coherent output
 """
 
+import json
 from enum import Enum
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _parse_stringified_list(value: Any) -> list[str]:
+    """Parse a value that may be a stringified JSON list.
+
+    Some smaller LLMs (e.g., Haiku) return list fields as JSON strings
+    instead of actual lists. This function handles both cases.
+    """
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("[") and value.endswith("]"):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+            except json.JSONDecodeError:
+                pass
+        # If it's a non-list string, return as single-item list
+        return [value] if value else []
+    return []
 
 
 class QualityLevel(str, Enum):
@@ -62,6 +86,12 @@ class SummaryReasoning(BaseModel):
         ge=0.0, le=1.0, description="Confidence in the reasoning quality (0-1)"
     )
 
+    # Validators for list fields (handles Haiku returning stringified lists)
+    @field_validator("key_keywords_to_include", "aspects_to_avoid", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
+
 
 class SummaryCritique(BaseModel):
     """Self-critique for generated professional summary.
@@ -93,6 +123,11 @@ class SummaryCritique(BaseModel):
         default_factory=list, description="Actionable suggestions for refinement"
     )
     should_refine: bool = Field(description="Does this need another iteration?")
+
+    @field_validator("issues_found", "improvement_suggestions", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
 
 
 class SummaryGenerationResult(BaseModel):
@@ -127,6 +162,11 @@ class BulletReasoning(BaseModel):
     )
     reframed_bullet: str = Field(description="The transformed bullet point")
 
+    @field_validator("keyword_injection", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
+
 
 class ExperienceReasoning(BaseModel):
     """Intermediate reasoning for experience entry tailoring.
@@ -155,6 +195,17 @@ class ExperienceReasoning(BaseModel):
     aspects_to_downplay: list[str] = Field(
         default_factory=list, description="What to minimize or omit from this role"
     )
+
+    @field_validator(
+        "transferable_skills_identified",
+        "achievements_to_prioritize",
+        "keywords_to_incorporate",
+        "aspects_to_downplay",
+        mode="before",
+    )
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
 
 
 class ExperienceCritique(BaseModel):
@@ -188,6 +239,11 @@ class ExperienceCritique(BaseModel):
     improvement_suggestions: list[str] = Field(default_factory=list)
     should_refine: bool
 
+    @field_validator("weak_bullets", "improvement_suggestions", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
+
 
 class ExperienceGenerationResult(BaseModel):
     """Complete result for one experience entry's tailoring."""
@@ -199,6 +255,11 @@ class ExperienceGenerationResult(BaseModel):
     critique: ExperienceCritique
     refinement_count: int = Field(default=0)
     final_bullets: list[str] = Field(description="Final bullets after refinements")
+
+    @field_validator("generated_bullets", "final_bullets", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
 
 
 # =============================================================================
@@ -245,6 +306,18 @@ class SkillsReasoning(BaseModel):
         default_factory=list, description="Candidate skills irrelevant to this role"
     )
 
+    @field_validator(
+        "required_skills_matched",
+        "required_skills_missing",
+        "preferred_skills_matched",
+        "dual_format_terms",
+        "skills_to_omit",
+        mode="before",
+    )
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
+
 
 class SkillsCritique(BaseModel):
     """Self-critique for skills section ATS optimization."""
@@ -273,6 +346,11 @@ class SkillsCritique(BaseModel):
     )
     improvement_suggestions: list[str] = Field(default_factory=list)
     should_refine: bool
+
+    @field_validator("missing_critical_terms", "improvement_suggestions", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
 
 
 class SkillsGenerationResult(BaseModel):
@@ -318,3 +396,10 @@ class GenerationContext(BaseModel):
     keyword_frequency: dict[str, int] = Field(
         default_factory=dict, description="How many times each keyword appears"
     )
+
+    @field_validator(
+        "primary_keywords_used", "metrics_used", "skills_demonstrated", mode="before"
+    )
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)

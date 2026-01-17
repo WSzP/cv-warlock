@@ -1,6 +1,51 @@
 """CV data models."""
 
-from pydantic import BaseModel, Field
+import json
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator
+
+
+def _coerce_to_list(v: Any) -> list[str]:
+    """Coerce various inputs to list of strings for LLM output robustness."""
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return [str(item) for item in v]
+    if isinstance(v, str):
+        # Try to parse as JSON array first
+        v = v.strip()
+        if v.startswith("["):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+            except json.JSONDecodeError:
+                pass
+        # Treat as comma-separated or single item
+        if "," in v:
+            return [item.strip() for item in v.split(",") if item.strip()]
+        return [v] if v else []
+    return [str(v)]
+
+
+def _coerce_to_model_list(v: Any) -> list[Any]:
+    """Coerce JSON string to list of dicts for nested model parsing."""
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        v = v.strip()
+        if v.startswith("["):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+        return []
+    return []
 
 
 class ContactInfo(BaseModel):
@@ -26,6 +71,11 @@ class Experience(BaseModel):
     achievements: list[str] = Field(default_factory=list)
     skills_used: list[str] = Field(default_factory=list)
 
+    @field_validator("achievements", "skills_used", mode="before")
+    @classmethod
+    def coerce_to_list(cls, v: Any) -> list[str]:
+        return _coerce_to_list(v)
+
 
 class Education(BaseModel):
     """Education entry."""
@@ -36,6 +86,11 @@ class Education(BaseModel):
     gpa: str | None = None
     relevant_coursework: list[str] = Field(default_factory=list)
 
+    @field_validator("relevant_coursework", mode="before")
+    @classmethod
+    def coerce_to_list(cls, v: Any) -> list[str]:
+        return _coerce_to_list(v)
+
 
 class Project(BaseModel):
     """Project entry."""
@@ -44,6 +99,11 @@ class Project(BaseModel):
     description: str
     technologies: list[str] = Field(default_factory=list)
     url: str | None = None
+
+    @field_validator("technologies", mode="before")
+    @classmethod
+    def coerce_to_list(cls, v: Any) -> list[str]:
+        return _coerce_to_list(v)
 
 
 class Certification(BaseModel):
@@ -66,3 +126,13 @@ class CVData(BaseModel):
     projects: list[Project] = Field(default_factory=list)
     certifications: list[Certification] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
+
+    @field_validator("skills", "languages", mode="before")
+    @classmethod
+    def coerce_to_list(cls, v: Any) -> list[str]:
+        return _coerce_to_list(v)
+
+    @field_validator("experiences", "education", "projects", "certifications", mode="before")
+    @classmethod
+    def coerce_model_lists(cls, v: Any) -> list[Any]:
+        return _coerce_to_model_list(v)

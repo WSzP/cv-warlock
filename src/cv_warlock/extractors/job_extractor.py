@@ -24,7 +24,7 @@ class JobExtractor:
             JobRequirements: Structured job requirements.
         """
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(JobRequirements)
+        structured_model = model.with_structured_output(JobRequirements, method="function_calling")
 
         chain = self.prompt | structured_model
         result = chain.invoke({"job_spec_text": raw_job_spec})

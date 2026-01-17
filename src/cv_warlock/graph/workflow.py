@@ -25,7 +25,6 @@ def create_cv_warlock_graph(
     model: str | None = None,
     api_key: str | None = None,
     use_cot: bool = True,
-    temperature: float | None = None,
 ) -> StateGraph:
     """Create and compile the CV tailoring workflow graph.
 
@@ -35,7 +34,6 @@ def create_cv_warlock_graph(
         api_key: API key for the provider.
         use_cot: Whether to use chain-of-thought reasoning for generation.
                  Default True for higher quality, False for faster generation.
-        temperature: Model temperature (0.0-1.0). If None, uses settings default.
 
     Returns:
         Compiled StateGraph.
@@ -45,7 +43,6 @@ def create_cv_warlock_graph(
     # Use provided values or fall back to settings
     provider = provider or settings.provider
     model = model or settings.model
-    temperature = temperature if temperature is not None else settings.temperature
 
     # Get API key from settings if not provided
     if api_key is None:
@@ -57,7 +54,7 @@ def create_cv_warlock_graph(
             api_key = settings.anthropic_api_key
 
     # Create LLM provider and nodes
-    llm_provider = get_llm_provider(provider, model, api_key, temperature=temperature)
+    llm_provider = get_llm_provider(provider, model, api_key)
     nodes = create_nodes(llm_provider, use_cot=use_cot)
 
     # Build the graph
@@ -120,7 +117,6 @@ def run_cv_tailoring(
     progress_callback: Callable[[str, str, float], None] | None = None,
     assume_all_tech_skills: bool = True,
     use_cot: bool = True,
-    temperature: float | None = None,
     lookback_years: int | None = None,
 ) -> CVWarlockState:
     """Run the CV tailoring workflow.
@@ -136,16 +132,13 @@ def run_cv_tailoring(
         assume_all_tech_skills: If True, assumes user has all tech skills from job spec.
         use_cot: If True, uses chain-of-thought reasoning for higher quality (slower).
                  If False, uses direct generation (faster but lower quality).
-        temperature: Model temperature (0.0-1.0). If None, uses settings default.
         lookback_years: Only tailor jobs ending within this many years. If None, uses
                        settings default (4 years).
 
     Returns:
         Final workflow state with tailored CV.
     """
-    graph = create_cv_warlock_graph(
-        provider, model, api_key, use_cot=use_cot, temperature=temperature
-    )
+    graph = create_cv_warlock_graph(provider, model, api_key, use_cot=use_cot)
 
     # Step descriptions for progress updates
     # New order: skills → experiences → summary

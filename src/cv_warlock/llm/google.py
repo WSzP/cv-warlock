@@ -13,13 +13,15 @@ DEFAULT_MAX_RETRIES = 3  # 3 retries = 4 total attempts (handles transient conne
 
 
 class GoogleProvider(LLMProvider):
-    """Google Gemini provider using langchain-google-genai."""
+    """Google Gemini provider using langchain-google-genai.
+
+    Uses API default temperature (not passed explicitly).
+    """
 
     def __init__(
         self,
         model: str = "gemini-3-flash-preview",
         api_key: str | None = None,
-        temperature: float = 0.3,
         timeout: float = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
     ):
@@ -28,31 +30,27 @@ class GoogleProvider(LLMProvider):
         Args:
             model: Model name (default: gemini-3-flash-preview).
             api_key: Google API key. If not provided, uses GOOGLE_API_KEY env var.
-            temperature: Default temperature for generation.
             timeout: Request timeout in seconds.
             max_retries: Maximum number of retries on failure.
         """
         self.model = model
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
-        self.default_temperature = temperature
         self.timeout = timeout
         self.max_retries = max_retries
 
-    def get_chat_model(self, temperature: float | None = None) -> BaseChatModel:
-        """Get a Gemini chat model instance."""
+    def get_chat_model(self) -> BaseChatModel:
+        """Get a Gemini chat model with API default temperature."""
         return ChatGoogleGenerativeAI(
             model=self.model,
-            temperature=temperature if temperature is not None else self.default_temperature,
             google_api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
         )
 
     def get_extraction_model(self) -> BaseChatModel:
-        """Get a Gemini model optimized for structured extraction (temperature=0)."""
+        """Get a Gemini model for structured extraction with API default temperature."""
         return ChatGoogleGenerativeAI(
             model=self.model,
-            temperature=0,
             google_api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,

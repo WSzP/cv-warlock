@@ -2,16 +2,26 @@
 
 AI-powered CV tailoring for job applications. Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills.
 
+This is an opinionated, model-agnostic, quality-assured CV improver. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. In even simpler words: Waaagh!
+
 ## Features
 
 - **Smart CV Tailoring**: Analyzes job requirements and rewrites your CV to highlight relevant experience
-- **Chain-of-Thought Reasoning**: Optional CoT mode for higher quality generation (REASON → GENERATE → CRITIQUE → REFINE)
+- **Chain-of-Thought Reasoning**: High quality generation with CoT method (REASON → GENERATE → CRITIQUE → REFINE)
 - **Match Analysis**: Shows how well your CV matches the job, including gaps and transferable skills
 - **Assume All Tech Skills**: Checkbox option (enabled by default) that assumes you have all technical skills from the job posting
 - **Multi-Provider LLM Support**: Works with OpenAI, Anthropic Claude, and Google Gemini
 - **CLI & Web UI**: Use via command line or Streamlit web interface
 - **LangGraph Workflow**: Robust multi-step processing with state management
 - **Real-Time Progress**: Live timing display during CV generation
+
+## Vibe Coding
+
+This project was created using Claude Code 2 - Opus 4.5.  
+
+The `.claude` folder and `CLAUDE.md` are committed, so you can adapt this to your specific needs, or use the project as a vibe coding langchain testbed.
+
+In the `.claude` folder, you can find custom agents that can help you if you wish to create features that are not yet implemented, such as a PostgreSQL database, a NextJS or React responsive website, and localization (i18n). Finally, you can use my custom-made web design agent, `wyr`, to create a great web design. If I create a NextJS frontend to replace Streamlit, I will use that.
 
 ## Requirements
 
@@ -231,6 +241,32 @@ uv run ruff check .
 # Run type checking
 uv run mypy src/cv_warlock
 ```
+
+### Test Output Naming Convention
+
+**IMPORTANT**: All test output files MUST follow this naming format to track solution evolution:
+
+```text
+YYYY-MM-DD_HH-MM_modelname.md
+```
+
+Examples:
+
+- `2026-01-17_14-30_claude-sonnet-4-5.md`
+- `2026-01-17_09-15_gpt-5-2.md`
+- `2026-01-17_16-45_gemini-3-pro.md`
+
+Example test commands:
+
+```bash
+# Test with Anthropic
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-sonnet-4-5.md -p anthropic -m claude-sonnet-4-5-20250929 -v
+
+# Test with OpenAI
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_gpt-5-2.md -p openai -m gpt-5.2 -v
+```
+
+This naming convention helps track the evolution of the solution across different models and time.
 
 ## License
 

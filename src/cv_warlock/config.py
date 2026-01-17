@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     # Provider configuration
     provider: Literal["openai", "anthropic", "google"] = "anthropic"
     model: str = "gpt-4o"
-    temperature: float = Field(default=0.3, ge=0.0, le=1.0)
 
     # Tailoring configuration
     lookback_years: int = Field(
