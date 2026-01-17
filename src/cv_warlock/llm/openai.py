@@ -9,15 +9,18 @@ from cv_warlock.llm.base import LLMProvider
 class OpenAIProvider(LLMProvider):
     """OpenAI GPT provider."""
 
-    def __init__(self, model: str = "gpt-4o", api_key: str | None = None):
+    def __init__(
+        self, model: str = "gpt-4o", api_key: str | None = None, temperature: float = 0.3
+    ):
         self.model = model
         self.api_key = api_key
+        self.default_temperature = temperature
 
-    def get_chat_model(self, temperature: float = 0.3) -> BaseChatModel:
+    def get_chat_model(self, temperature: float | None = None) -> BaseChatModel:
         """Get OpenAI chat model."""
         return ChatOpenAI(
             model=self.model,
-            temperature=temperature,
+            temperature=temperature if temperature is not None else self.default_temperature,
             api_key=self.api_key,
         )
 
