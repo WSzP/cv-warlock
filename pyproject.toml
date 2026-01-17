@@ -29,11 +29,7 @@ dependencies = [
     # Web UI
     "streamlit>=1.40.0",
 
-    # LinkedIn fetching
-    "httpx>=0.27.0",
-    "beautifulsoup4>=4.12.0",
-
-    # PDF parsing (for LinkedIn PDF export)
+    # PDF parsing (for CV upload)
     "pymupdf>=1.24.0",
 ]
 
