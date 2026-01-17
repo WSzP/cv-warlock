@@ -35,6 +35,9 @@ dependencies = [
 
     # Tracing & observability
     "langsmith>=0.2.0",
+
+    # HTTP/2 support for better connection reliability
+    "h2>=4.0.0",
 ]
 
 [project.optional-dependencies]
