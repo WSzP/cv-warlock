@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from pathlib import Path
 
 # Add project root to path for imports
@@ -24,8 +25,22 @@ def get_env_api_key(provider: str) -> str | None:
     """Get API key from environment for the given provider."""
     if provider == "openai":
         return os.getenv("OPENAI_API_KEY")
-    else:
+    elif provider == "anthropic":
         return os.getenv("ANTHROPIC_API_KEY")
+    elif provider == "google":
+        return os.getenv("GOOGLE_API_KEY")
+    return None
+
+
+def format_elapsed_time(seconds: float) -> str:
+    """Format elapsed time in a human-readable way."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    else:
+        minutes = int(seconds // 60)
+        secs = seconds % 60
+        return f"{minutes}m {secs:.0f}s"
+
 
 # Page configuration
 st.set_page_config(
@@ -52,6 +67,15 @@ st.markdown(
     .stTextArea textarea {
         font-family: monospace;
     }
+    .timing-display {
+        font-family: monospace;
+        font-size: 1.1rem;
+        color: #0066cc;
+        padding: 0.5rem;
+        background: #f0f8ff;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -66,15 +90,30 @@ def main():
 
         provider = st.selectbox(
             "LLM Provider",
-            options=["anthropic", "openai"],
+            options=["anthropic", "openai", "google"],
             index=0,
             help="Choose the AI provider for CV tailoring",
         )
 
+        # Model options per provider with latest versions
         if provider == "openai":
-            model_options = ["gpt-5.2", "gpt-4o", "gpt-4o-mini"]
-        else:
-            model_options = ["claude-opus-4-5-20251101", "claude-sonnet-4-20250514"]
+            model_options = [
+                "gpt-5.2",           # Latest flagship
+                "gpt-5.2-instant",   # Fast version
+                "gpt-5-mini",        # Cost-efficient
+                "gpt-4o",
+            ]
+        elif provider == "google":
+            model_options = [
+                "gemini-3-flash-preview",  # Fast + capable (recommended)
+                "gemini-3-pro-preview",    # Most capable
+            ]
+        else:  # anthropic
+            model_options = [
+                "claude-sonnet-4-5-20250929",  # Best balance (recommended)
+                "claude-haiku-4-5-20251001",   # Fastest, cost-efficient
+                "claude-opus-4-5-20251101",    # Most capable
+            ]
 
         model = st.selectbox(
             "Model",
@@ -90,12 +129,82 @@ def main():
         if env_api_key:
             st.success(f"{provider.title()} API key loaded from .env.local")
             api_key = None  # Will use env key
+
+            # Test API key button
+            if st.button("Test API Key", key="test_api_key"):
+                with st.spinner(f"Testing {provider.title()} API key..."):
+                    try:
+                        # Import test functions
+                        sys.path.insert(0, str(project_root / "scripts"))
+                        from test_api_keys import (
+                            test_anthropic_key,
+                            test_google_key,
+                            test_openai_key,
+                        )
+
+                        if provider == "openai":
+                            success, message = test_openai_key(env_api_key)
+                        elif provider == "anthropic":
+                            success, message = test_anthropic_key(env_api_key)
+                        elif provider == "google":
+                            success, message = test_google_key(env_api_key)
+                        else:
+                            success, message = False, f"Unknown provider: {provider}"
+
+                        if success:
+                            st.success(f"✓ {message}")
+                        else:
+                            st.error(f"✗ {message}")
+                    except Exception as e:
+                        st.error(f"Test failed: {e}")
         else:
             api_key = st.text_input(
                 f"{provider.title()} API Key",
                 type="password",
                 help="Enter your API key (or set it in .env.local)",
             )
+
+        st.divider()
+
+        # Generation quality settings
+        st.subheader("Generation Quality")
+
+        use_cot = st.checkbox(
+            "**High Quality** with Chain-of-Thought (CoT) Reasoning",
+            value=True,
+            help="Enable multi-step reasoning for higher quality output. "
+            "Each section goes through: Reason → Generate → Critique → Refine. "
+            "Produces better results but takes 3-4x longer.",
+            key="use_cot",
+        )
+
+        if use_cot:
+            st.info(
+                "CoT enabled: Generation will be slower but produces "
+                "significantly higher quality tailored CVs."
+            )
+        else:
+            st.warning(
+                "CoT disabled: Faster generation but lower quality. "
+                "Use for quick iterations."
+            )
+
+        st.divider()
+
+        # LangSmith tracing status
+        langsmith_enabled = (
+            os.getenv("LANGSMITH_API_KEY") and os.getenv("LANGSMITH_TRACING", "").lower() == "true"
+        )
+        if langsmith_enabled:
+            project = os.getenv("LANGSMITH_PROJECT", "cv-warlock")
+            endpoint = os.getenv("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")
+            # Determine the dashboard URL based on endpoint
+            if "eu.api.smith" in endpoint:
+                dashboard_url = f"https://eu.smith.langchain.com/o/default/projects/p/{project}"
+            else:
+                dashboard_url = f"https://smith.langchain.com/o/default/projects/p/{project}"
+            st.success(f"LangSmith tracing: **{project}**")
+            st.markdown(f"[View traces]({dashboard_url})")
 
         st.divider()
 
@@ -152,25 +261,54 @@ def main():
             )
             return
 
-        # Run tailoring with detailed progress
+        # Run tailoring with detailed progress and timing
         try:
             # Import here to avoid loading dependencies until needed
             from cv_warlock.graph.workflow import run_cv_tailoring
 
-            # Progress tracking with st.status
-            with st.status("Tailoring your CV...", expanded=True) as status:
-                progress_container = st.empty()
-                current_step = {"name": "", "desc": "Starting..."}
+            # Get settings from session state
+            assume_all_tech_skills = st.session_state.get("assume_all_tech_skills", True)
+            use_cot_setting = st.session_state.get("use_cot", True)
 
-                def update_progress(step_name: str, description: str):
-                    current_step["name"] = step_name
-                    current_step["desc"] = description
+            # Progress tracking with st.status
+            status_label = "Tailoring your CV"
+            if use_cot_setting:
+                status_label += " (CoT: reasoning + self-critique enabled)"
+            status_label += "..."
+
+            with st.status(status_label, expanded=True) as status:
+                progress_container = st.empty()
+                timing_container = st.empty()
+                start_time = time.time()
+
+                # JavaScript real-time timer that updates every second
+                timer_html = """
+                <div id="live-timer" class="timing-display">Elapsed: 0.0s</div>
+                <script>
+                    var startTime = Date.now();
+                    var timerInterval = setInterval(function() {
+                        var elapsed = (Date.now() - startTime) / 1000;
+                        var timerEl = document.getElementById('live-timer');
+                        if (timerEl) {
+                            if (elapsed < 60) {
+                                timerEl.textContent = 'Elapsed: ' + elapsed.toFixed(1) + 's';
+                            } else {
+                                var mins = Math.floor(elapsed / 60);
+                                var secs = Math.floor(elapsed % 60);
+                                timerEl.textContent = 'Elapsed: ' + mins + 'm ' + secs + 's';
+                            }
+                        }
+                    }, 100);
+                    // Store interval ID for cleanup
+                    window.cvWarlockTimerInterval = timerInterval;
+                </script>
+                """
+                timing_container.markdown(timer_html, unsafe_allow_html=True)
+
+                def update_progress(step_name: str, description: str, elapsed: float):
                     progress_container.markdown(f"**{description}**")
 
-                update_progress("start", "Initializing...")
-
-                # Get assume_all_tech_skills setting from session state
-                assume_all_tech_skills = st.session_state.get("assume_all_tech_skills", True)
+                update_progress("start", "Initializing...", 0)
 
                 result = run_cv_tailoring(
                     raw_cv=raw_cv,
@@ -180,14 +318,33 @@ def main():
                     api_key=effective_api_key,
                     progress_callback=update_progress,
                     assume_all_tech_skills=assume_all_tech_skills,
+                    use_cot=use_cot_setting,
                 )
 
-                # Update status on completion
+                # Final timing
+                total_time = result.get("total_generation_time", time.time() - start_time)
+                refinements = result.get("total_refinement_iterations", 0)
+
+                # Update status on completion - stop the JS timer and show final time
+                stop_timer_and_show_final = f"""
+                <div class="timing-display">Total generation time: {format_elapsed_time(total_time)}</div>
+                <script>
+                    if (window.cvWarlockTimerInterval) {{
+                        clearInterval(window.cvWarlockTimerInterval);
+                        window.cvWarlockTimerInterval = null;
+                    }}
+                </script>
+                """
+
                 if result.get("errors"):
                     status.update(label="CV tailoring failed", state="error")
                 else:
-                    status.update(label="CV tailored successfully!", state="complete")
+                    completion_msg = f"CV tailored successfully! Total time: {format_elapsed_time(total_time)}"
+                    if use_cot_setting and refinements > 0:
+                        completion_msg += f" ({refinements} refinement iterations)"
+                    status.update(label=completion_msg, state="complete")
                     progress_container.markdown("**Done!**")
+                    timing_container.markdown(stop_timer_and_show_final, unsafe_allow_html=True)
 
             # Store result in session state
             st.session_state["result"] = result
@@ -198,7 +355,25 @@ def main():
 
     # Display results if available
     if "result" in st.session_state:
-        render_result(st.session_state["result"])
+        result = st.session_state["result"]
+        render_result(result)
+
+        # Show quality metrics if available (CoT mode)
+        quality_scores = result.get("quality_scores")
+        if quality_scores:
+            with st.expander("Quality Assessment (CoT)", expanded=False):
+                cols = st.columns(len(quality_scores))
+                for i, (section, quality) in enumerate(quality_scores.items()):
+                    with cols[i % len(cols)]:
+                        section_name = section.replace("_", " ").title()
+                        if quality == "excellent":
+                            st.success(f"{section_name}: {quality}")
+                        elif quality == "good":
+                            st.info(f"{section_name}: {quality}")
+                        elif quality == "needs_improvement":
+                            st.warning(f"{section_name}: {quality}")
+                        else:
+                            st.error(f"{section_name}: {quality}")
 
 
 if __name__ == "__main__":

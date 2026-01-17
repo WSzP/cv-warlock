@@ -3,6 +3,11 @@
 from pathlib import Path
 from typing import Annotated, Literal
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env.local (including LangSmith config)
+load_dotenv(Path(__file__).parent.parent.parent.parent / ".env.local")
+
 import typer
 from rich.console import Console
 from rich.panel import Panel

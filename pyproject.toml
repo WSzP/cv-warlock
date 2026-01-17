@@ -13,9 +13,10 @@ dependencies = [
     "langchain>=0.3.0",
     "langgraph>=0.2.0",
 
-    # LLM providers (both supported)
+    # LLM providers (all supported)
     "langchain-openai>=0.2.0",
     "langchain-anthropic>=0.3.0",
+    "langchain-google-genai>=2.0.0",
 
     # Data & config
     "pydantic>=2.0.0",
@@ -31,6 +32,9 @@ dependencies = [
 
     # PDF parsing (for CV upload)
     "pymupdf>=1.24.0",
+
+    # Tracing & observability
+    "langsmith>=0.2.0",
 ]
 
 [project.optional-dependencies]
