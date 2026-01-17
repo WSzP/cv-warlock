@@ -37,6 +37,9 @@ class CVWarlockState(TypedDict):
     raw_cv: str  # Original CV text
     raw_job_spec: str  # Original job specification text
 
+    # Settings
+    assume_all_tech_skills: bool  # If True, assume user has all tech skills from job spec
+
     # Extracted structured data
     cv_data: CVData | None
     job_requirements: JobRequirements | None

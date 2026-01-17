@@ -1,5 +1,7 @@
 """LangGraph node definitions for CV tailoring workflow."""
 
+import copy
+
 from cv_warlock.extractors.cv_extractor import CVExtractor
 from cv_warlock.extractors.job_extractor import JobExtractor
 from cv_warlock.llm.base import LLMProvider
@@ -66,19 +68,38 @@ def create_nodes(llm_provider: LLMProvider) -> dict:
             }
 
     def analyze_match(state: CVWarlockState) -> dict:
-        """Analyze match between CV and job requirements."""
+        """Analyze match between CV and job requirements.
+
+        If assume_all_tech_skills is True, augments CV skills with all required
+        technical skills from the job spec before analysis. The augmented CV
+        is persisted in state so downstream nodes use the enhanced skill list.
+        """
         if state.get("errors"):
             return {"current_step": "analyze_match"}
 
         try:
+            cv_data = state["cv_data"]
+            job_requirements = state["job_requirements"]
+            result = {"current_step": "analyze_match"}
+
+            # If assume_all_tech_skills is enabled, augment CV skills with job requirements
+            if state.get("assume_all_tech_skills", True):
+                cv_data = copy.deepcopy(cv_data)
+                # Add required and preferred skills to CV skills list
+                existing_skills = set(s.lower() for s in cv_data.skills)
+                for skill in job_requirements.required_skills + job_requirements.preferred_skills:
+                    if skill.lower() not in existing_skills:
+                        cv_data.skills.append(skill)
+                        existing_skills.add(skill.lower())
+                # Persist augmented CV data for downstream nodes
+                result["cv_data"] = cv_data
+
             match_analysis = match_analyzer.analyze_match(
-                state["cv_data"],
-                state["job_requirements"],
+                cv_data,
+                job_requirements,
             )
-            return {
-                "match_analysis": match_analysis,
-                "current_step": "analyze_match",
-            }
+            result["match_analysis"] = match_analysis
+            return result
         except Exception as e:
             return {
                 "current_step": "analyze_match",

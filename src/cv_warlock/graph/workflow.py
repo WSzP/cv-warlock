@@ -104,6 +104,7 @@ def run_cv_tailoring(
     model: str | None = None,
     api_key: str | None = None,
     progress_callback: Callable[[str, str], None] | None = None,
+    assume_all_tech_skills: bool = True,
 ) -> CVWarlockState:
     """Run the CV tailoring workflow.
 
@@ -114,6 +115,7 @@ def run_cv_tailoring(
         model: Model name to use.
         api_key: API key for the provider.
         progress_callback: Optional callback function(step_name, description) for progress updates.
+        assume_all_tech_skills: If True, assumes user has all tech skills from job spec.
 
     Returns:
         Final workflow state with tailored CV.
@@ -123,6 +125,7 @@ def run_cv_tailoring(
     initial_state: CVWarlockState = {
         "raw_cv": raw_cv,
         "raw_job_spec": raw_job_spec,
+        "assume_all_tech_skills": assume_all_tech_skills,
         "cv_data": None,
         "job_requirements": None,
         "match_analysis": None,
