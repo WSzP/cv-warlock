@@ -2,11 +2,17 @@
 
 from typing import Annotated, TypedDict
 
-from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 from cv_warlock.models.cv import CVData
 from cv_warlock.models.job_spec import JobRequirements
+from cv_warlock.models.reasoning import (
+    ExperienceGenerationResult,
+    GenerationContext,
+    SkillsGenerationResult,
+    SummaryGenerationResult,
+)
 
 
 class MatchAnalysis(TypedDict):
@@ -30,8 +36,21 @@ class TailoringPlan(TypedDict):
     sections_to_reorder: list[str]  # Section ordering
 
 
+class StepTiming(TypedDict):
+    """Timing information for a single workflow step."""
+
+    step_name: str
+    start_time: float  # Unix timestamp
+    end_time: float | None  # Unix timestamp, None if in progress
+    duration_seconds: float | None  # Computed duration
+
+
 class CVWarlockState(TypedDict):
-    """Main state object for the CV tailoring workflow."""
+    """Main state object for the CV tailoring workflow.
+
+    When use_cot=True, generation is slower (3-4x more LLM calls) but produces
+    significantly higher quality tailored CVs through chain-of-thought reasoning.
+    """
 
     # Input data
     raw_cv: str  # Original CV text
@@ -39,6 +58,7 @@ class CVWarlockState(TypedDict):
 
     # Settings
     assume_all_tech_skills: bool  # If True, assume user has all tech skills from job spec
+    use_cot: bool  # If True, use chain-of-thought reasoning (slower but better quality)
 
     # Extracted structured data
     cv_data: CVData | None
@@ -56,7 +76,23 @@ class CVWarlockState(TypedDict):
     # Output
     tailored_cv: str | None  # Final tailored CV in markdown
 
+    # Chain-of-thought reasoning outputs (for debugging/transparency)
+    summary_reasoning_result: SummaryGenerationResult | None
+    experience_reasoning_results: list[ExperienceGenerationResult] | None
+    skills_reasoning_result: SkillsGenerationResult | None
+    generation_context: GenerationContext | None
+
+    # Quality metrics
+    total_refinement_iterations: int  # How many refinement loops were needed
+    quality_scores: dict[str, str] | None  # Section -> QualityLevel mapping
+
+    # Timing information
+    step_timings: list[StepTiming]  # Timing for each completed step
+    current_step_start: float | None  # Start time of current step (Unix timestamp)
+    total_generation_time: float | None  # Total time in seconds when complete
+
     # Workflow tracking
     messages: Annotated[list[BaseMessage], add_messages]
     current_step: str
+    current_step_description: str  # Human-readable description for UI
     errors: list[str]

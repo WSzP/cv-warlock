@@ -292,32 +292,21 @@ def main():
                 timing_container = st.empty()
                 start_time = time.time()
 
-                # JavaScript real-time timer that updates every second
-                timer_html = """
-                <div id="live-timer" class="timing-display">Elapsed: 0.0s</div>
-                <script>
-                    var startTime = Date.now();
-                    var timerInterval = setInterval(function() {
-                        var elapsed = (Date.now() - startTime) / 1000;
-                        var timerEl = document.getElementById('live-timer');
-                        if (timerEl) {
-                            if (elapsed < 60) {
-                                timerEl.textContent = 'Elapsed: ' + elapsed.toFixed(1) + 's';
-                            } else {
-                                var mins = Math.floor(elapsed / 60);
-                                var secs = Math.floor(elapsed % 60);
-                                timerEl.textContent = 'Elapsed: ' + mins + 'm ' + secs + 's';
-                            }
-                        }
-                    }, 100);
-                    // Store interval ID for cleanup
-                    window.cvWarlockTimerInterval = timerInterval;
-                </script>
-                """
-                timing_container.markdown(timer_html, unsafe_allow_html=True)
+                # Show initial timing
+                timing_container.markdown(
+                    f'<div class="timing-display">Elapsed: 0.0s</div>',
+                    unsafe_allow_html=True,
+                )
 
                 def update_progress(step_name: str, description: str, elapsed: float):
+                    # Update both progress description and elapsed time
                     progress_container.markdown(f"**{description}**")
+                    # Use wall-clock time for more accurate display
+                    actual_elapsed = time.time() - start_time
+                    timing_container.markdown(
+                        f'<div class="timing-display">Elapsed: {format_elapsed_time(actual_elapsed)}</div>',
+                        unsafe_allow_html=True,
+                    )
 
                 update_progress("start", "Initializing...", 0)
 
@@ -337,17 +326,6 @@ def main():
                 total_time = result.get("total_generation_time", time.time() - start_time)
                 refinements = result.get("total_refinement_iterations", 0)
 
-                # Update status on completion - stop the JS timer and show final time
-                stop_timer_and_show_final = f"""
-                <div class="timing-display">Total generation time: {format_elapsed_time(total_time)}</div>
-                <script>
-                    if (window.cvWarlockTimerInterval) {{
-                        clearInterval(window.cvWarlockTimerInterval);
-                        window.cvWarlockTimerInterval = null;
-                    }}
-                </script>
-                """
-
                 if result.get("errors"):
                     status.update(label="CV tailoring failed", state="error")
                 else:
@@ -356,7 +334,11 @@ def main():
                         completion_msg += f" ({refinements} refinement iterations)"
                     status.update(label=completion_msg, state="complete")
                     progress_container.markdown("**Done!**")
-                    timing_container.markdown(stop_timer_and_show_final, unsafe_allow_html=True)
+                    # Show final timing
+                    timing_container.markdown(
+                        f'<div class="timing-display">Total time: {format_elapsed_time(total_time)}</div>',
+                        unsafe_allow_html=True,
+                    )
 
             # Store result in session state
             st.session_state["result"] = result
