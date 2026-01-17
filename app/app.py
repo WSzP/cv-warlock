@@ -19,6 +19,7 @@ import streamlit as st
 from components.cv_input import render_cv_input
 from components.job_input import render_job_input
 from components.result_display import render_result
+from utils.styles import apply_custom_styles
 
 
 def get_env_api_key(provider: str) -> str | None:
@@ -219,6 +220,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# Apply Poppins font styling
+apply_custom_styles()
 
 # Custom CSS
 st.markdown(

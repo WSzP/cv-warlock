@@ -142,6 +142,9 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
     def analyze_match(state: CVWarlockState) -> dict:
         """Analyze match between CV and job requirements.
 
+        Uses hybrid scoring combining algorithmic sub-scores (exact string matching,
+        experience years, education, recency) with LLM qualitative assessment.
+
         If assume_all_tech_skills is True, augments CV skills with all required
         technical skills from the job spec before analysis. The augmented CV
         is persisted in state so downstream nodes use the enhanced skill list.
@@ -168,10 +171,12 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
                 # Persist augmented CV data for downstream nodes
                 result["cv_data"] = cv_data
 
-            match_analysis = match_analyzer.analyze_match(
-                cv_data,
-                job_requirements,
-            )
+            # Use hybrid scoring (algorithmic + LLM)
+            from cv_warlock.scoring.hybrid import HybridScorer
+
+            hybrid_scorer = HybridScorer(llm_provider)
+            match_analysis = hybrid_scorer.score(cv_data, job_requirements)
+
             result["match_analysis"] = match_analysis
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"Match analysis failed: {e!s}"]

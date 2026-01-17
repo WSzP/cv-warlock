@@ -1,0 +1,7 @@
+[theme]
+# CV Warlock custom theme with Poppins font
+primaryColor = "#6366f1"  # Indigo
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8fafc"
+textColor = "#1e293b"
+font = "sans serif"  # Will be overridden by custom CSS for Poppins

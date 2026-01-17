@@ -1,8 +1,12 @@
 # CV Warlock
 
-AI-powered CV tailoring for job applications. Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills.
+Experiment: **AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). This system is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview. 
 
 This is an opinionated, model-agnostic, quality-assured CV improver. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. In even simpler words: Waaagh!
+
+# Is this cheating?
+
+
 
 ## Features
 
@@ -267,6 +271,25 @@ uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o
 ```
 
 This naming convention helps track the evolution of the solution across different models and time.
+
+## Fonts
+
+CV Warlock uses the **Poppins** font family throughout the application:
+
+- **Web UI**: Loaded from Google Fonts CDN for fast, consistent rendering
+- **PDF Export**: Embedded from local `fonts/` directory for offline generation
+
+Poppins is a geometric sans-serif typeface that provides excellent readability and a modern, professional appearance.
+
+The Poppins font is included in the `fonts/` directory and is licensed under the **SIL Open Font License, Version 1.1**. This is a free, open-source license that permits:
+
+- Free use in personal and commercial projects
+- Modification and redistribution
+- Bundling with software
+
+See `fonts/OFL.txt` for the full license text.
+
+**Font Credit**: Poppins was designed by Indian Type Foundry and Jonny Pinhorn.
 
 ## License
 
