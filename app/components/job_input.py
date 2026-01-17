@@ -63,6 +63,10 @@ def render_job_input() -> str:
     if "job_text_area" not in st.session_state:
         st.session_state.job_text_area = ""
 
+    # Initialize assume all tech skills checkbox (checked by default)
+    if "assume_all_tech_skills" not in st.session_state:
+        st.session_state.assume_all_tech_skills = True
+
     # Checkbox with callback
     st.checkbox(
         "Use sample job posting",
@@ -81,5 +85,17 @@ def render_job_input() -> str:
     if job_text:
         word_count = len(job_text.split())
         st.caption(f"{word_count} words")
+
+    # Assume all tech skills checkbox
+    st.checkbox(
+        "Assume all requested tech skills",
+        key="assume_all_tech_skills",
+        help=(
+            "When enabled, assumes you have ALL technical skills listed in the job posting. "
+            "Useful when your CV doesn't list every library/framework you know (there are thousands!), "
+            "or when you haven't imported skills from LinkedIn. The tailored CV will include all "
+            "required tech skills as if you have them."
+        ),
+    )
 
     return job_text

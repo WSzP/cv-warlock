@@ -169,6 +169,9 @@ def main():
 
                 update_progress("start", "Initializing...")
 
+                # Get assume_all_tech_skills setting from session state
+                assume_all_tech_skills = st.session_state.get("assume_all_tech_skills", True)
+
                 result = run_cv_tailoring(
                     raw_cv=raw_cv,
                     raw_job_spec=raw_job_spec,
@@ -176,6 +179,7 @@ def main():
                     model=model,
                     api_key=effective_api_key,
                     progress_callback=update_progress,
+                    assume_all_tech_skills=assume_all_tech_skills,
                 )
 
                 # Update status on completion
