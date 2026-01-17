@@ -122,6 +122,17 @@ def main():
             help="Select the specific model to use",
         )
 
+        # Temperature slider
+        default_temp = float(os.getenv("CV_WARLOCK_TEMPERATURE", "0.3"))
+        temperature = st.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=1.0,
+            value=default_temp,
+            step=0.1,
+            help="Controls randomness. Lower = more focused, higher = more creative",
+        )
+
         # Check if API key exists in environment
         env_api_key = get_env_api_key(provider)
 
@@ -319,6 +330,7 @@ def main():
                     progress_callback=update_progress,
                     assume_all_tech_skills=assume_all_tech_skills,
                     use_cot=use_cot_setting,
+                    temperature=temperature,
                 )
 
                 # Final timing

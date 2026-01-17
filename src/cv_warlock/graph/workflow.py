@@ -1,30 +1,41 @@
-"""Main LangGraph workflow assembly."""
+"""Main LangGraph workflow assembly.
 
+Supports chain-of-thought reasoning mode for higher quality generation.
+When CoT is enabled, generation is slower (3-4x more LLM calls) but produces
+significantly better tailored CVs.
+"""
+
+import time
 from typing import Callable, Literal
 
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 
 from cv_warlock.config import get_settings
+from cv_warlock.graph.edges import (
+    should_continue_after_extraction,
+    should_continue_after_validation,
+)
+from cv_warlock.graph.nodes import create_nodes
 from cv_warlock.llm.base import get_llm_provider
 from cv_warlock.models.state import CVWarlockState
-from cv_warlock.graph.nodes import create_nodes
-from cv_warlock.graph.edges import (
-    should_continue_after_validation,
-    should_continue_after_extraction,
-)
 
 
 def create_cv_warlock_graph(
-    provider: Literal["openai", "anthropic"] | None = None,
+    provider: Literal["openai", "anthropic", "google"] | None = None,
     model: str | None = None,
     api_key: str | None = None,
+    use_cot: bool = True,
+    temperature: float | None = None,
 ) -> StateGraph:
     """Create and compile the CV tailoring workflow graph.
 
     Args:
-        provider: LLM provider to use (openai or anthropic).
+        provider: LLM provider to use (openai, anthropic, or google).
         model: Model name to use.
         api_key: API key for the provider.
+        use_cot: Whether to use chain-of-thought reasoning for generation.
+                 Default True for higher quality, False for faster generation.
+        temperature: Model temperature (0.0-1.0). If None, uses settings default.
 
     Returns:
         Compiled StateGraph.
@@ -34,17 +45,20 @@ def create_cv_warlock_graph(
     # Use provided values or fall back to settings
     provider = provider or settings.provider
     model = model or settings.model
+    temperature = temperature if temperature is not None else settings.temperature
 
     # Get API key from settings if not provided
     if api_key is None:
         if provider == "openai":
             api_key = settings.openai_api_key
+        elif provider == "google":
+            api_key = settings.google_api_key
         else:
             api_key = settings.anthropic_api_key
 
     # Create LLM provider and nodes
-    llm_provider = get_llm_provider(provider, model, api_key)
-    nodes = create_nodes(llm_provider)
+    llm_provider = get_llm_provider(provider, model, api_key, temperature=temperature)
+    nodes = create_nodes(llm_provider, use_cot=use_cot)
 
     # Build the graph
     workflow = StateGraph(CVWarlockState)
@@ -100,11 +114,13 @@ def create_cv_warlock_graph(
 def run_cv_tailoring(
     raw_cv: str,
     raw_job_spec: str,
-    provider: Literal["openai", "anthropic"] | None = None,
+    provider: Literal["openai", "anthropic", "google"] | None = None,
     model: str | None = None,
     api_key: str | None = None,
-    progress_callback: Callable[[str, str], None] | None = None,
+    progress_callback: Callable[[str, str, float], None] | None = None,
     assume_all_tech_skills: bool = True,
+    use_cot: bool = True,
+    temperature: float | None = None,
 ) -> CVWarlockState:
     """Run the CV tailoring workflow.
 
@@ -114,18 +130,51 @@ def run_cv_tailoring(
         provider: LLM provider to use.
         model: Model name to use.
         api_key: API key for the provider.
-        progress_callback: Optional callback function(step_name, description) for progress updates.
+        progress_callback: Optional callback function(step_name, description, elapsed_seconds)
+                          for progress updates with timing.
         assume_all_tech_skills: If True, assumes user has all tech skills from job spec.
+        use_cot: If True, uses chain-of-thought reasoning for higher quality (slower).
+                 If False, uses direct generation (faster but lower quality).
+        temperature: Model temperature (0.0-1.0). If None, uses settings default.
 
     Returns:
         Final workflow state with tailored CV.
     """
-    graph = create_cv_warlock_graph(provider, model, api_key)
+    graph = create_cv_warlock_graph(
+        provider, model, api_key, use_cot=use_cot, temperature=temperature
+    )
+
+    # Step descriptions for progress updates
+    if use_cot:
+        step_descriptions = {
+            "validate_inputs": "Validating inputs...",
+            "extract_cv": "Extracting CV structure...",
+            "extract_job": "Analyzing job requirements...",
+            "analyze_match": "Matching your profile to requirements...",
+            "create_plan": "Creating tailoring strategy...",
+            "tailor_summary": "Crafting summary (reasoning → generating → critiquing)...",
+            "tailor_experiences": "Tailoring experiences (reasoning → generating → critiquing)...",
+            "tailor_skills": "Optimizing skills for ATS (reasoning → generating → critiquing)...",
+            "assemble_cv": "Assembling final CV...",
+        }
+    else:
+        step_descriptions = {
+            "validate_inputs": "Validating inputs...",
+            "extract_cv": "Extracting CV structure...",
+            "extract_job": "Analyzing job requirements...",
+            "analyze_match": "Matching your profile to requirements...",
+            "create_plan": "Creating tailoring strategy...",
+            "tailor_summary": "Crafting professional summary...",
+            "tailor_experiences": "Tailoring work experiences...",
+            "tailor_skills": "Optimizing skills section...",
+            "assemble_cv": "Assembling final CV...",
+        }
 
     initial_state: CVWarlockState = {
         "raw_cv": raw_cv,
         "raw_job_spec": raw_job_spec,
         "assume_all_tech_skills": assume_all_tech_skills,
+        "use_cot": use_cot,
         "cv_data": None,
         "job_requirements": None,
         "match_analysis": None,
@@ -134,34 +183,45 @@ def run_cv_tailoring(
         "tailored_experiences": None,
         "tailored_skills": None,
         "tailored_cv": None,
+        "summary_reasoning_result": None,
+        "experience_reasoning_results": None,
+        "skills_reasoning_result": None,
+        "generation_context": None,
+        "total_refinement_iterations": 0,
+        "quality_scores": None,
+        "step_timings": [],
+        "current_step_start": None,
+        "total_generation_time": None,
         "messages": [],
         "current_step": "start",
+        "current_step_description": "Initializing...",
         "errors": [],
     }
 
-    # Step descriptions for progress updates
-    step_descriptions = {
-        "validate_inputs": "Validating inputs...",
-        "extract_cv": "Extracting CV structure (skills, experience, education)...",
-        "extract_job": "Analyzing job requirements and keywords...",
-        "analyze_match": "Matching your profile to job requirements...",
-        "create_plan": "Creating tailoring strategy...",
-        "tailor_summary": "Rewriting professional summary...",
-        "tailor_experiences": "Tailoring work experiences...",
-        "tailor_skills": "Optimizing skills section for ATS...",
-        "assemble_cv": "Assembling final CV...",
-    }
+    start_time = time.time()
 
     if progress_callback:
-        # Use streaming to get node-by-node updates
+        # Use streaming to get node-by-node updates with timing
         final_state = dict(initial_state)
         for event in graph.stream(initial_state, stream_mode="updates"):
             for node_name, node_output in event.items():
+                elapsed = time.time() - start_time
                 if node_name in step_descriptions:
-                    progress_callback(node_name, step_descriptions[node_name])
+                    # Get description from output if available, otherwise use default
+                    desc = (
+                        node_output.get("current_step_description")
+                        if isinstance(node_output, dict)
+                        else None
+                    ) or step_descriptions.get(node_name, f"Running {node_name}...")
+                    progress_callback(node_name, desc, elapsed)
                 # Merge node output into state
                 if isinstance(node_output, dict):
                     final_state.update(node_output)
+
+        # Final timing
+        final_state["total_generation_time"] = time.time() - start_time
         return final_state
     else:
-        return graph.invoke(initial_state)
+        result = graph.invoke(initial_state)
+        result["total_generation_time"] = time.time() - start_time
+        return result
