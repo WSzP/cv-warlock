@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     model: str = "gpt-4o"
     temperature: float = Field(default=0.3, ge=0.0, le=1.0)
 
+    # Tailoring configuration
+    lookback_years: int = Field(
+        default=4,
+        ge=0,
+        le=50,
+        description="Only tailor experiences that ended within this many years",
+    )
+
 
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

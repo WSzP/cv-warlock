@@ -14,7 +14,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 from langchain_core.prompts import ChatPromptTemplate
 
+from cv_warlock.config import get_settings
 from cv_warlock.llm.base import LLMProvider
+from cv_warlock.utils.date_utils import should_tailor_experience
 from cv_warlock.models.cv import CVData, Experience
 from cv_warlock.models.job_spec import JobRequirements
 from cv_warlock.models.reasoning import (
@@ -160,8 +162,9 @@ class CVTailor:
         cv_data: CVData,
         job_requirements: JobRequirements,
         tailoring_plan: TailoringPlan,
+        tailored_skills_preview: str = "",
     ) -> str:
-        """Tailor the professional summary.
+        """Tailor the professional summary (LAST in pipeline).
 
         Uses CoT reasoning if enabled, otherwise direct generation.
 
@@ -169,23 +172,31 @@ class CVTailor:
             cv_data: Structured CV data.
             job_requirements: Structured job requirements.
             tailoring_plan: Tailoring plan.
+            tailored_skills_preview: The tailored skills section for reference.
 
         Returns:
             str: Tailored summary text.
         """
         if self.use_cot:
-            result = self.tailor_summary_with_cot(cv_data, job_requirements, tailoring_plan)
+            result = self.tailor_summary_with_cot(
+                cv_data, job_requirements, tailoring_plan,
+                tailored_skills_preview=tailored_skills_preview
+            )
             return result.final_summary
         else:
-            return self._tailor_summary_direct(cv_data, job_requirements, tailoring_plan)
+            return self._tailor_summary_direct(
+                cv_data, job_requirements, tailoring_plan,
+                tailored_skills_preview=tailored_skills_preview
+            )
 
     def _tailor_summary_direct(
         self,
         cv_data: CVData,
         job_requirements: JobRequirements,
         tailoring_plan: TailoringPlan,
+        tailored_skills_preview: str = "",
     ) -> str:
-        """Direct summary generation without CoT (original implementation)."""
+        """Direct summary generation without CoT (summary is LAST in pipeline)."""
         model = self.llm_provider.get_chat_model(temperature=0.4)
         chain = self.summary_prompt | model
         result = chain.invoke({
@@ -194,6 +205,7 @@ class CVTailor:
             "company": job_requirements.company or "the company",
             "key_requirements": ", ".join(job_requirements.required_skills[:5]),
             "relevant_strengths": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
+            "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
         })
         return result.content
 
@@ -203,17 +215,19 @@ class CVTailor:
         job_requirements: JobRequirements,
         tailoring_plan: TailoringPlan,
         context: GenerationContext | None = None,
+        tailored_skills_preview: str = "",
     ) -> SummaryGenerationResult:
-        """Tailor summary with chain-of-thought reasoning (balanced mode).
+        """Tailor summary with chain-of-thought reasoning (LAST in pipeline).
 
         Balanced mode: REASON → GENERATE only (2 LLM calls).
-        Skips CRITIQUE → REFINE for faster execution while maintaining quality.
+        Summary is last, so it can reference tailored skills and experiences.
 
         Args:
             cv_data: Structured CV data.
             job_requirements: Structured job requirements.
             tailoring_plan: Tailoring plan.
             context: Optional context from previous sections.
+            tailored_skills_preview: The tailored skills section for reference.
 
         Returns:
             SummaryGenerationResult with reasoning and generation output.
@@ -221,8 +235,10 @@ class CVTailor:
         # Step 1: REASON
         reasoning = self._reason_summary(cv_data, job_requirements, tailoring_plan)
 
-        # Step 2: GENERATE
-        generated = self._generate_summary_from_reasoning(reasoning, job_requirements)
+        # Step 2: GENERATE (summary is LAST, can reference tailored skills)
+        generated = self._generate_summary_from_reasoning(
+            reasoning, job_requirements, tailored_skills_preview
+        )
 
         # Balanced mode: Skip CRITIQUE and REFINE - use generated output directly
         # This saves 2-4 LLM calls per summary
@@ -276,10 +292,12 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         self,
         reasoning: SummaryReasoning,
         job_requirements: JobRequirements,
+        tailored_skills_preview: str = "",
     ) -> str:
         """Generate summary based on reasoning (Step 2).
 
         Uses compressed reasoning context (~150 tokens) instead of full JSON (~800 tokens).
+        Summary is LAST in pipeline, so can reference tailored skills.
         """
         model = self.llm_provider.get_chat_model(temperature=self.GENERATION_TEMPERATURE)
 
@@ -289,6 +307,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
             "reasoning_json": _compress_summary_reasoning(reasoning),
             "strongest_metric": reasoning.strongest_metric,
             "keywords": ", ".join(reasoning.key_keywords_to_include),
+            "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
         })
         return result.content
 
@@ -565,22 +584,41 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         cv_data: CVData,
         job_requirements: JobRequirements,
         tailoring_plan: TailoringPlan,
+        lookback_years: int | None = None,
     ) -> list[str]:
-        """Tailor all experience entries.
+        """Tailor experience entries with lookback filtering.
 
         Args:
             cv_data: Structured CV data.
             job_requirements: Structured job requirements.
             tailoring_plan: Tailoring plan.
+            lookback_years: Only tailor jobs ending within this many years.
+                           If None, uses settings default.
 
         Returns:
             list[str]: List of tailored experience texts.
         """
+        if lookback_years is None:
+            lookback_years = get_settings().lookback_years
+
         tailored = []
         for exp in cv_data.experiences:
-            tailored_exp = self.tailor_experience(exp, job_requirements, tailoring_plan)
+            if should_tailor_experience(exp.end_date, lookback_years):
+                # Recent job - tailor it
+                tailored_exp = self.tailor_experience(exp, job_requirements, tailoring_plan)
+            else:
+                # Old job - pass through original bullets unchanged
+                tailored_exp = self._format_passthrough_experience(exp)
             tailored.append(tailored_exp)
         return tailored
+
+    def _format_passthrough_experience(self, exp: Experience) -> str:
+        """Format an experience as-is without tailoring (for old jobs)."""
+        if exp.achievements:
+            return "\n".join(f"- {a}" for a in exp.achievements)
+        elif exp.description:
+            return f"- {exp.description}"
+        return "- No description provided"
 
     def tailor_experiences_with_cot(
         self,
@@ -588,58 +626,123 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         job_requirements: JobRequirements,
         tailoring_plan: TailoringPlan,
         context: GenerationContext | None = None,
+        lookback_years: int | None = None,
     ) -> tuple[list[str], list[ExperienceGenerationResult], GenerationContext]:
-        """Tailor all experiences with CoT using parallel processing.
+        """Tailor experiences with CoT and lookback filtering, using parallel processing.
 
-        Uses ThreadPoolExecutor to process all experiences concurrently,
-        reducing total time from N*T to approximately T (where N is number
-        of experiences and T is time per experience).
+        Uses ThreadPoolExecutor to process all experiences concurrently.
+        Experiences outside the lookback window are passed through unchanged.
 
         Args:
             cv_data: Structured CV data.
             job_requirements: Structured job requirements.
             tailoring_plan: Tailoring plan.
-            context: Optional context from summary generation.
+            context: Optional context from skills section.
+            lookback_years: Only tailor jobs ending within this many years.
+                           If None, uses settings default.
 
         Returns:
             Tuple of (tailored texts, generation results, updated context).
         """
+        if lookback_years is None:
+            lookback_years = get_settings().lookback_years
+
         current_context = context or GenerationContext()
 
-        # Process all experiences in parallel using ThreadPoolExecutor
-        # This is safe because each experience is independent during generation
+        # Separate experiences into tailorable and passthrough
+        experiences_to_tailor: list[tuple[int, Experience]] = []
+        passthrough_indices: list[int] = []
+
+        for i, exp in enumerate(cv_data.experiences):
+            if should_tailor_experience(exp.end_date, lookback_years):
+                experiences_to_tailor.append((i, exp))
+            else:
+                passthrough_indices.append(i)
+
+        # Process tailorable experiences in parallel
         def process_experience(exp: Experience) -> ExperienceGenerationResult:
             return self.tailor_experience_with_cot(
                 exp, job_requirements, tailoring_plan, current_context
             )
 
         # Use ThreadPoolExecutor for parallel HTTP requests to LLM API
-        # max_workers=None lets Python choose optimal thread count
-        with ThreadPoolExecutor(max_workers=None) as executor:
-            results = list(executor.map(process_experience, cv_data.experiences))
-
-        # Format results and update context (must be sequential)
-        tailored_texts = []
-        for result in results:
-            # Format as text
-            tailored_text = "\n".join(f"- {b}" for b in result.final_bullets)
-            tailored_texts.append(tailored_text)
-
-            # Update context (for downstream use, e.g., skills section)
-            current_context.total_bullets_generated += len(result.final_bullets)
-            if result.reasoning.bullet_reasoning:
-                for br in result.reasoning.bullet_reasoning:
-                    if br.metric_identified:
-                        current_context.metrics_used.append(br.metric_identified)
-            current_context.skills_demonstrated.extend(
-                result.reasoning.transferable_skills_identified
-            )
-            for kw in result.reasoning.keywords_to_incorporate:
-                current_context.keyword_frequency[kw] = (
-                    current_context.keyword_frequency.get(kw, 0) + 1
+        tailor_results: list[ExperienceGenerationResult] = []
+        if experiences_to_tailor:
+            with ThreadPoolExecutor(max_workers=None) as executor:
+                tailor_results = list(
+                    executor.map(process_experience, [exp for _, exp in experiences_to_tailor])
                 )
 
-        return tailored_texts, results, current_context
+        # Build results maintaining original order
+        # Map tailor results back to their original indices
+        tailor_result_map = {
+            idx: result for (idx, _), result in zip(experiences_to_tailor, tailor_results)
+        }
+
+        # Build combined outputs in original order
+        all_tailored_texts: list[str] = []
+        all_results: list[ExperienceGenerationResult] = []
+
+        for i, exp in enumerate(cv_data.experiences):
+            if i in tailor_result_map:
+                # Tailored experience
+                result = tailor_result_map[i]
+                tailored_text = "\n".join(f"- {b}" for b in result.final_bullets)
+                all_tailored_texts.append(tailored_text)
+                all_results.append(result)
+
+                # Update context
+                current_context.total_bullets_generated += len(result.final_bullets)
+                if result.reasoning.bullet_reasoning:
+                    for br in result.reasoning.bullet_reasoning:
+                        if br.metric_identified:
+                            current_context.metrics_used.append(br.metric_identified)
+                current_context.skills_demonstrated.extend(
+                    result.reasoning.transferable_skills_identified
+                )
+                for kw in result.reasoning.keywords_to_incorporate:
+                    current_context.keyword_frequency[kw] = (
+                        current_context.keyword_frequency.get(kw, 0) + 1
+                    )
+            else:
+                # Passthrough experience (outside lookback window)
+                passthrough_text = self._format_passthrough_experience(exp)
+                all_tailored_texts.append(passthrough_text)
+                # Create a placeholder result for passthrough
+                all_results.append(self._create_passthrough_result(exp))
+
+        return all_tailored_texts, all_results, current_context
+
+    def _create_passthrough_result(self, exp: Experience) -> ExperienceGenerationResult:
+        """Create a placeholder result for experiences outside lookback window."""
+        original_bullets = exp.achievements if exp.achievements else [exp.description or ""]
+
+        return ExperienceGenerationResult(
+            experience_title=exp.title,
+            experience_company=exp.company,
+            reasoning=ExperienceReasoning(
+                relevance_score=0.0,
+                emphasis_strategy="PASSTHROUGH - Outside lookback window",
+                keywords_to_incorporate=[],
+                achievements_to_prioritize=[],
+                transferable_skills_identified=[],
+                bullet_reasoning=[],
+            ),
+            generated_bullets=original_bullets,
+            critique=ExperienceCritique(
+                all_bullets_start_with_power_verb=True,
+                all_bullets_show_impact=True,
+                metrics_present_where_possible=True,
+                relevant_keywords_incorporated=True,
+                bullets_appropriately_ordered=True,
+                quality_level=QualityLevel.GOOD,
+                weak_bullets=[],
+                improvement_suggestions=[],
+                should_refine=False,
+            ),
+            refinement_count=0,
+            final_bullets=original_bullets,
+        )
 
     # =========================================================================
     # SKILLS TAILORING

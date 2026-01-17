@@ -46,6 +46,14 @@ def tailor(
     model: Annotated[
         str | None, typer.Option("--model", "-m", help="Model name")
     ] = None,
+    lookback_years: Annotated[
+        int | None,
+        typer.Option(
+            "--lookback-years",
+            "-l",
+            help="Only tailor jobs ending within N years (default: 4)",
+        ),
+    ] = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Show detailed progress")
     ] = False,
@@ -67,6 +75,7 @@ def tailor(
         console.print(f"[dim]Job:[/dim] {job}")
         console.print(f"[dim]Provider:[/dim] {provider}")
         console.print(f"[dim]Model:[/dim] {model or 'default'}")
+        console.print(f"[dim]Lookback:[/dim] {lookback_years or 4} years")
         console.print()
 
     # Run the tailoring workflow
@@ -83,6 +92,7 @@ def tailor(
                 raw_job_spec=raw_job_spec,
                 provider=provider,
                 model=model,
+                lookback_years=lookback_years,
             )
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")

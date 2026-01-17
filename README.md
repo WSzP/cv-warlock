@@ -13,9 +13,21 @@ AI-powered CV tailoring for job applications. Takes your generic CV and a job po
 - **LangGraph Workflow**: Robust multi-step processing with state management
 - **Real-Time Progress**: Live timing display during CV generation
 
+## Requirements
+
+- **Python 3.11+** (minimum required)
+- **Python 3.13+** (recommended for best performance)
+- **[uv](https://docs.astral.sh/uv/)** - Fast Python package manager (recommended)
+
 ## Installation
 
 ```bash
+# Install uv (if not already installed)
+# macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows:
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
 # Clone the repository
 git clone https://github.com/yourusername/cv-warlock.git
 cd cv-warlock

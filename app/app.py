@@ -383,6 +383,45 @@ def main():
 
         st.divider()
 
+        # Experience lookback settings
+        st.subheader("Experience Lookback")
+
+        lookback_years = st.slider(
+            "Years to tailor",
+            min_value=1,
+            max_value=20,
+            value=4,
+            step=1,
+            help="Only tailor job experiences that ended within this many years. "
+            "Older jobs will be included but not modified.",
+            key="lookback_years",
+        )
+
+        from datetime import datetime
+        current_year = datetime.now().year
+        cutoff_year = current_year - lookback_years
+
+        if lookback_years <= 3:
+            st.warning(
+                f"**Short lookback ({lookback_years} years):** Only jobs ending after "
+                f"{cutoff_year} will be tailored. Older jobs pass through unchanged. "
+                "Use for roles where recent experience matters most."
+            )
+        elif lookback_years <= 7:
+            st.info(
+                f"**Standard lookback ({lookback_years} years):** Jobs ending after "
+                f"{cutoff_year} will be tailored to emphasize relevant skills. "
+                "Older jobs are included but not modified."
+            )
+        else:
+            st.success(
+                f"**Extended lookback ({lookback_years} years):** Most of your career "
+                f"history (jobs ending after {cutoff_year}) will be tailored. "
+                "Good for senior roles valuing broad experience."
+            )
+
+        st.divider()
+
         # LangSmith tracing status
         langsmith_enabled = (
             os.getenv("LANGSMITH_API_KEY") and os.getenv("LANGSMITH_TRACING", "").lower() == "true"
@@ -465,6 +504,7 @@ def main():
             # Get settings from session state
             assume_all_tech_skills = st.session_state.get("assume_all_tech_skills", True)
             use_cot_setting = st.session_state.get("use_cot", True)
+            lookback_years_setting = st.session_state.get("lookback_years", 4)
 
             # Progress tracking with st.status
             status_label = "Tailoring your CV"
@@ -528,6 +568,7 @@ def main():
                     assume_all_tech_skills=assume_all_tech_skills,
                     use_cot=use_cot_setting,
                     temperature=temperature,
+                    lookback_years=lookback_years_setting,
                 )
 
                 # Calculate final times
