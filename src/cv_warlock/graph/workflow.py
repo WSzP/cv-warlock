@@ -145,6 +145,8 @@ def run_cv_tailoring(
     )
 
     # Step descriptions for progress updates
+    # CoT mode now uses optimized balanced approach: REASON→GENERATE only (no critique/refine)
+    # Experience tailoring runs in parallel for significant time savings
     if use_cot:
         step_descriptions = {
             "validate_inputs": "Validating inputs...",
@@ -152,9 +154,9 @@ def run_cv_tailoring(
             "extract_job": "Analyzing job requirements...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
-            "tailor_summary": "Crafting summary (reasoning → generating → critiquing)...",
-            "tailor_experiences": "Tailoring experiences (reasoning → generating → critiquing)...",
-            "tailor_skills": "Optimizing skills for ATS (reasoning → generating → critiquing)...",
+            "tailor_summary": "Crafting summary (reasoning → generating)...",
+            "tailor_experiences": "Tailoring experiences in parallel (reasoning → generating)...",
+            "tailor_skills": "Optimizing skills for ATS (reasoning → generating)...",
             "assemble_cv": "Assembling final CV...",
         }
     else:
