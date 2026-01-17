@@ -265,6 +265,12 @@ st.markdown(
 
 def main():
     """Main Streamlit application."""
+    # Initialize session state for two-phase processing
+    if "processing" not in st.session_state:
+        st.session_state.processing = False
+    if "process_start_time" not in st.session_state:
+        st.session_state.process_start_time = None
+
     # Sidebar configuration
     with st.sidebar:
         st.header("Settings")
@@ -470,15 +476,16 @@ def main():
 
     _, col_btn2, _ = st.columns([1, 1, 1])
     with col_btn2:
+        # Disable button while processing
         tailor_button = st.button(
             "Tailor My CV",
             type="primary",
             use_container_width=True,
-            disabled=not (raw_cv and raw_job_spec),
+            disabled=not (raw_cv and raw_job_spec) or st.session_state.processing,
         )
 
-    # Process and display results
-    if tailor_button:
+    # PHASE 1: Button clicked - validate, store params, start timer, rerun
+    if tailor_button and not st.session_state.processing:
         if not raw_cv or not raw_job_spec:
             st.error("Please provide both a CV and a job specification.")
             return
@@ -492,23 +499,37 @@ def main():
             )
             return
 
-        # Run tailoring with detailed progress and timing
-        # Record wall-clock start time BEFORE try block so it's available in exception handlers
-        wall_start_time = time.time()
+        # Store all processing parameters in session state
+        st.session_state.processing = True
+        st.session_state.process_start_time = time.time()
+        st.session_state.process_params = {
+            "raw_cv": raw_cv,
+            "raw_job_spec": raw_job_spec,
+            "provider": provider,
+            "model": model,
+            "api_key": effective_api_key,
+            "temperature": temperature,
+            "use_cot": st.session_state.get("use_cot", True),
+            "lookback_years": st.session_state.get("lookback_years", 4),
+            "assume_all_tech_skills": st.session_state.get("assume_all_tech_skills", True),
+        }
+
+        # Rerun to start Phase 2 (timer will be started there with known start time)
+        st.rerun()
+
+    # PHASE 2: Processing - timer already running, do the actual work
+    if st.session_state.processing:
+        params = st.session_state.process_params
+        wall_start_time = st.session_state.process_start_time
         last_step = "Initializing"
 
         try:
             # Import here to avoid loading dependencies until needed
             from cv_warlock.graph.workflow import run_cv_tailoring
 
-            # Get settings from session state
-            assume_all_tech_skills = st.session_state.get("assume_all_tech_skills", True)
-            use_cot_setting = st.session_state.get("use_cot", True)
-            lookback_years_setting = st.session_state.get("lookback_years", 4)
-
             # Progress tracking with st.status
             status_label = "Tailoring your CV"
-            if use_cot_setting:
+            if params["use_cot"]:
                 status_label += " (CoT: reasoning + self-critique enabled)"
             status_label += "..."
 
@@ -516,40 +537,42 @@ def main():
                 progress_container = st.empty()
                 timing_container = st.empty()
 
-                # JavaScript real-time timer - runs on client side
-                timer_js = """
-                <div id="timer-container" class="timing-display">
-                    <span class="realtime-timer">Elapsed: <span id="elapsed-time">0.0s</span></span>
+                # Show live timer - self-contained with start time from Python
+                start_time_ms = int(wall_start_time * 1000)
+                timer_html = f"""
+                <div class="timing-display">
+                    <span class="realtime-timer">Elapsed: <span id="cv-warlock-timer-display">0.0s</span></span>
                 </div>
                 <script>
-                    (function() {
-                        var startTime = Date.now();
-                        var timerElement = document.getElementById('elapsed-time');
+                (function() {{
+                    var startTime = {start_time_ms};
+                    var timerEl = document.getElementById('cv-warlock-timer-display');
+                    var stopped = false;
 
-                        function formatTime(seconds) {
-                            if (seconds < 60) {
-                                return seconds.toFixed(1) + 's';
-                            } else {
-                                var minutes = Math.floor(seconds / 60);
-                                var secs = Math.floor(seconds % 60);
-                                return minutes + 'm ' + secs + 's';
-                            }
-                        }
+                    function formatTime(seconds) {{
+                        if (seconds < 60) return seconds.toFixed(1) + 's';
+                        var minutes = Math.floor(seconds / 60);
+                        var secs = Math.floor(seconds % 60);
+                        return minutes + 'm ' + secs + 's';
+                    }}
 
-                        function updateTimer() {
-                            if (timerElement && !window.cvWarlockTimerStopped) {
-                                var elapsed = (Date.now() - startTime) / 1000;
-                                timerElement.textContent = formatTime(elapsed);
-                                requestAnimationFrame(updateTimer);
-                            }
-                        }
+                    function tick() {{
+                        if (stopped || !timerEl) return;
+                        var elapsed = (Date.now() - startTime) / 1000;
+                        timerEl.textContent = formatTime(elapsed);
+                        requestAnimationFrame(tick);
+                    }}
 
-                        window.cvWarlockTimerStopped = false;
-                        updateTimer();
-                    })();
+                    // Store stop function globally so completion script can call it
+                    window.stopCvWarlockTimer = function() {{
+                        stopped = true;
+                    }};
+
+                    tick();
+                }})();
                 </script>
                 """
-                timing_container.markdown(timer_js, unsafe_allow_html=True)
+                timing_container.markdown(timer_html, unsafe_allow_html=True)
 
                 def update_progress(_step_name: str, description: str, _elapsed: float):
                     nonlocal last_step
@@ -559,16 +582,16 @@ def main():
                 update_progress("start", "Initializing...", 0)
 
                 result = run_cv_tailoring(
-                    raw_cv=raw_cv,
-                    raw_job_spec=raw_job_spec,
-                    provider=provider,
-                    model=model,
-                    api_key=effective_api_key,
+                    raw_cv=params["raw_cv"],
+                    raw_job_spec=params["raw_job_spec"],
+                    provider=params["provider"],
+                    model=params["model"],
+                    api_key=params["api_key"],
                     progress_callback=update_progress,
-                    assume_all_tech_skills=assume_all_tech_skills,
-                    use_cot=use_cot_setting,
-                    temperature=temperature,
-                    lookback_years=lookback_years_setting,
+                    assume_all_tech_skills=params["assume_all_tech_skills"],
+                    use_cot=params["use_cot"],
+                    temperature=params["temperature"],
+                    lookback_years=params["lookback_years"],
                 )
 
                 # Calculate final times
@@ -577,7 +600,7 @@ def main():
                 refinements = result.get("total_refinement_iterations", 0)
 
                 # Stop JS timer
-                stop_timer_js = "<script>window.cvWarlockTimerStopped = true;</script>"
+                stop_timer_js = "<script>if(window.stopCvWarlockTimer) window.stopCvWarlockTimer();</script>"
 
                 # Check for workflow errors (stored in result["errors"])
                 if result.get("errors"):
@@ -589,7 +612,10 @@ def main():
                     {stop_timer_js}
                     """
                     timing_container.markdown(error_timing_html, unsafe_allow_html=True)
-                    status.update(label=f"CV tailoring failed after {format_elapsed_time(elapsed)}", state="error")
+                    status.update(
+                        label=f"CV tailoring failed after {format_elapsed_time(elapsed)}",
+                        state="error",
+                    )
                     progress_container.markdown(f"**Failed during:** {last_step}")
 
                     # Show detailed error information
@@ -597,12 +623,11 @@ def main():
                     st.subheader("Error Details")
 
                     for error_msg in result["errors"]:
-                        error_info = parse_error_details(error_msg, provider, model)
+                        error_info = parse_error_details(error_msg, params["provider"], params["model"])
                         render_error_details(error_info, elapsed)
 
                     # Store failed result so user can see partial progress
                     st.session_state["result"] = None
-                    return
                 else:
                     # Success
                     final_timing_html = f"""
@@ -614,18 +639,25 @@ def main():
                     {stop_timer_js}
                     """
                     completion_msg = f"CV tailored successfully! Total: {format_elapsed_time(wall_clock_time)}"
-                    if use_cot_setting and refinements > 0:
+                    if params["use_cot"] and refinements > 0:
                         completion_msg += f" ({refinements} refinements)"
                     status.update(label=completion_msg, state="complete")
                     progress_container.markdown("**Done!**")
                     timing_container.markdown(final_timing_html, unsafe_allow_html=True)
 
-            # Store result in session state
-            st.session_state["result"] = result
+                    # Store result in session state
+                    st.session_state["result"] = result
+
+            # Reset processing state after status block completes (success or error)
+            st.session_state.processing = False
+            st.session_state.process_start_time = None
 
         except ImportError as e:
             elapsed = time.time() - wall_start_time
-            st.markdown("<script>window.cvWarlockTimerStopped = true;</script>", unsafe_allow_html=True)
+            st.markdown(
+                "<script>if(window.stopCvWarlockTimer) window.stopCvWarlockTimer();</script>",
+                unsafe_allow_html=True,
+            )
             error_info = {
                 "category": "import",
                 "title": "Missing Dependencies",
@@ -639,14 +671,20 @@ def main():
                 "technical": str(e),
             }
             render_error_details(error_info, elapsed)
+            # Reset processing state
+            st.session_state.processing = False
+            st.session_state.process_start_time = None
             return
 
         except Exception as e:
             elapsed = time.time() - wall_start_time
-            st.markdown("<script>window.cvWarlockTimerStopped = true;</script>", unsafe_allow_html=True)
+            st.markdown(
+                "<script>if(window.stopCvWarlockTimer) window.stopCvWarlockTimer();</script>",
+                unsafe_allow_html=True,
+            )
 
             # Parse the exception for detailed feedback
-            error_info = parse_error_details(str(e), provider, model)
+            error_info = parse_error_details(str(e), params["provider"], params["model"])
 
             # Add context about where it failed
             st.divider()
@@ -658,6 +696,9 @@ def main():
             with st.expander("Exception Type", expanded=False):
                 st.code(f"{type(e).__name__}: {e}", language=None)
 
+            # Reset processing state
+            st.session_state.processing = False
+            st.session_state.process_start_time = None
             return
 
     # Display results if available

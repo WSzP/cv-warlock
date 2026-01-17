@@ -95,13 +95,6 @@ def on_sample_cv_change():
         st.session_state.cv_text_area = ""
 
 
-def on_cv_text_change():
-    """Handle CV text area change - triggers rerun on paste."""
-    # This empty callback forces a Streamlit rerun when content changes,
-    # enabling the button immediately after paste (not just on blur)
-    pass
-
-
 def render_cv_input() -> str:
     """Render the CV input component.
 
@@ -276,7 +269,6 @@ def render_cv_input() -> str:
             placeholder="Paste your CV content here...",
             height=350,
             key="cv_text_area",
-            on_change=on_cv_text_change,
         )
 
         if cv_text:
