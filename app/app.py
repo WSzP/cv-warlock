@@ -42,6 +42,176 @@ def format_elapsed_time(seconds: float) -> str:
         return f"{minutes}m {secs:.0f}s"
 
 
+def parse_error_details(error_message: str, provider: str, model: str) -> dict:
+    """Parse error message and return detailed diagnostic information.
+
+    Returns dict with:
+        - category: Error category (connection, auth, rate_limit, model, parsing, unknown)
+        - title: Short error title
+        - explanation: What went wrong
+        - cause: Likely cause
+        - solution: How to fix it
+        - technical: Technical details for debugging
+    """
+    error_lower = error_message.lower()
+
+    # Connection errors
+    if any(x in error_lower for x in ["connection", "connect", "network", "timeout", "timed out"]):
+        return {
+            "category": "connection",
+            "title": "Connection Failed",
+            "explanation": f"Could not connect to the {provider.title()} API servers.",
+            "cause": "Network issues, firewall blocking, or the API service is down.",
+            "solution": [
+                "Check your internet connection",
+                "Try again in a few moments",
+                f"Check {provider.title()} status page for outages",
+                "If using VPN/proxy, try disabling it",
+            ],
+            "technical": error_message,
+        }
+
+    # Authentication errors
+    if any(x in error_lower for x in ["unauthorized", "401", "invalid api key", "authentication",
+                                       "invalid_api_key", "invalid x-api-key"]):
+        return {
+            "category": "auth",
+            "title": "Authentication Failed",
+            "explanation": f"Your {provider.title()} API key was rejected.",
+            "cause": "The API key is invalid, expired, or doesn't have proper permissions.",
+            "solution": [
+                f"Verify your {provider.title()} API key is correct",
+                "Check if the key has expired",
+                "Ensure the key has the required permissions",
+                "Generate a new API key if needed",
+            ],
+            "technical": error_message,
+        }
+
+    # Rate limit errors
+    if any(x in error_lower for x in ["rate limit", "rate_limit", "429", "too many requests",
+                                       "quota", "exceeded"]):
+        return {
+            "category": "rate_limit",
+            "title": "Rate Limit Exceeded",
+            "explanation": f"Too many requests to {provider.title()} API.",
+            "cause": "You've exceeded the API rate limit or your usage quota.",
+            "solution": [
+                "Wait a few minutes before trying again",
+                "Check your API usage dashboard",
+                "Consider upgrading your API plan",
+                "Try using a different model",
+            ],
+            "technical": error_message,
+        }
+
+    # Model errors
+    if any(x in error_lower for x in ["model not found", "invalid model", "model_not_found",
+                                       "does not exist", "not available"]):
+        return {
+            "category": "model",
+            "title": "Model Not Available",
+            "explanation": f"The model '{model}' is not available.",
+            "cause": "The model name is incorrect or not accessible with your API key.",
+            "solution": [
+                "Select a different model from the dropdown",
+                "Check if the model name is spelled correctly",
+                "Verify your API plan includes access to this model",
+            ],
+            "technical": error_message,
+        }
+
+    # Context/token limit errors
+    if any(x in error_lower for x in ["context length", "token limit", "too long", "maximum context"]):
+        return {
+            "category": "context",
+            "title": "Input Too Long",
+            "explanation": "Your CV or job spec is too long for the model to process.",
+            "cause": "The combined length exceeds the model's context window.",
+            "solution": [
+                "Try shortening your CV (remove less relevant sections)",
+                "Use a shorter job specification",
+                "Try a model with a larger context window",
+            ],
+            "technical": error_message,
+        }
+
+    # Parsing/extraction errors
+    if any(x in error_lower for x in ["extraction failed", "parsing", "parse error", "invalid json",
+                                       "failed to extract"]):
+        step = "unknown"
+        if "cv extraction" in error_lower:
+            step = "CV"
+        elif "job extraction" in error_lower:
+            step = "job specification"
+
+        return {
+            "category": "parsing",
+            "title": f"{step.title()} Parsing Failed",
+            "explanation": f"Failed to parse and understand your {step}.",
+            "cause": "The document format may be unusual or contain unsupported elements.",
+            "solution": [
+                f"Check that your {step} is in a standard format",
+                "Remove any unusual formatting or special characters",
+                "Try pasting plain text instead of formatted text",
+                "Ensure the content is in English",
+            ],
+            "technical": error_message,
+        }
+
+    # Server errors
+    if any(x in error_lower for x in ["500", "502", "503", "504", "server error", "internal error"]):
+        return {
+            "category": "server",
+            "title": "API Server Error",
+            "explanation": f"The {provider.title()} API server encountered an error.",
+            "cause": "Temporary server-side issue.",
+            "solution": [
+                "Wait a moment and try again",
+                f"Check {provider.title()} status page",
+                "Try a different model",
+            ],
+            "technical": error_message,
+        }
+
+    # Default/unknown errors
+    return {
+        "category": "unknown",
+        "title": "Processing Error",
+        "explanation": "An unexpected error occurred during CV tailoring.",
+        "cause": "Unknown - see technical details below.",
+        "solution": [
+            "Try again",
+            "Check your inputs are valid",
+            "Try a different model or provider",
+            "Report this issue if it persists",
+        ],
+        "technical": error_message,
+    }
+
+
+def render_error_details(error_info: dict, elapsed_time: float | None = None):
+    """Render detailed error information in Streamlit."""
+    st.error(f"**{error_info['title']}**")
+
+    # Show elapsed time if available
+    if elapsed_time is not None:
+        st.markdown(f"*Failed after {format_elapsed_time(elapsed_time)}*")
+
+    # Main explanation
+    st.markdown(f"**What happened:** {error_info['explanation']}")
+    st.markdown(f"**Likely cause:** {error_info['cause']}")
+
+    # Solutions
+    st.markdown("**How to fix it:**")
+    for solution in error_info["solution"]:
+        st.markdown(f"- {solution}")
+
+    # Technical details in expander
+    with st.expander("Technical Details", expanded=False):
+        st.code(error_info["technical"], language=None)
+
+
 # Page configuration
 st.set_page_config(
     page_title="CV Warlock",
@@ -75,6 +245,17 @@ st.markdown(
         background: #f0f8ff;
         border-radius: 4px;
         margin-top: 0.5rem;
+    }
+    .realtime-timer {
+        font-family: monospace;
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #0066cc;
+    }
+    .api-time {
+        font-family: monospace;
+        font-size: 0.95rem;
+        color: #666;
     }
     </style>
     """,
@@ -248,7 +429,7 @@ def main():
     # Action button
     st.divider()
 
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
+    _, col_btn2, _ = st.columns([1, 1, 1])
     with col_btn2:
         tailor_button = st.button(
             "Tailor My CV",
@@ -273,6 +454,10 @@ def main():
             return
 
         # Run tailoring with detailed progress and timing
+        # Record wall-clock start time BEFORE try block so it's available in exception handlers
+        wall_start_time = time.time()
+        last_step = "Initializing"
+
         try:
             # Import here to avoid loading dependencies until needed
             from cv_warlock.graph.workflow import run_cv_tailoring
@@ -290,23 +475,46 @@ def main():
             with st.status(status_label, expanded=True) as status:
                 progress_container = st.empty()
                 timing_container = st.empty()
-                start_time = time.time()
 
-                # Show initial timing
-                timing_container.markdown(
-                    f'<div class="timing-display">Elapsed: 0.0s</div>',
-                    unsafe_allow_html=True,
-                )
+                # JavaScript real-time timer - runs on client side
+                timer_js = """
+                <div id="timer-container" class="timing-display">
+                    <span class="realtime-timer">Elapsed: <span id="elapsed-time">0.0s</span></span>
+                </div>
+                <script>
+                    (function() {
+                        var startTime = Date.now();
+                        var timerElement = document.getElementById('elapsed-time');
 
-                def update_progress(step_name: str, description: str, elapsed: float):
-                    # Update both progress description and elapsed time
+                        function formatTime(seconds) {
+                            if (seconds < 60) {
+                                return seconds.toFixed(1) + 's';
+                            } else {
+                                var minutes = Math.floor(seconds / 60);
+                                var secs = Math.floor(seconds % 60);
+                                return minutes + 'm ' + secs + 's';
+                            }
+                        }
+
+                        function updateTimer() {
+                            if (timerElement && !window.cvWarlockTimerStopped) {
+                                var elapsed = (Date.now() - startTime) / 1000;
+                                timerElement.textContent = formatTime(elapsed);
+                                requestAnimationFrame(updateTimer);
+                            }
+                        }
+
+                        window.cvWarlockTimerStopped = false;
+                        updateTimer();
+                    })();
+                </script>
+                """
+                timing_container.markdown(timer_js, unsafe_allow_html=True)
+
+                def update_progress(_step_name: str, description: str, _elapsed: float):
+                    nonlocal last_step
+                    last_step = description
                     progress_container.markdown(f"**{description}**")
-                    # Use wall-clock time for more accurate display
-                    actual_elapsed = time.time() - start_time
-                    timing_container.markdown(
-                        f'<div class="timing-display">Elapsed: {format_elapsed_time(actual_elapsed)}</div>',
-                        unsafe_allow_html=True,
-                    )
 
                 update_progress("start", "Initializing...", 0)
 
@@ -322,33 +530,97 @@ def main():
                     temperature=temperature,
                 )
 
-                # Final timing
-                total_time = result.get("total_generation_time", time.time() - start_time)
+                # Calculate final times
+                wall_clock_time = time.time() - wall_start_time
+                api_time = result.get("total_generation_time", wall_clock_time)
                 refinements = result.get("total_refinement_iterations", 0)
 
+                # Stop JS timer
+                stop_timer_js = "<script>window.cvWarlockTimerStopped = true;</script>"
+
+                # Check for workflow errors (stored in result["errors"])
                 if result.get("errors"):
-                    status.update(label="CV tailoring failed", state="error")
+                    elapsed = time.time() - wall_start_time
+                    error_timing_html = f"""
+                    <div class="timing-display" style="background: #fff0f0; color: #cc0000;">
+                        <span class="realtime-timer">Failed after: {format_elapsed_time(elapsed)}</span>
+                    </div>
+                    {stop_timer_js}
+                    """
+                    timing_container.markdown(error_timing_html, unsafe_allow_html=True)
+                    status.update(label=f"CV tailoring failed after {format_elapsed_time(elapsed)}", state="error")
+                    progress_container.markdown(f"**Failed during:** {last_step}")
+
+                    # Show detailed error information
+                    st.divider()
+                    st.subheader("Error Details")
+
+                    for error_msg in result["errors"]:
+                        error_info = parse_error_details(error_msg, provider, model)
+                        render_error_details(error_info, elapsed)
+
+                    # Store failed result so user can see partial progress
+                    st.session_state["result"] = None
+                    return
                 else:
-                    completion_msg = f"CV tailored successfully! Total time: {format_elapsed_time(total_time)}"
+                    # Success
+                    final_timing_html = f"""
+                    <div class="timing-display">
+                        <span class="realtime-timer">Total time: {format_elapsed_time(wall_clock_time)}</span>
+                        <br>
+                        <span class="api-time">API processing: {format_elapsed_time(api_time)}</span>
+                    </div>
+                    {stop_timer_js}
+                    """
+                    completion_msg = f"CV tailored successfully! Total: {format_elapsed_time(wall_clock_time)}"
                     if use_cot_setting and refinements > 0:
-                        completion_msg += f" ({refinements} refinement iterations)"
+                        completion_msg += f" ({refinements} refinements)"
                     status.update(label=completion_msg, state="complete")
                     progress_container.markdown("**Done!**")
-                    # Show final timing
-                    timing_container.markdown(
-                        f'<div class="timing-display">Total time: {format_elapsed_time(total_time)}</div>',
-                        unsafe_allow_html=True,
-                    )
+                    timing_container.markdown(final_timing_html, unsafe_allow_html=True)
 
             # Store result in session state
             st.session_state["result"] = result
 
+        except ImportError as e:
+            elapsed = time.time() - wall_start_time
+            st.markdown("<script>window.cvWarlockTimerStopped = true;</script>", unsafe_allow_html=True)
+            error_info = {
+                "category": "import",
+                "title": "Missing Dependencies",
+                "explanation": "Required packages are not installed.",
+                "cause": f"Import error: {e}",
+                "solution": [
+                    "Run: uv sync --all-extras",
+                    "Or: pip install -e .[dev]",
+                    "Restart the Streamlit app",
+                ],
+                "technical": str(e),
+            }
+            render_error_details(error_info, elapsed)
+            return
+
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            elapsed = time.time() - wall_start_time
+            st.markdown("<script>window.cvWarlockTimerStopped = true;</script>", unsafe_allow_html=True)
+
+            # Parse the exception for detailed feedback
+            error_info = parse_error_details(str(e), provider, model)
+
+            # Add context about where it failed
+            st.divider()
+            st.subheader("Error Details")
+            st.markdown(f"**Failed during:** {last_step}")
+            render_error_details(error_info, elapsed)
+
+            # Show exception type for debugging
+            with st.expander("Exception Type", expanded=False):
+                st.code(f"{type(e).__name__}: {e}", language=None)
+
             return
 
     # Display results if available
-    if "result" in st.session_state:
+    if "result" in st.session_state and st.session_state["result"] is not None:
         result = st.session_state["result"]
         render_result(result)
 
