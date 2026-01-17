@@ -476,18 +476,25 @@ def main():
 
     _, col_btn2, _ = st.columns([1, 1, 1])
     with col_btn2:
-        # Disable button while processing
+        # Button always enabled (except during processing) - validation on click
         tailor_button = st.button(
             "Tailor My CV",
             type="primary",
             use_container_width=True,
-            disabled=not (raw_cv and raw_job_spec) or st.session_state.processing,
+            disabled=st.session_state.processing,
         )
 
     # PHASE 1: Button clicked - validate, store params, start timer, rerun
     if tailor_button and not st.session_state.processing:
-        if not raw_cv or not raw_job_spec:
+        # Validate both inputs are present
+        if not raw_cv and not raw_job_spec:
             st.error("Please provide both a CV and a job specification.")
+            return
+        elif not raw_cv:
+            st.error("Please provide your CV in the left panel.")
+            return
+        elif not raw_job_spec:
+            st.error("Please provide a job specification in the right panel.")
             return
 
         # Get API key (from env or user input)
@@ -537,47 +544,18 @@ def main():
                 progress_container = st.empty()
                 timing_container = st.empty()
 
-                # Show live timer - self-contained with start time from Python
-                start_time_ms = int(wall_start_time * 1000)
-                timer_html = f"""
-                <div class="timing-display">
-                    <span class="realtime-timer">Elapsed: <span id="cv-warlock-timer-display">0.0s</span></span>
-                </div>
-                <script>
-                (function() {{
-                    var startTime = {start_time_ms};
-                    var timerEl = document.getElementById('cv-warlock-timer-display');
-                    var stopped = false;
-
-                    function formatTime(seconds) {{
-                        if (seconds < 60) return seconds.toFixed(1) + 's';
-                        var minutes = Math.floor(seconds / 60);
-                        var secs = Math.floor(seconds % 60);
-                        return minutes + 'm ' + secs + 's';
-                    }}
-
-                    function tick() {{
-                        if (stopped || !timerEl) return;
-                        var elapsed = (Date.now() - startTime) / 1000;
-                        timerEl.textContent = formatTime(elapsed);
-                        requestAnimationFrame(tick);
-                    }}
-
-                    // Store stop function globally so completion script can call it
-                    window.stopCvWarlockTimer = function() {{
-                        stopped = true;
-                    }};
-
-                    tick();
-                }})();
-                </script>
-                """
-                timing_container.markdown(timer_html, unsafe_allow_html=True)
-
                 def update_progress(_step_name: str, description: str, _elapsed: float):
                     nonlocal last_step
                     last_step = description
+                    # Calculate elapsed time from Python's recorded start
+                    elapsed = time.time() - wall_start_time
                     progress_container.markdown(f"**{description}**")
+                    timing_container.markdown(
+                        f'<div class="timing-display">'
+                        f'<span class="realtime-timer">Elapsed: {format_elapsed_time(elapsed)}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
 
                 update_progress("start", "Initializing...", 0)
 
@@ -599,19 +577,15 @@ def main():
                 api_time = result.get("total_generation_time", wall_clock_time)
                 refinements = result.get("total_refinement_iterations", 0)
 
-                # Stop JS timer
-                stop_timer_js = "<script>if(window.stopCvWarlockTimer) window.stopCvWarlockTimer();</script>"
-
                 # Check for workflow errors (stored in result["errors"])
                 if result.get("errors"):
                     elapsed = time.time() - wall_start_time
-                    error_timing_html = f"""
-                    <div class="timing-display" style="background: #fff0f0; color: #cc0000;">
-                        <span class="realtime-timer">Failed after: {format_elapsed_time(elapsed)}</span>
-                    </div>
-                    {stop_timer_js}
-                    """
-                    timing_container.markdown(error_timing_html, unsafe_allow_html=True)
+                    timing_container.markdown(
+                        f'<div class="timing-display" style="background: #fff0f0; color: #cc0000;">'
+                        f'<span class="realtime-timer">Failed after: {format_elapsed_time(elapsed)}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
                     status.update(
                         label=f"CV tailoring failed after {format_elapsed_time(elapsed)}",
                         state="error",
@@ -630,20 +604,19 @@ def main():
                     st.session_state["result"] = None
                 else:
                     # Success
-                    final_timing_html = f"""
-                    <div class="timing-display">
-                        <span class="realtime-timer">Total time: {format_elapsed_time(wall_clock_time)}</span>
-                        <br>
-                        <span class="api-time">API processing: {format_elapsed_time(api_time)}</span>
-                    </div>
-                    {stop_timer_js}
-                    """
+                    timing_container.markdown(
+                        f'<div class="timing-display">'
+                        f'<span class="realtime-timer">Total time: {format_elapsed_time(wall_clock_time)}</span>'
+                        f'<br>'
+                        f'<span class="api-time">API processing: {format_elapsed_time(api_time)}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
                     completion_msg = f"CV tailored successfully! Total: {format_elapsed_time(wall_clock_time)}"
                     if params["use_cot"] and refinements > 0:
                         completion_msg += f" ({refinements} refinements)"
                     status.update(label=completion_msg, state="complete")
                     progress_container.markdown("**Done!**")
-                    timing_container.markdown(final_timing_html, unsafe_allow_html=True)
 
                     # Store result in session state
                     st.session_state["result"] = result
@@ -654,10 +627,6 @@ def main():
 
         except ImportError as e:
             elapsed = time.time() - wall_start_time
-            st.markdown(
-                "<script>if(window.stopCvWarlockTimer) window.stopCvWarlockTimer();</script>",
-                unsafe_allow_html=True,
-            )
             error_info = {
                 "category": "import",
                 "title": "Missing Dependencies",
@@ -678,10 +647,6 @@ def main():
 
         except Exception as e:
             elapsed = time.time() - wall_start_time
-            st.markdown(
-                "<script>if(window.stopCvWarlockTimer) window.stopCvWarlockTimer();</script>",
-                unsafe_allow_html=True,
-            )
 
             # Parse the exception for detailed feedback
             error_info = parse_error_details(str(e), params["provider"], params["model"])
