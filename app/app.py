@@ -547,15 +547,7 @@ def main():
                 def update_progress(_step_name: str, description: str, _elapsed: float):
                     nonlocal last_step
                     last_step = description
-                    # Calculate elapsed time from Python's recorded start
-                    elapsed = time.time() - wall_start_time
                     progress_container.markdown(f"**{description}**")
-                    timing_container.markdown(
-                        f'<div class="timing-display">'
-                        f'<span class="realtime-timer">Elapsed: {format_elapsed_time(elapsed)}</span>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
 
                 update_progress("start", "Initializing...", 0)
 
