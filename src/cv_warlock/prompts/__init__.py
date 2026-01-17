@@ -1,0 +1,21 @@
+"""Prompt templates for CV Warlock."""
+
+from cv_warlock.prompts.extraction import CV_EXTRACTION_PROMPT, JOB_EXTRACTION_PROMPT
+from cv_warlock.prompts.matching import MATCH_ANALYSIS_PROMPT, TAILORING_PLAN_PROMPT
+from cv_warlock.prompts.generation import (
+    SUMMARY_TAILORING_PROMPT,
+    EXPERIENCE_TAILORING_PROMPT,
+    SKILLS_TAILORING_PROMPT,
+    CV_ASSEMBLY_PROMPT,
+)
+
+__all__ = [
+    "CV_EXTRACTION_PROMPT",
+    "JOB_EXTRACTION_PROMPT",
+    "MATCH_ANALYSIS_PROMPT",
+    "TAILORING_PLAN_PROMPT",
+    "SUMMARY_TAILORING_PROMPT",
+    "EXPERIENCE_TAILORING_PROMPT",
+    "SKILLS_TAILORING_PROMPT",
+    "CV_ASSEMBLY_PROMPT",
+]
