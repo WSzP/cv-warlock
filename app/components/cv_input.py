@@ -3,6 +3,7 @@
 import streamlit as st
 
 from utils.linkedin_fetcher import fetch_linkedin_profile
+from utils.pdf_parser import extract_text_from_pdf
 
 
 SAMPLE_LINKEDIN_URL = "https://www.linkedin.com/in/wszabopeter/"
@@ -71,13 +72,61 @@ def render_cv_input() -> str:
     # Input method selection
     input_method = st.radio(
         "Input method",
-        options=["Paste Text", "Import from LinkedIn"],
+        options=["Paste Text", "Upload PDF", "Import from LinkedIn"],
         horizontal=True,
         key="cv_input_method",
     )
 
-    if input_method == "Import from LinkedIn":
-        # LinkedIn import mode
+    if input_method == "Upload PDF":
+        # PDF upload mode (best for LinkedIn exports)
+        st.info(
+            "**Recommended for LinkedIn:** Go to your LinkedIn profile → "
+            "Click 'More' → Select 'Save to PDF' → Upload the PDF here."
+        )
+
+        uploaded_file = st.file_uploader(
+            "Upload your CV (PDF)",
+            type=["pdf"],
+            key="cv_pdf_upload",
+        )
+
+        if uploaded_file is not None:
+            with st.spinner("Extracting text from PDF..."):
+                cv_text, error = extract_text_from_pdf(uploaded_file)
+
+                if error:
+                    st.error(f"Error reading PDF: {error}")
+                elif cv_text:
+                    st.session_state.cv_text_area = cv_text
+                    st.success("PDF content extracted!")
+
+        # Show editable text area with extracted content
+        if st.session_state.cv_text_area:
+            st.markdown("**Extracted CV** (edit below if needed):")
+            cv_text = st.text_area(
+                "CV content",
+                value=st.session_state.cv_text_area,
+                height=300,
+                key="pdf_cv_preview",
+                label_visibility="collapsed",
+            )
+            st.session_state.cv_text_area = cv_text
+
+            if cv_text:
+                word_count = len(cv_text.split())
+                st.caption(f"{word_count} words")
+
+            return cv_text
+
+        return st.session_state.cv_text_area
+
+    elif input_method == "Import from LinkedIn":
+        # LinkedIn URL import mode (may be blocked)
+        st.warning(
+            "⚠️ LinkedIn often blocks automated access. "
+            "If this doesn't work, use **Upload PDF** instead."
+        )
+
         st.checkbox(
             "Use sample LinkedIn URL",
             key="use_sample_linkedin_checkbox",
@@ -94,7 +143,7 @@ def render_cv_input() -> str:
             )
 
         with col2:
-            st.markdown("<br>", unsafe_allow_html=True)  # Align button
+            st.markdown("<br>", unsafe_allow_html=True)
             fetch_clicked = st.button(
                 "Fetch CV",
                 type="primary",
@@ -103,7 +152,7 @@ def render_cv_input() -> str:
             )
 
         if fetch_clicked and linkedin_url:
-            with st.spinner("Fetching LinkedIn profile (using Jina Reader)..."):
+            with st.spinner("Fetching LinkedIn profile..."):
                 cv_text, error = fetch_linkedin_profile(linkedin_url)
 
                 if error:
@@ -123,7 +172,6 @@ def render_cv_input() -> str:
                 key="linkedin_cv_preview",
                 label_visibility="collapsed",
             )
-            # Sync back to main state
             st.session_state.cv_text_area = cv_text
 
             if cv_text:
