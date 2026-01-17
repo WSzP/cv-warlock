@@ -309,16 +309,13 @@ def main():
             help="Select the specific model to use",
         )
 
-        # Temperature slider
-        default_temp = float(os.getenv("CV_WARLOCK_TEMPERATURE", "0.3"))
-        temperature = st.slider(
-            "Temperature",
-            min_value=0.0,
-            max_value=1.0,
-            value=default_temp,
-            step=0.1,
-            help="Controls randomness. Lower = more focused, higher = more creative",
-        )
+        # Show runtime warning for slower models
+        if "opus" in model.lower():
+            st.info(
+                "**Opus runtime:** 3-5 minutes expected. "
+                "Other models typically complete in under 1 minute.",
+                icon="⏱️"
+            )
 
         # Check if API key exists in environment
         env_api_key = get_env_api_key(provider)
@@ -360,31 +357,6 @@ def main():
                 f"{provider.title()} API Key",
                 type="password",
                 help="Enter your API key (or set it in .env.local)",
-            )
-
-        st.divider()
-
-        # Generation quality settings
-        st.subheader("Generation Quality")
-
-        use_cot = st.checkbox(
-            "**High Quality** with Chain-of-Thought (CoT) Reasoning",
-            value=True,
-            help="Enable multi-step reasoning for higher quality output. "
-            "Each section goes through: Reason → Generate. "
-            "Experiences are processed in parallel for faster execution.",
-            key="use_cot",
-        )
-
-        if use_cot:
-            st.info(
-                "CoT enabled (optimized): Reasoning-guided generation with "
-                "parallel experience processing."
-            )
-        else:
-            st.warning(
-                "CoT disabled: Fastest generation but lower quality. "
-                "Use for quick iterations."
             )
 
         st.divider()
@@ -515,8 +487,7 @@ def main():
             "provider": provider,
             "model": model,
             "api_key": effective_api_key,
-            "temperature": temperature,
-            "use_cot": st.session_state.get("use_cot", True),
+            "use_cot": True,  # Always use high quality CoT mode
             "lookback_years": st.session_state.get("lookback_years", 4),
             "assume_all_tech_skills": st.session_state.get("assume_all_tech_skills", True),
         }
@@ -560,7 +531,6 @@ def main():
                     progress_callback=update_progress,
                     assume_all_tech_skills=params["assume_all_tech_skills"],
                     use_cot=params["use_cot"],
-                    temperature=params["temperature"],
                     lookback_years=params["lookback_years"],
                 )
 

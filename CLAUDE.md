@@ -35,6 +35,49 @@ uv run python scripts/test_api_keys.py
 uv run python scripts/test_api_keys.py anthropic  # Test specific provider
 ```
 
+## Testing with LangSmith
+
+**Important**: Always use LangSmith for tracing when testing workflows. LangSmith is configured via `.env.local` with:
+
+- `LANGCHAIN_TRACING_V2=true`
+- `LANGCHAIN_PROJECT=cv-warlock`
+- `LANGCHAIN_API_KEY=<your-key>`
+
+View traces at: <https://smith.langchain.com>
+
+### Test Output Naming Convention
+
+**IMPORTANT**: All test output files MUST follow this naming format:
+
+```text
+YYYY-MM-DD_HH-MM_modelname.md
+```
+
+Examples:
+
+- `2026-01-17_14-30_claude-sonnet-4-5.md`
+- `2026-01-17_09-15_gpt-5-2.md`
+- `2026-01-17_16-45_gemini-3-pro.md`
+
+Example test commands with tracing:
+
+```bash
+# Test with Anthropic (default - Sonnet 4.5)
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-sonnet-4-5.md -p anthropic -m claude-sonnet-4-5-20250929 -v
+
+# Test with Anthropic Haiku 4.5 (fast)
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-haiku-4-5.md -p anthropic -m claude-haiku-4-5-20251001 -v
+
+# Test with Anthropic Opus 4.5 (best quality)
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-opus-4-5.md -p anthropic -m claude-opus-4-5-20251101 -v
+
+# Test with OpenAI GPT-5.2
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_gpt-5-2.md -p openai -m gpt-5.2 -v
+
+# Test with Google Gemini 3 Pro
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_gemini-3-pro.md -p google -m gemini-3-pro-preview -v
+```
+
 ## Architecture
 
 ### LangGraph Workflow
@@ -69,6 +112,25 @@ When `use_cot=True` (default), each tailoring step follows REASON â†’ GENERATE â
 ### Entry Points
 - **CLI**: `main.py` using Typer (`cv-warlock` command)
 - **Web UI**: `app/app.py` using Streamlit (components in `app/components/`)
+
+## Supported Model IDs
+
+**Anthropic:**
+
+- `claude-opus-4-5-20251101` - Claude Opus 4.5 (most capable, best quality)
+- `claude-sonnet-4-5-20250929` - Claude Sonnet 4.5 (balanced, default)
+- `claude-haiku-4-5-20251001` - Claude Haiku 4.5 (fastest, most efficient)
+
+**OpenAI:**
+
+- `gpt-5.2` - GPT-5.2 (flagship, best for coding/agentic)
+- `gpt-5-mini` - GPT-5 Mini (faster, cost-efficient)
+- `gpt-5-nano` - GPT-5 Nano (fastest, cheapest)
+
+**Google:**
+
+- `gemini-3-pro-preview` - Gemini 3 Pro (best quality, reasoning)
+- `gemini-3-flash-preview` - Gemini 3 Flash (fast, frontier-class)
 
 ## Configuration
 

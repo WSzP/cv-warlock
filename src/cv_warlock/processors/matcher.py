@@ -50,7 +50,7 @@ class MatchAnalyzer:
             MatchAnalysis: Analysis results.
         """
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(MatchAnalysisOutput)
+        structured_model = model.with_structured_output(MatchAnalysisOutput, method="function_calling")
 
         chain = self.analysis_prompt | structured_model
         result = chain.invoke({
@@ -83,7 +83,7 @@ class MatchAnalyzer:
             TailoringPlan: Plan for tailoring.
         """
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(TailoringPlanOutput)
+        structured_model = model.with_structured_output(TailoringPlanOutput, method="function_calling")
 
         chain = self.plan_prompt | structured_model
         result = chain.invoke({

@@ -24,7 +24,7 @@ class CVExtractor:
             CVData: Structured CV data.
         """
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(CVData)
+        structured_model = model.with_structured_output(CVData, method="function_calling")
 
         chain = self.prompt | structured_model
         result = chain.invoke({"cv_text": raw_cv})

@@ -11,37 +11,36 @@ DEFAULT_MAX_RETRIES = 3  # 3 retries = 4 total attempts (handles transient conne
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI GPT provider."""
+    """OpenAI GPT provider.
+
+    Uses API default temperature (not passed explicitly).
+    """
 
     def __init__(
         self,
         model: str = "gpt-4o",
         api_key: str | None = None,
-        temperature: float = 0.3,
         timeout: float = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
     ):
         self.model = model
         self.api_key = api_key
-        self.default_temperature = temperature
         self.timeout = timeout
         self.max_retries = max_retries
 
-    def get_chat_model(self, temperature: float | None = None) -> BaseChatModel:
-        """Get OpenAI chat model."""
+    def get_chat_model(self) -> BaseChatModel:
+        """Get OpenAI chat model with API default temperature."""
         return ChatOpenAI(
             model=self.model,
-            temperature=temperature if temperature is not None else self.default_temperature,
             api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
         )
 
     def get_extraction_model(self) -> BaseChatModel:
-        """Get model for structured extraction with temperature=0."""
+        """Get model for structured extraction with API default temperature."""
         return ChatOpenAI(
             model=self.model,
-            temperature=0,
             api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,

@@ -114,9 +114,6 @@ class CVTailor:
 
     # Configuration
     MAX_REFINEMENT_ITERATIONS = 2
-    REASONING_TEMPERATURE = 0.2  # Low for analytical reasoning
-    GENERATION_TEMPERATURE = 0.4  # Moderate for creative generation
-    CRITIQUE_TEMPERATURE = 0.1  # Very low for consistent evaluation
 
     def __init__(self, llm_provider: LLMProvider, use_cot: bool = True):
         """Initialize tailor with optional CoT reasoning.
@@ -197,7 +194,7 @@ class CVTailor:
         tailored_skills_preview: str = "",
     ) -> str:
         """Direct summary generation without CoT (summary is LAST in pipeline)."""
-        model = self.llm_provider.get_chat_model(temperature=0.4)
+        model = self.llm_provider.get_chat_model()
         chain = self.summary_prompt | model
         result = chain.invoke({
             "original_summary": cv_data.summary or "No summary provided",
@@ -272,7 +269,7 @@ class CVTailor:
     ) -> SummaryReasoning:
         """Generate reasoning for summary (Step 1)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(SummaryReasoning)
+        structured_model = model.with_structured_output(SummaryReasoning, method="function_calling")
 
         chain = self.summary_reasoning_prompt | structured_model
         return chain.invoke({
@@ -299,7 +296,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         Uses compressed reasoning context (~150 tokens) instead of full JSON (~800 tokens).
         Summary is LAST in pipeline, so can reference tailored skills.
         """
-        model = self.llm_provider.get_chat_model(temperature=self.GENERATION_TEMPERATURE)
+        model = self.llm_provider.get_chat_model()
 
         chain = self.summary_gen_prompt | model
         result = chain.invoke({
@@ -319,7 +316,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> SummaryCritique:
         """Critique generated summary (Step 3)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(SummaryCritique)
+        structured_model = model.with_structured_output(SummaryCritique, method="function_calling")
 
         chain = self.summary_critique_prompt | structured_model
         return chain.invoke({
@@ -340,7 +337,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
 
         Uses compressed reasoning context for efficiency.
         """
-        model = self.llm_provider.get_chat_model(temperature=self.GENERATION_TEMPERATURE)
+        model = self.llm_provider.get_chat_model()
 
         chain = self.summary_refine_prompt | model
         result = chain.invoke({
@@ -391,7 +388,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         tailoring_plan: TailoringPlan,
     ) -> str:
         """Direct experience generation without CoT."""
-        model = self.llm_provider.get_chat_model(temperature=0.3)
+        model = self.llm_provider.get_chat_model()
         chain = self.experience_prompt | model
         result = chain.invoke({
             "title": experience.title,
@@ -474,7 +471,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> ExperienceReasoning:
         """Generate reasoning for experience (Step 1)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(ExperienceReasoning)
+        structured_model = model.with_structured_output(ExperienceReasoning, method="function_calling")
 
         chain = self.exp_reasoning_prompt | structured_model
         return chain.invoke({
@@ -513,7 +510,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
 
         Uses compressed reasoning context (~200 tokens) instead of full JSON (~1000 tokens).
         """
-        model = self.llm_provider.get_chat_model(temperature=self.GENERATION_TEMPERATURE)
+        model = self.llm_provider.get_chat_model()
 
         chain = self.exp_gen_prompt | model
         result = chain.invoke({
@@ -546,7 +543,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> ExperienceCritique:
         """Critique experience bullets (Step 3)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(ExperienceCritique)
+        structured_model = model.with_structured_output(ExperienceCritique, method="function_calling")
 
         chain = self.exp_critique_prompt | structured_model
         return chain.invoke({
@@ -567,7 +564,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
 
         Uses compressed reasoning context for efficiency.
         """
-        model = self.llm_provider.get_chat_model(temperature=self.GENERATION_TEMPERATURE)
+        model = self.llm_provider.get_chat_model()
 
         chain = self.exp_refine_prompt | model
         result = chain.invoke({
@@ -790,7 +787,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         job_requirements: JobRequirements,
     ) -> str:
         """Direct skills generation without CoT."""
-        model = self.llm_provider.get_chat_model(temperature=0.2)
+        model = self.llm_provider.get_chat_model()
         chain = self.skills_prompt | model
         result = chain.invoke({
             "all_skills": ", ".join(cv_data.skills),
@@ -856,7 +853,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> SkillsReasoning:
         """Generate reasoning for skills section (Step 1)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(SkillsReasoning)
+        structured_model = model.with_structured_output(SkillsReasoning, method="function_calling")
 
         chain = self.skills_reasoning_prompt | structured_model
         return chain.invoke({
@@ -877,7 +874,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
 
         Uses compressed reasoning context (~150 tokens) instead of full JSON (~600 tokens).
         """
-        model = self.llm_provider.get_chat_model(temperature=self.CRITIQUE_TEMPERATURE)
+        model = self.llm_provider.get_chat_model()
 
         chain = self.skills_gen_prompt | model
         result = chain.invoke({
@@ -894,7 +891,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> SkillsCritique:
         """Critique skills section (Step 3)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(SkillsCritique)
+        structured_model = model.with_structured_output(SkillsCritique, method="function_calling")
 
         chain = self.skills_critique_prompt | structured_model
         return chain.invoke({
@@ -915,7 +912,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
 
         Uses compressed reasoning context for efficiency.
         """
-        model = self.llm_provider.get_chat_model(temperature=self.CRITIQUE_TEMPERATURE)
+        model = self.llm_provider.get_chat_model()
 
         chain = self.skills_refine_prompt | model
         result = chain.invoke({
@@ -950,7 +947,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         Returns:
             str: Complete tailored CV in markdown format.
         """
-        model = self.llm_provider.get_chat_model(temperature=0.2)
+        model = self.llm_provider.get_chat_model()
 
         # Format contact info
         contact = cv_data.contact
