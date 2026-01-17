@@ -372,15 +372,17 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
             tailoring_plan: Tailoring plan.
 
         Returns:
-            str: Tailored experience bullets as text.
+            str: Tailored experience with header and bullets as text.
         """
+        header = self._format_experience_header(experience)
         if self.use_cot:
             result = self.tailor_experience_with_cot(
                 experience, job_requirements, tailoring_plan
             )
-            return "\n".join(f"- {b}" for b in result.final_bullets)
+            bullets = "\n".join(f"- {b}" for b in result.final_bullets)
         else:
-            return self._tailor_experience_direct(experience, job_requirements, tailoring_plan)
+            bullets = self._tailor_experience_direct(experience, job_requirements, tailoring_plan)
+        return f"{header}\n{bullets}"
 
     def _tailor_experience_direct(
         self,
@@ -612,13 +614,25 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
             tailored.append(tailored_exp)
         return tailored
 
+    def _format_experience_header(self, exp: Experience) -> str:
+        """Format the experience header (title, company, dates).
+
+        This ensures job metadata is preserved in the tailored output,
+        preventing the assembly prompt from inventing headers.
+        """
+        period = f"{exp.start_date} - {exp.end_date or 'Present'}"
+        return f"### {exp.title} | {exp.company}\n*{period}*"
+
     def _format_passthrough_experience(self, exp: Experience) -> str:
         """Format an experience as-is without tailoring (for old jobs)."""
+        header = self._format_experience_header(exp)
         if exp.achievements:
-            return "\n".join(f"- {a}" for a in exp.achievements)
+            bullets = "\n".join(f"- {a}" for a in exp.achievements)
         elif exp.description:
-            return f"- {exp.description}"
-        return "- No description provided"
+            bullets = f"- {exp.description}"
+        else:
+            bullets = "- No description provided"
+        return f"{header}\n{bullets}"
 
     def tailor_experiences_with_cot(
         self,
@@ -687,7 +701,9 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
             if i in tailor_result_map:
                 # Tailored experience
                 result = tailor_result_map[i]
-                tailored_text = "\n".join(f"- {b}" for b in result.final_bullets)
+                header = self._format_experience_header(exp)
+                bullets = "\n".join(f"- {b}" for b in result.final_bullets)
+                tailored_text = f"{header}\n{bullets}"
                 all_tailored_texts.append(tailored_text)
                 all_results.append(result)
 
