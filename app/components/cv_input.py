@@ -67,8 +67,6 @@ def render_cv_input() -> str:
         st.session_state.cv_text_area = ""
     if "linkedin_url_input" not in st.session_state:
         st.session_state.linkedin_url_input = ""
-    if "cv_input_method" not in st.session_state:
-        st.session_state.cv_input_method = "Paste Text"
 
     # Input method selection
     input_method = st.radio(
@@ -118,16 +116,27 @@ def render_cv_input() -> str:
                     )
                 elif cv_text:
                     st.session_state.cv_text_area = cv_text
-                    st.success("Profile imported! You can edit the text below.")
-                    # Switch to paste mode to show the text
-                    st.session_state.cv_input_method = "Paste Text"
+                    st.success("Profile imported successfully!")
                     st.rerun()
 
-        # Show current CV text if any (read-only preview)
+        # Show editable text area with imported content
         if st.session_state.cv_text_area:
-            st.markdown("**Current CV content:**")
-            with st.expander("Preview", expanded=False):
-                st.markdown(st.session_state.cv_text_area)
+            st.markdown("**Imported CV** (edit below if needed):")
+            cv_text = st.text_area(
+                "CV content",
+                value=st.session_state.cv_text_area,
+                height=300,
+                key="linkedin_cv_preview",
+                label_visibility="collapsed",
+            )
+            # Sync back to main state
+            st.session_state.cv_text_area = cv_text
+
+            if cv_text:
+                word_count = len(cv_text.split())
+                st.caption(f"{word_count} words")
+
+            return cv_text
 
         return st.session_state.cv_text_area
 
