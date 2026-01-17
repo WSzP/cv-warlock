@@ -1,10 +1,31 @@
 """Streamlit web UI for CV Warlock."""
 
+import os
+import sys
+from pathlib import Path
+
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Load environment variables from .env.local
+from dotenv import load_dotenv
+
+load_dotenv(project_root / ".env.local")
+
 import streamlit as st
 
-from app.components.cv_input import render_cv_input
-from app.components.job_input import render_job_input
-from app.components.result_display import render_result
+from components.cv_input import render_cv_input
+from components.job_input import render_job_input
+from components.result_display import render_result
+
+
+def get_env_api_key(provider: str) -> str | None:
+    """Get API key from environment for the given provider."""
+    if provider == "openai":
+        return os.getenv("OPENAI_API_KEY")
+    else:
+        return os.getenv("ANTHROPIC_API_KEY")
 
 # Page configuration
 st.set_page_config(
@@ -45,16 +66,14 @@ def main():
 
         provider = st.selectbox(
             "LLM Provider",
-            options=["openai", "anthropic"],
+            options=["anthropic", "openai"],
             index=0,
             help="Choose the AI provider for CV tailoring",
         )
 
         if provider == "openai":
-            default_model = "gpt-4o"
-            model_options = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+            model_options = ["gpt-5.2", "gpt-4o", "gpt-4o-mini"]
         else:
-            default_model = "claude-opus-4-5-20251101"
             model_options = ["claude-opus-4-5-20251101", "claude-sonnet-4-20250514"]
 
         model = st.selectbox(
@@ -64,11 +83,19 @@ def main():
             help="Select the specific model to use",
         )
 
-        api_key = st.text_input(
-            f"{provider.title()} API Key",
-            type="password",
-            help="Enter your API key (or set it in .env file)",
-        )
+        # Check if API key exists in environment
+        env_api_key = get_env_api_key(provider)
+
+        # Only show API key input if not in environment
+        if env_api_key:
+            st.success(f"{provider.title()} API key loaded from .env.local")
+            api_key = None  # Will use env key
+        else:
+            api_key = st.text_input(
+                f"{provider.title()} API Key",
+                type="password",
+                help="Enter your API key (or set it in .env.local)",
+            )
 
         st.divider()
 
@@ -116,20 +143,12 @@ def main():
             st.error("Please provide both a CV and a job specification.")
             return
 
-        # Check for API key
-        effective_api_key = api_key or None
-        if not effective_api_key:
-            # Try to load from environment
-            import os
-
-            if provider == "openai":
-                effective_api_key = os.getenv("OPENAI_API_KEY")
-            else:
-                effective_api_key = os.getenv("ANTHROPIC_API_KEY")
+        # Get API key (from env or user input)
+        effective_api_key = env_api_key or api_key
 
         if not effective_api_key:
             st.error(
-                f"Please provide an API key for {provider.title()} in the sidebar or set it in your .env file."
+                f"Please provide an API key for {provider.title()} in the sidebar or set it in .env.local"
             )
             return
 
