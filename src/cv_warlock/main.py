@@ -116,11 +116,38 @@ def tailor(
 
         # Show match analysis
         if result.get("match_analysis"):
-            score = result["match_analysis"]["relevance_score"]
+            match = result["match_analysis"]
+            score = match["relevance_score"]
             score_color = "green" if score >= 0.7 else "yellow" if score >= 0.5 else "red"
-            console.print(
-                f"\n[bold]Match Score:[/bold] [{score_color}]{score:.0%}[/{score_color}]"
-            )
+
+            # Check if this is a hybrid score with breakdown
+            if match.get("score_breakdown"):
+                breakdown = match["score_breakdown"]
+                knockout = match.get("knockout_triggered", False)
+
+                console.print(f"\n[bold]Match Score:[/bold] [{score_color}]{score:.0%}[/{score_color}]")
+
+                if knockout:
+                    console.print(f"[red]⚠ Knockout:[/red] {match.get('knockout_reason', 'Missing required skills')}")
+                else:
+                    console.print("[dim]Score Breakdown:[/dim]")
+                    console.print(f"  Skills (exact):    {breakdown['exact_skill_match']:.0%}")
+                    console.print(f"  Skills (semantic): {breakdown['semantic_skill_match']:.0%}")
+                    console.print(f"  Doc similarity:    {breakdown['document_similarity']:.0%}")
+                    console.print(f"  Experience fit:    {breakdown['experience_years_fit']:.0%}")
+                    console.print(f"  Education:         {breakdown['education_match']:.0%}")
+                    console.print(f"  Recency:           {breakdown['recency_score']:.0%}")
+
+                    algo_score = match.get("algorithmic_score", 0)
+                    llm_adj = match.get("llm_adjustment", 0)
+                    if llm_adj != 0:
+                        adj_sign = "+" if llm_adj > 0 else ""
+                        console.print(f"  [dim]Algorithmic: {algo_score:.0%}, LLM adjust: {adj_sign}{llm_adj:.0%}[/dim]")
+            else:
+                # Simple LLM-only score
+                console.print(
+                    f"\n[bold]Match Score:[/bold] [{score_color}]{score:.0%}[/{score_color}]"
+                )
     else:
         console.print("[red]No tailored CV was generated.[/red]")
         raise typer.Exit(1)

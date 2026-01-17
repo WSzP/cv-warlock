@@ -213,3 +213,6 @@ app/data/cvs/*.md
 
 # Test results (test outputs)
 test_results/
+
+# nul files
+nul*

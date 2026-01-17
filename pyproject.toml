@@ -33,6 +33,9 @@ dependencies = [
     # PDF parsing (for CV upload)
     "pymupdf>=1.24.0",
 
+    # PDF generation (for CV export)
+    "fpdf2>=2.8.0",
+
     # Tracing & observability
     "langsmith>=0.2.0",
 

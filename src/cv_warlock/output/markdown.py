@@ -24,6 +24,8 @@ def save_markdown(content: str, output_path: str | Path) -> Path:
 def format_match_analysis(match_analysis: MatchAnalysis) -> str:
     """Format match analysis for display.
 
+    Handles both LLM-only MatchAnalysis and HybridMatchResult with score breakdown.
+
     Args:
         match_analysis: Match analysis results.
 
@@ -31,8 +33,38 @@ def format_match_analysis(match_analysis: MatchAnalysis) -> str:
         Formatted string for display.
     """
     output = []
-    output.append(f"## Match Analysis (Score: {match_analysis['relevance_score']:.0%})")
-    output.append("")
+    score = match_analysis["relevance_score"]
+
+    # Check if this is a hybrid result with breakdown
+    if match_analysis.get("score_breakdown"):
+        breakdown = match_analysis["score_breakdown"]
+        knockout = match_analysis.get("knockout_triggered", False)
+
+        output.append(f"## Match Analysis (Score: {score:.0%})")
+        output.append("")
+
+        if knockout:
+            output.append(f"**⚠ Knockout Triggered:** {match_analysis.get('knockout_reason', 'Missing required skills')}")
+            output.append("")
+        else:
+            output.append("### Score Breakdown")
+            output.append(f"- **Exact Skill Match:** {breakdown['exact_skill_match']:.0%}")
+            output.append(f"- **Semantic Skill Match:** {breakdown['semantic_skill_match']:.0%}")
+            output.append(f"- **Document Similarity:** {breakdown['document_similarity']:.0%}")
+            output.append(f"- **Experience Years Fit:** {breakdown['experience_years_fit']:.0%}")
+            output.append(f"- **Education Match:** {breakdown['education_match']:.0%}")
+            output.append(f"- **Recency Score:** {breakdown['recency_score']:.0%}")
+            output.append("")
+
+            algo_score = match_analysis.get("algorithmic_score", 0)
+            llm_adj = match_analysis.get("llm_adjustment", 0)
+            if llm_adj != 0:
+                adj_sign = "+" if llm_adj > 0 else ""
+                output.append(f"*Algorithmic: {algo_score:.0%}, LLM adjustment: {adj_sign}{llm_adj:.0%}*")
+                output.append("")
+    else:
+        output.append(f"## Match Analysis (Score: {score:.0%})")
+        output.append("")
 
     output.append("### Strong Matches")
     for item in match_analysis["strong_matches"]:

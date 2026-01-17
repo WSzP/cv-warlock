@@ -15,8 +15,26 @@ from cv_warlock.models.reasoning import (
 )
 
 
+class ScoreBreakdown(TypedDict):
+    """Detailed breakdown of algorithmic sub-scores (0-1 scale).
+
+    Used by hybrid scoring to provide explainable, reproducible scores.
+    """
+
+    exact_skill_match: float  # Exact string match for skills
+    semantic_skill_match: float  # Embedding-based skill similarity
+    document_similarity: float  # CV-job document embedding similarity
+    experience_years_fit: float  # Years of experience vs requirement
+    education_match: float  # Education level match
+    recency_score: float  # Recent experience relevance
+
+
 class MatchAnalysis(TypedDict):
-    """Analysis of how CV matches job requirements."""
+    """Analysis of how CV matches job requirements.
+
+    This base type is used by the LLM-only scorer. The hybrid scorer
+    returns HybridMatchResult which extends this with score_breakdown.
+    """
 
     strong_matches: list[str]  # Skills/experience that match well
     partial_matches: list[str]  # Skills that partially match
