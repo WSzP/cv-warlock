@@ -335,7 +335,7 @@ def main():
 
         st.caption(
             "**Dual-Model Strategy:** Model is auto-selected based on provider. "
-            "RLM uses the strongest model for orchestration and fastest for sub-calls."
+            "RLM uses a stronger model for orchestration and a faster one for sub-calls."
         )
 
         # Check if API key exists in environment
@@ -733,6 +733,11 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
             if params["use_cot"]:
                 status_label += " (CoT: reasoning + self-critique enabled)"
             status_label += "..."
+
+            st.info(
+                "⏳ Due to the thorough nature of the tailoring process, this can take a few minutes. "
+                "Please be patient while we craft your optimized CV."
+            )
 
             with st.status(status_label, expanded=True) as status:
                 progress_container = st.empty()
