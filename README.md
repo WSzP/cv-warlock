@@ -47,7 +47,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 # Clone the repository
-git clone https://github.com/yourusername/cv-warlock.git
+git clone https://github.com/WSzP/cv-warlock.git
 cd cv-warlock
 
 # Install dependencies with uv
