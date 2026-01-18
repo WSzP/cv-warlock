@@ -107,7 +107,18 @@ When `use_cot=True` (default), each tailoring step follows REASON â†’ GENERATE â
 - CoT outputs stored in `*_reasoning_result` fields for transparency
 - `GenerationContext` in `models/reasoning.py` maintains consistency across sections
 
+### RLM (Recursive Language Model) Mode
+
+When `use_rlm=True`, enables recursive orchestration for handling large documents:
+
+- `RLMOrchestrator` in `rlm/orchestrator.py` manages the REPL-based analysis loop
+- Root model writes Python code to explore CV/job data, calls sub-models for deep analysis
+- RLM nodes in `graph/rlm_nodes.py` wrap extraction steps with RLM capability
+- Falls back to standard extraction if RLM output isn't parseable as structured data
+- Configured via `RLMConfig` with size thresholds, iteration limits, timeouts
+
 ### Key Models
+
 - `CVData` (`models/cv.py`): Parsed CV structure with experiences, skills, education
 - `JobRequirements` (`models/job_spec.py`): Required/preferred skills, responsibilities
 - `MatchAnalysis`, `TailoringPlan` (`models/state.py`): Analysis and strategy

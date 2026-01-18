@@ -140,12 +140,19 @@ def create_rlm_nodes(
             if rlm_result.success and rlm_result.answer:
                 cv_data = rlm_result.answer if isinstance(rlm_result.answer, CVData) else None
 
-                return {
-                    "cv_data": cv_data,
-                    "current_step": "extract_cv",
-                    "current_step_description": "Extracted CV structure via RLM",
-                    "rlm_metadata": _create_rlm_metadata(True, True, rlm_result),
-                }
+                if cv_data is not None:
+                    return {
+                        "cv_data": cv_data,
+                        "current_step": "extract_cv",
+                        "current_step_description": "Extracted CV structure via RLM",
+                        "rlm_metadata": _create_rlm_metadata(True, True, rlm_result),
+                    }
+                else:
+                    # RLM returned answer but not in correct format - fallback
+                    logger.warning("RLM returned non-CVData answer, falling back to standard")
+                    result = standard_nodes["extract_cv"](state)
+                    result["rlm_metadata"] = _create_rlm_metadata(True, False)
+                    return result
             else:
                 # Fallback to standard
                 logger.warning(f"RLM extraction failed: {rlm_result.error}")
@@ -182,21 +189,30 @@ def create_rlm_nodes(
                     rlm_result.answer if isinstance(rlm_result.answer, JobRequirements) else None
                 )
 
-                # Update RLM metadata with combined stats
-                existing_metadata = state.get("rlm_metadata")
-                if existing_metadata:
-                    new_metadata = _create_rlm_metadata(True, True, rlm_result)
-                    new_metadata["total_iterations"] += existing_metadata.get("total_iterations", 0)
-                    new_metadata["sub_call_count"] += existing_metadata.get("sub_call_count", 0)
-                else:
-                    new_metadata = _create_rlm_metadata(True, True, rlm_result)
+                if job_requirements is not None:
+                    # Update RLM metadata with combined stats
+                    existing_metadata = state.get("rlm_metadata")
+                    if existing_metadata:
+                        new_metadata = _create_rlm_metadata(True, True, rlm_result)
+                        new_metadata["total_iterations"] += existing_metadata.get(
+                            "total_iterations", 0
+                        )
+                        new_metadata["sub_call_count"] += existing_metadata.get("sub_call_count", 0)
+                    else:
+                        new_metadata = _create_rlm_metadata(True, True, rlm_result)
 
-                return {
-                    "job_requirements": job_requirements,
-                    "current_step": "extract_job",
-                    "current_step_description": "Extracted job requirements via RLM",
-                    "rlm_metadata": new_metadata,
-                }
+                    return {
+                        "job_requirements": job_requirements,
+                        "current_step": "extract_job",
+                        "current_step_description": "Extracted job requirements via RLM",
+                        "rlm_metadata": new_metadata,
+                    }
+                else:
+                    # RLM returned answer but not in correct format - fallback
+                    logger.warning(
+                        "RLM returned non-JobRequirements answer, falling back to standard"
+                    )
+                    return standard_nodes["extract_job"](state)
             else:
                 logger.warning(f"RLM job extraction failed: {rlm_result.error}")
                 return standard_nodes["extract_job"](state)

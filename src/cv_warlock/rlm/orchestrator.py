@@ -121,8 +121,13 @@ class RLMOrchestrator:
         )
 
         # Conversation history for the root model
+        # Note: Anthropic requires at least one user message after the system message
         messages = [
             {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": "Begin the analysis. Write Python code to explore the data and answer the task.",
+            },
         ]
 
         iteration = 0

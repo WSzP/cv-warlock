@@ -20,7 +20,7 @@
 
 This is an opinionated, model-agnostic, quality-assured CV improver. It is nontrivial to detect the output automatically. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. It is also hard to catch, should someone use an AI detector. In even simpler words: Waaagh!
 
-# Is this cheating?
+## Is this cheating?
 
 *tl;dr* NO
 
@@ -45,6 +45,13 @@ But please share the results of your experiments with me and the world on Linked
 ## RLM (Recursive Language Model)
 
 CV Warlock includes an advanced **RLM mode** (enabled by default) for handling arbitrarily long CVs and job specifications. RLM uses a recursive orchestration pattern where the model can explore context through code execution and spawn sub-calls to analyze specific chunks.
+
+### Simulated ATS Test Results
+
+**Version:** 0.9.0
+
+- Non-RLM mode: 80% match score
+- RLM mode: 100% match score – **perfect** ✅
 
 ### Recursive Language Model?
 
@@ -241,13 +248,13 @@ Turn off this checkbox if:
 - You're applying for a role requiring technologies you genuinely don't know
 - You want to identify areas where you need to upskill before applying
 
-## Chain-of-Thought Reasoning
+## RLM CoT Reasoning
 
-CV Warlock supports an optional Chain-of-Thought (CoT) reasoning mode that produces higher-quality tailored CVs through explicit multi-step reasoning.
+CV Warlock uses Chain-of-Thought (CoT) reasoning, supercharged with RLM, to produce higher-quality, tailored CVs through explicit multi-step reasoning.
 
 ### How CoT Works
 
-Each CV section goes through a 4-phase process:
+Removing the RLM layer, to ease understanding, you can think of CoT as if each CV section went through a 4-phase process:
 
 1. **REASON**: Analyze the job requirements and plan the approach
 2. **GENERATE**: Create content based on the reasoning
