@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="cv-warlock-logo.webp" alt="CV Warlock Logo" width="200">
+</p>
+
 # CV Warlock
 
 Experiment: **AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). This system is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview. 
@@ -290,6 +294,17 @@ The Poppins font is included in the `fonts/` directory and is licensed under the
 See `fonts/OFL.txt` for the full license text.
 
 **Font Credit**: Poppins was designed by Indian Type Foundry and Jonny Pinhorn.
+
+## Brand Colors
+
+CV Warlock uses the following brand colors:
+
+| Color                  | Hex       | Usage                                  |
+|------------------------|-----------|----------------------------------------|
+| **Primary (Green)**    | `#a9e53f` | "CV" in logo, accents, success states  |
+| **Secondary (Purple)** | `#4b2d73` | "Warlock" in logo, headings, buttons   |
+
+These colors are defined in the Streamlit app CSS. Feel free to customize them to match your preferences by editing [app/app.py](app/app.py).
 
 ## License
 
