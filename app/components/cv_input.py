@@ -3,9 +3,7 @@
 from pathlib import Path
 
 import streamlit as st
-
 from utils.pdf_parser import extract_text_from_pdf
-
 
 # Directory for saved CVs
 CV_SAVE_DIR = Path(__file__).parent.parent / "data" / "cvs"
@@ -122,7 +120,9 @@ def render_cv_input() -> str:
         saved_cvs = _get_saved_cvs()
 
         if not saved_cvs:
-            st.info("No saved CVs found. Use 'Paste Text' or 'Upload PDF' to create one, then save it.")
+            st.info(
+                "No saved CVs found. Use 'Paste Text' or 'Upload PDF' to create one, then save it."
+            )
             return ""
 
         # CV selection

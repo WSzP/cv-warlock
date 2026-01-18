@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 # Path: main.py -> cv_warlock/ -> src/ -> project root
 load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 
-import typer
-from rich.console import Console
-from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+import typer  # noqa: E402
+from rich.console import Console  # noqa: E402
+from rich.panel import Panel  # noqa: E402
+from rich.progress import Progress, SpinnerColumn, TextColumn  # noqa: E402
 
-from cv_warlock.graph.workflow import run_cv_tailoring
-from cv_warlock.output.markdown import save_markdown, format_match_analysis
+from cv_warlock.graph.workflow import run_cv_tailoring  # noqa: E402
+from cv_warlock.output.markdown import format_match_analysis, save_markdown  # noqa: E402
 
 app = typer.Typer(
     name="cv-warlock",
@@ -37,16 +37,14 @@ def read_file(path: Path) -> str:
 def tailor(
     cv: Annotated[Path, typer.Argument(help="Path to your CV (txt or md)")],
     job: Annotated[Path, typer.Argument(help="Path to job specification")],
-    output: Annotated[
-        Path, typer.Option("--output", "-o", help="Output file path")
-    ] = Path("tailored_cv.md"),
+    output: Annotated[Path, typer.Option("--output", "-o", help="Output file path")] = Path(
+        "tailored_cv.md"
+    ),
     provider: Annotated[
         Literal["openai", "anthropic"],
         typer.Option("--provider", "-p", help="LLM provider to use"),
     ] = "openai",
-    model: Annotated[
-        str | None, typer.Option("--model", "-m", help="Model name")
-    ] = None,
+    model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
     lookback_years: Annotated[
         int | None,
         typer.Option(
@@ -125,10 +123,14 @@ def tailor(
                 breakdown = match["score_breakdown"]
                 knockout = match.get("knockout_triggered", False)
 
-                console.print(f"\n[bold]Match Score:[/bold] [{score_color}]{score:.0%}[/{score_color}]")
+                console.print(
+                    f"\n[bold]Match Score:[/bold] [{score_color}]{score:.0%}[/{score_color}]"
+                )
 
                 if knockout:
-                    console.print(f"[red]⚠ Knockout:[/red] {match.get('knockout_reason', 'Missing required skills')}")
+                    console.print(
+                        f"[red]⚠ Knockout:[/red] {match.get('knockout_reason', 'Missing required skills')}"
+                    )
                 else:
                     console.print("[dim]Score Breakdown:[/dim]")
                     console.print(f"  Skills (exact):    {breakdown['exact_skill_match']:.0%}")
@@ -142,7 +144,9 @@ def tailor(
                     llm_adj = match.get("llm_adjustment", 0)
                     if llm_adj != 0:
                         adj_sign = "+" if llm_adj > 0 else ""
-                        console.print(f"  [dim]Algorithmic: {algo_score:.0%}, LLM adjust: {adj_sign}{llm_adj:.0%}[/dim]")
+                        console.print(
+                            f"  [dim]Algorithmic: {algo_score:.0%}, LLM adjust: {adj_sign}{llm_adj:.0%}[/dim]"
+                        )
             else:
                 # Simple LLM-only score
                 console.print(
@@ -161,9 +165,7 @@ def analyze(
         Literal["openai", "anthropic"],
         typer.Option("--provider", "-p", help="LLM provider to use"),
     ] = "openai",
-    model: Annotated[
-        str | None, typer.Option("--model", "-m", help="Model name")
-    ] = None,
+    model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
 ) -> None:
     """Analyze CV-job fit without generating a tailored CV."""
     console.print(

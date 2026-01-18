@@ -17,7 +17,6 @@ from cv_warlock.models.state import CVWarlockState, StepTiming
 from cv_warlock.processors.matcher import MatchAnalyzer
 from cv_warlock.processors.tailor import CVTailor
 
-
 # Step descriptions for UI display
 # New order: skills → experiences → summary
 STEP_DESCRIPTIONS = {
@@ -212,7 +211,9 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
             return _end_step(state, step_name, result)
 
         # Summary is LAST: has access to tailored skills and experiences
-        tailored_skills = state.get("tailored_skills", [""])[0] if state.get("tailored_skills") else ""
+        tailored_skills = (
+            state.get("tailored_skills", [""])[0] if state.get("tailored_skills") else ""
+        )
 
         try:
             if use_cot:
@@ -269,12 +270,14 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
         try:
             if use_cot:
                 # Full CoT with reasoning outputs and lookback filtering
-                tailored_texts, exp_results, updated_context = cv_tailor.tailor_experiences_with_cot(
-                    state["cv_data"],
-                    state["job_requirements"],
-                    state["tailoring_plan"],
-                    context=state.get("generation_context"),
-                    lookback_years=lookback_years,
+                tailored_texts, exp_results, updated_context = (
+                    cv_tailor.tailor_experiences_with_cot(
+                        state["cv_data"],
+                        state["job_requirements"],
+                        state["tailoring_plan"],
+                        context=state.get("generation_context"),
+                        lookback_years=lookback_years,
+                    )
                 )
 
                 result["tailored_experiences"] = tailored_texts
@@ -373,10 +376,7 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
 
             # Compute total generation time
             step_timings = state.get("step_timings", [])
-            total_time = sum(
-                t.get("duration_seconds", 0) or 0
-                for t in step_timings
-            )
+            total_time = sum(t.get("duration_seconds", 0) or 0 for t in step_timings)
             # Add current step time estimate
             if state.get("current_step_start"):
                 total_time += time.time() - state["current_step_start"]

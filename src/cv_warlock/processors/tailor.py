@@ -16,11 +16,9 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from cv_warlock.config import get_settings
 from cv_warlock.llm.base import LLMProvider
-from cv_warlock.utils.date_utils import should_tailor_experience
 from cv_warlock.models.cv import CVData, Experience
 from cv_warlock.models.job_spec import JobRequirements
 from cv_warlock.models.reasoning import (
-    BulletReasoning,
     ExperienceCritique,
     ExperienceGenerationResult,
     ExperienceReasoning,
@@ -54,6 +52,7 @@ from cv_warlock.prompts.reasoning import (
     SUMMARY_REASONING_PROMPT,
     SUMMARY_REFINE_PROMPT,
 )
+from cv_warlock.utils.date_utils import should_tailor_experience
 
 
 def _compress_summary_reasoning(reasoning: SummaryReasoning) -> str:
@@ -62,7 +61,7 @@ def _compress_summary_reasoning(reasoning: SummaryReasoning) -> str:
     Instead of passing full JSON (~800 tokens), pass only what's needed (~150 tokens).
     """
     return f"""Hook: {reasoning.hook_strategy}
-Keywords: {', '.join(reasoning.key_keywords_to_include)}
+Keywords: {", ".join(reasoning.key_keywords_to_include)}
 Metric: {reasoning.strongest_metric}
 Differentiator: {reasoning.unique_differentiator}
 Value proposition: {reasoning.value_proposition}
@@ -80,8 +79,8 @@ def _compress_experience_reasoning(reasoning: ExperienceReasoning) -> str:
 
     return f"""Relevance: {reasoning.relevance_score:.1f}
 Strategy: {reasoning.emphasis_strategy}
-Keywords: {', '.join(reasoning.keywords_to_incorporate[:5])}
-Priority achievements: {', '.join(reasoning.achievements_to_prioritize[:3])}
+Keywords: {", ".join(reasoning.keywords_to_incorporate[:5])}
+Priority achievements: {", ".join(reasoning.achievements_to_prioritize[:3])}
 Bullet plans:
 {bullets_summary}"""
 
@@ -93,9 +92,9 @@ def _compress_skills_reasoning(reasoning: SkillsReasoning) -> str:
         for cat, skills in list(reasoning.category_groupings.items())[:5]
     )
 
-    return f"""Required matched: {', '.join(reasoning.required_skills_matched[:7])}
-Preferred matched: {', '.join(reasoning.preferred_skills_matched[:5])}
-Dual format: {', '.join(reasoning.dual_format_terms[:5])}
+    return f"""Required matched: {", ".join(reasoning.required_skills_matched[:7])}
+Preferred matched: {", ".join(reasoning.preferred_skills_matched[:5])}
+Dual format: {", ".join(reasoning.dual_format_terms[:5])}
 Categories:
 {categories}"""
 
@@ -176,14 +175,18 @@ class CVTailor:
         """
         if self.use_cot:
             result = self.tailor_summary_with_cot(
-                cv_data, job_requirements, tailoring_plan,
-                tailored_skills_preview=tailored_skills_preview
+                cv_data,
+                job_requirements,
+                tailoring_plan,
+                tailored_skills_preview=tailored_skills_preview,
             )
             return result.final_summary
         else:
             return self._tailor_summary_direct(
-                cv_data, job_requirements, tailoring_plan,
-                tailored_skills_preview=tailored_skills_preview
+                cv_data,
+                job_requirements,
+                tailoring_plan,
+                tailored_skills_preview=tailored_skills_preview,
             )
 
     def _tailor_summary_direct(
@@ -196,14 +199,16 @@ class CVTailor:
         """Direct summary generation without CoT (summary is LAST in pipeline)."""
         model = self.llm_provider.get_chat_model()
         chain = self.summary_prompt | model
-        result = chain.invoke({
-            "original_summary": cv_data.summary or "No summary provided",
-            "job_title": job_requirements.job_title,
-            "company": job_requirements.company or "the company",
-            "key_requirements": ", ".join(job_requirements.required_skills[:5]),
-            "relevant_strengths": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
-            "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
-        })
+        result = chain.invoke(
+            {
+                "original_summary": cv_data.summary or "No summary provided",
+                "job_title": job_requirements.job_title,
+                "company": job_requirements.company or "the company",
+                "key_requirements": ", ".join(job_requirements.required_skills[:5]),
+                "relevant_strengths": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
+                "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
+            }
+        )
         return result.content
 
     def tailor_summary_with_cot(
@@ -272,18 +277,20 @@ class CVTailor:
         structured_model = model.with_structured_output(SummaryReasoning, method="function_calling")
 
         chain = self.summary_reasoning_prompt | structured_model
-        return chain.invoke({
-            "original_summary": cv_data.summary or "No summary provided",
-            "job_title": job_requirements.job_title,
-            "company": job_requirements.company or "the company",
-            "key_requirements": ", ".join(job_requirements.required_skills[:7]),
-            "relevant_strengths": ", ".join(tailoring_plan["skills_to_highlight"][:7]),
-            "tailoring_plan_summary": f"""
-Focus areas: {', '.join(tailoring_plan['summary_focus'][:3])}
-Key achievements to feature: {', '.join(tailoring_plan['achievements_to_feature'][:3])}
-Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5])}
+        return chain.invoke(
+            {
+                "original_summary": cv_data.summary or "No summary provided",
+                "job_title": job_requirements.job_title,
+                "company": job_requirements.company or "the company",
+                "key_requirements": ", ".join(job_requirements.required_skills[:7]),
+                "relevant_strengths": ", ".join(tailoring_plan["skills_to_highlight"][:7]),
+                "tailoring_plan_summary": f"""
+Focus areas: {", ".join(tailoring_plan["summary_focus"][:3])}
+Key achievements to feature: {", ".join(tailoring_plan["achievements_to_feature"][:3])}
+Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5])}
 """,
-        })
+            }
+        )
 
     def _generate_summary_from_reasoning(
         self,
@@ -299,13 +306,15 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         model = self.llm_provider.get_chat_model()
 
         chain = self.summary_gen_prompt | model
-        result = chain.invoke({
-            # Use compressed context instead of full JSON dump
-            "reasoning_json": _compress_summary_reasoning(reasoning),
-            "strongest_metric": reasoning.strongest_metric,
-            "keywords": ", ".join(reasoning.key_keywords_to_include),
-            "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
-        })
+        result = chain.invoke(
+            {
+                # Use compressed context instead of full JSON dump
+                "reasoning_json": _compress_summary_reasoning(reasoning),
+                "strongest_metric": reasoning.strongest_metric,
+                "keywords": ", ".join(reasoning.key_keywords_to_include),
+                "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
+            }
+        )
         return result.content
 
     def _critique_summary(
@@ -319,12 +328,14 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         structured_model = model.with_structured_output(SummaryCritique, method="function_calling")
 
         chain = self.summary_critique_prompt | structured_model
-        return chain.invoke({
-            "generated_summary": summary,
-            "job_title": job_requirements.job_title,
-            "company": job_requirements.company or "the company",
-            "required_keywords": ", ".join(reasoning.key_keywords_to_include),
-        })
+        return chain.invoke(
+            {
+                "generated_summary": summary,
+                "job_title": job_requirements.job_title,
+                "company": job_requirements.company or "the company",
+                "required_keywords": ", ".join(reasoning.key_keywords_to_include),
+            }
+        )
 
     def _refine_summary(
         self,
@@ -340,15 +351,17 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         model = self.llm_provider.get_chat_model()
 
         chain = self.summary_refine_prompt | model
-        result = chain.invoke({
-            "current_summary": current,
-            "issues": "\n".join(f"- {i}" for i in critique.issues_found),
-            "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
-            # Use compressed context instead of full JSON dump
-            "reasoning_json": _compress_summary_reasoning(reasoning),
-            "strongest_metric": reasoning.strongest_metric,
-            "keywords": ", ".join(reasoning.key_keywords_to_include),
-        })
+        result = chain.invoke(
+            {
+                "current_summary": current,
+                "issues": "\n".join(f"- {i}" for i in critique.issues_found),
+                "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
+                # Use compressed context instead of full JSON dump
+                "reasoning_json": _compress_summary_reasoning(reasoning),
+                "strongest_metric": reasoning.strongest_metric,
+                "keywords": ", ".join(reasoning.key_keywords_to_include),
+            }
+        )
         return result.content
 
     # =========================================================================
@@ -373,9 +386,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         """
         header = self._format_experience_header(experience)
         if self.use_cot:
-            result = self.tailor_experience_with_cot(
-                experience, job_requirements, tailoring_plan
-            )
+            result = self.tailor_experience_with_cot(experience, job_requirements, tailoring_plan)
             bullets = "\n".join(f"- {b}" for b in result.final_bullets)
         else:
             bullets = self._tailor_experience_direct(experience, job_requirements, tailoring_plan)
@@ -390,15 +401,17 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         """Direct experience generation without CoT."""
         model = self.llm_provider.get_chat_model()
         chain = self.experience_prompt | model
-        result = chain.invoke({
-            "title": experience.title,
-            "company": experience.company,
-            "period": f"{experience.start_date} - {experience.end_date or 'Present'}",
-            "description": experience.description,
-            "achievements": "\n".join(f"- {a}" for a in experience.achievements),
-            "target_requirements": ", ".join(job_requirements.required_skills[:5]),
-            "skills_to_emphasize": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
-        })
+        result = chain.invoke(
+            {
+                "title": experience.title,
+                "company": experience.company,
+                "period": f"{experience.start_date} - {experience.end_date or 'Present'}",
+                "description": experience.description,
+                "achievements": "\n".join(f"- {a}" for a in experience.achievements),
+                "target_requirements": ", ".join(job_requirements.required_skills[:5]),
+                "skills_to_emphasize": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
+            }
+        )
         return result.content
 
     def tailor_experience_with_cot(
@@ -423,9 +436,7 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
             ExperienceGenerationResult with reasoning and generation output.
         """
         # Step 1: REASON
-        reasoning = self._reason_experience(
-            experience, job_requirements, tailoring_plan, context
-        )
+        reasoning = self._reason_experience(experience, job_requirements, tailoring_plan, context)
 
         # Determine bullet count from emphasis strategy
         bullet_count = self._get_bullet_count(reasoning.emphasis_strategy)
@@ -471,24 +482,32 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> ExperienceReasoning:
         """Generate reasoning for experience (Step 1)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(ExperienceReasoning, method="function_calling")
+        structured_model = model.with_structured_output(
+            ExperienceReasoning, method="function_calling"
+        )
 
         chain = self.exp_reasoning_prompt | structured_model
-        return chain.invoke({
-            "title": experience.title,
-            "company": experience.company,
-            "period": f"{experience.start_date} - {experience.end_date or 'Present'}",
-            "description": experience.description or "No description provided",
-            "achievements": "\n".join(f"- {a}" for a in experience.achievements)
-            if experience.achievements
-            else "No specific achievements listed",
-            "job_title": job_requirements.job_title,
-            "target_requirements": ", ".join(job_requirements.required_skills[:7]),
-            "skills_to_emphasize": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
-            "established_identity": context.established_identity if context else "Not yet established",
-            "keywords_already_used": ", ".join(context.primary_keywords_used) if context else "None yet",
-            "metrics_already_used": ", ".join(context.metrics_used) if context else "None yet",
-        })
+        return chain.invoke(
+            {
+                "title": experience.title,
+                "company": experience.company,
+                "period": f"{experience.start_date} - {experience.end_date or 'Present'}",
+                "description": experience.description or "No description provided",
+                "achievements": "\n".join(f"- {a}" for a in experience.achievements)
+                if experience.achievements
+                else "No specific achievements listed",
+                "job_title": job_requirements.job_title,
+                "target_requirements": ", ".join(job_requirements.required_skills[:7]),
+                "skills_to_emphasize": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
+                "established_identity": context.established_identity
+                if context
+                else "Not yet established",
+                "keywords_already_used": ", ".join(context.primary_keywords_used)
+                if context
+                else "None yet",
+                "metrics_already_used": ", ".join(context.metrics_used) if context else "None yet",
+            }
+        )
 
     def _get_bullet_count(self, emphasis_strategy: str) -> int:
         """Determine bullet count from emphasis strategy."""
@@ -513,12 +532,14 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         model = self.llm_provider.get_chat_model()
 
         chain = self.exp_gen_prompt | model
-        result = chain.invoke({
-            # Use compressed context instead of full JSON dump
-            "reasoning_json": _compress_experience_reasoning(reasoning),
-            "bullet_count": bullet_count,
-            "keywords_to_use": ", ".join(reasoning.keywords_to_incorporate[:5]),
-        })
+        result = chain.invoke(
+            {
+                # Use compressed context instead of full JSON dump
+                "reasoning_json": _compress_experience_reasoning(reasoning),
+                "bullet_count": bullet_count,
+                "keywords_to_use": ", ".join(reasoning.keywords_to_incorporate[:5]),
+            }
+        )
         return result.content
 
     def _parse_bullets(self, text: str) -> list[str]:
@@ -543,14 +564,18 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
     ) -> ExperienceCritique:
         """Critique experience bullets (Step 3)."""
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(ExperienceCritique, method="function_calling")
+        structured_model = model.with_structured_output(
+            ExperienceCritique, method="function_calling"
+        )
 
         chain = self.exp_critique_prompt | structured_model
-        return chain.invoke({
-            "generated_bullets": "\n".join(f"- {b}" for b in bullets),
-            "job_title": job_requirements.job_title,
-            "job_requirements": ", ".join(job_requirements.required_skills[:7]),
-        })
+        return chain.invoke(
+            {
+                "generated_bullets": "\n".join(f"- {b}" for b in bullets),
+                "job_title": job_requirements.job_title,
+                "job_requirements": ", ".join(job_requirements.required_skills[:7]),
+            }
+        )
 
     def _refine_experience(
         self,
@@ -567,15 +592,17 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         model = self.llm_provider.get_chat_model()
 
         chain = self.exp_refine_prompt | model
-        result = chain.invoke({
-            "current_bullets": "\n".join(f"- {b}" for b in current_bullets),
-            "weak_bullets": "\n".join(f"- {w}" for w in critique.weak_bullets),
-            "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
-            # Use compressed context instead of full JSON dump
-            "reasoning_json": _compress_experience_reasoning(reasoning),
-            "bullet_count": bullet_count,
-            "keywords_to_use": ", ".join(reasoning.keywords_to_incorporate[:5]),
-        })
+        result = chain.invoke(
+            {
+                "current_bullets": "\n".join(f"- {b}" for b in current_bullets),
+                "weak_bullets": "\n".join(f"- {w}" for w in critique.weak_bullets),
+                "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
+                # Use compressed context instead of full JSON dump
+                "reasoning_json": _compress_experience_reasoning(reasoning),
+                "bullet_count": bullet_count,
+                "keywords_to_use": ", ".join(reasoning.keywords_to_incorporate[:5]),
+            }
+        )
         return result.content
 
     def tailor_experiences(
@@ -789,11 +816,13 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         """Direct skills generation without CoT."""
         model = self.llm_provider.get_chat_model()
         chain = self.skills_prompt | model
-        result = chain.invoke({
-            "all_skills": ", ".join(cv_data.skills),
-            "required_skills": ", ".join(job_requirements.required_skills),
-            "preferred_skills": ", ".join(job_requirements.preferred_skills),
-        })
+        result = chain.invoke(
+            {
+                "all_skills": ", ".join(cv_data.skills),
+                "required_skills": ", ".join(job_requirements.required_skills),
+                "preferred_skills": ", ".join(job_requirements.preferred_skills),
+            }
+        )
         return result.content
 
     def tailor_skills_with_cot(
@@ -856,18 +885,20 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         structured_model = model.with_structured_output(SkillsReasoning, method="function_calling")
 
         chain = self.skills_reasoning_prompt | structured_model
-        return chain.invoke({
-            "all_skills": ", ".join(cv_data.skills),
-            "required_skills": ", ".join(job_requirements.required_skills),
-            "preferred_skills": ", ".join(job_requirements.preferred_skills),
-            "skills_from_experience": ", ".join(context.skills_demonstrated)
-            if context
-            else "Not yet analyzed",
-            "keywords_used": ", ".join(
-                k for k, v in (context.keyword_frequency if context else {}).items() if v >= 2
-            )
-            or "None heavily used yet",
-        })
+        return chain.invoke(
+            {
+                "all_skills": ", ".join(cv_data.skills),
+                "required_skills": ", ".join(job_requirements.required_skills),
+                "preferred_skills": ", ".join(job_requirements.preferred_skills),
+                "skills_from_experience": ", ".join(context.skills_demonstrated)
+                if context
+                else "Not yet analyzed",
+                "keywords_used": ", ".join(
+                    k for k, v in (context.keyword_frequency if context else {}).items() if v >= 2
+                )
+                or "None heavily used yet",
+            }
+        )
 
     def _generate_skills_from_reasoning(self, reasoning: SkillsReasoning) -> str:
         """Generate skills section from reasoning (Step 2).
@@ -877,10 +908,12 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         model = self.llm_provider.get_chat_model()
 
         chain = self.skills_gen_prompt | model
-        result = chain.invoke({
-            # Use compressed context instead of full JSON dump
-            "reasoning_json": _compress_skills_reasoning(reasoning),
-        })
+        result = chain.invoke(
+            {
+                # Use compressed context instead of full JSON dump
+                "reasoning_json": _compress_skills_reasoning(reasoning),
+            }
+        )
         return result.content
 
     def _critique_skills(
@@ -894,12 +927,14 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         structured_model = model.with_structured_output(SkillsCritique, method="function_calling")
 
         chain = self.skills_critique_prompt | structured_model
-        return chain.invoke({
-            "generated_skills": skills_text,
-            "required_skills": ", ".join(job_requirements.required_skills),
-            "preferred_skills": ", ".join(job_requirements.preferred_skills),
-            "candidate_skills": ", ".join(cv_data.skills),
-        })
+        return chain.invoke(
+            {
+                "generated_skills": skills_text,
+                "required_skills": ", ".join(job_requirements.required_skills),
+                "preferred_skills": ", ".join(job_requirements.preferred_skills),
+                "candidate_skills": ", ".join(cv_data.skills),
+            }
+        )
 
     def _refine_skills(
         self,
@@ -915,14 +950,16 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
         model = self.llm_provider.get_chat_model()
 
         chain = self.skills_refine_prompt | model
-        result = chain.invoke({
-            "current_skills": current,
-            "missing_terms": ", ".join(critique.missing_critical_terms),
-            "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
-            # Use compressed context instead of full JSON dump
-            "reasoning_json": _compress_skills_reasoning(reasoning),
-            "candidate_skills": ", ".join(cv_data.skills),
-        })
+        result = chain.invoke(
+            {
+                "current_skills": current,
+                "missing_terms": ", ".join(critique.missing_critical_terms),
+                "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
+                # Use compressed context instead of full JSON dump
+                "reasoning_json": _compress_skills_reasoning(reasoning),
+                "candidate_skills": ", ".join(cv_data.skills),
+            }
+        )
         return result.content
 
     # =========================================================================
@@ -983,14 +1020,16 @@ Keywords to incorporate: {', '.join(tailoring_plan['keywords_to_incorporate'][:5
             certs_str += f"- {cert.name} ({cert.issuer})\n"
 
         chain = self.assembly_prompt | model
-        result = chain.invoke({
-            "contact": contact_str,
-            "tailored_summary": tailored_summary,
-            "tailored_experiences": "\n\n---\n\n".join(tailored_experiences),
-            "tailored_skills": tailored_skills,
-            "education": education_str or "Not provided",
-            "projects": projects_str or "Not provided",
-            "certifications": certs_str or "Not provided",
-        })
+        result = chain.invoke(
+            {
+                "contact": contact_str,
+                "tailored_summary": tailored_summary,
+                "tailored_experiences": "\n\n---\n\n".join(tailored_experiences),
+                "tailored_skills": tailored_skills,
+                "education": education_str or "Not provided",
+                "projects": projects_str or "Not provided",
+                "certifications": certs_str or "Not provided",
+            }
+        )
 
         return result.content

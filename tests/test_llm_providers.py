@@ -27,9 +27,13 @@ class TestGetLLMProvider:
         mock_instance = MagicMock()
         mock_provider.return_value = mock_instance
 
-        result = get_llm_provider("anthropic", model="claude-sonnet-4-5-20250929", api_key="test-key")
+        result = get_llm_provider(
+            "anthropic", model="claude-sonnet-4-5-20250929", api_key="test-key"
+        )
 
-        mock_provider.assert_called_once_with(model="claude-sonnet-4-5-20250929", api_key="test-key")
+        mock_provider.assert_called_once_with(
+            model="claude-sonnet-4-5-20250929", api_key="test-key"
+        )
         assert result is mock_instance
 
     @patch("cv_warlock.llm.google.GoogleProvider")

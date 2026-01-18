@@ -10,15 +10,14 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # Load environment variables from .env.local
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(project_root / ".env.local")
 
-import streamlit as st
-
-from components.cv_input import render_cv_input
-from components.job_input import render_job_input
-from components.result_display import render_result
+import streamlit as st  # noqa: E402
+from components.cv_input import render_cv_input  # noqa: E402
+from components.job_input import render_job_input  # noqa: E402
+from components.result_display import render_result  # noqa: E402
 
 
 def get_env_api_key(provider: str) -> str | None:
@@ -72,8 +71,17 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
         }
 
     # Authentication errors
-    if any(x in error_lower for x in ["unauthorized", "401", "invalid api key", "authentication",
-                                       "invalid_api_key", "invalid x-api-key"]):
+    if any(
+        x in error_lower
+        for x in [
+            "unauthorized",
+            "401",
+            "invalid api key",
+            "authentication",
+            "invalid_api_key",
+            "invalid x-api-key",
+        ]
+    ):
         return {
             "category": "auth",
             "title": "Authentication Failed",
@@ -89,8 +97,10 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
         }
 
     # Rate limit errors
-    if any(x in error_lower for x in ["rate limit", "rate_limit", "429", "too many requests",
-                                       "quota", "exceeded"]):
+    if any(
+        x in error_lower
+        for x in ["rate limit", "rate_limit", "429", "too many requests", "quota", "exceeded"]
+    ):
         return {
             "category": "rate_limit",
             "title": "Rate Limit Exceeded",
@@ -106,8 +116,16 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
         }
 
     # Model errors
-    if any(x in error_lower for x in ["model not found", "invalid model", "model_not_found",
-                                       "does not exist", "not available"]):
+    if any(
+        x in error_lower
+        for x in [
+            "model not found",
+            "invalid model",
+            "model_not_found",
+            "does not exist",
+            "not available",
+        ]
+    ):
         return {
             "category": "model",
             "title": "Model Not Available",
@@ -122,7 +140,9 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
         }
 
     # Context/token limit errors
-    if any(x in error_lower for x in ["context length", "token limit", "too long", "maximum context"]):
+    if any(
+        x in error_lower for x in ["context length", "token limit", "too long", "maximum context"]
+    ):
         return {
             "category": "context",
             "title": "Input Too Long",
@@ -137,8 +157,16 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
         }
 
     # Parsing/extraction errors
-    if any(x in error_lower for x in ["extraction failed", "parsing", "parse error", "invalid json",
-                                       "failed to extract"]):
+    if any(
+        x in error_lower
+        for x in [
+            "extraction failed",
+            "parsing",
+            "parse error",
+            "invalid json",
+            "failed to extract",
+        ]
+    ):
         step = "unknown"
         if "cv extraction" in error_lower:
             step = "CV"
@@ -160,7 +188,9 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
         }
 
     # Server errors
-    if any(x in error_lower for x in ["500", "502", "503", "504", "server error", "internal error"]):
+    if any(
+        x in error_lower for x in ["500", "502", "503", "504", "server error", "internal error"]
+    ):
         return {
             "category": "server",
             "title": "API Server Error",
@@ -306,21 +336,21 @@ def main():
         # Model options per provider with latest versions
         if provider == "openai":
             model_options = [
-                "gpt-5.2",           # Latest flagship
-                "gpt-5.2-instant",   # Fast version
-                "gpt-5-mini",        # Cost-efficient
+                "gpt-5.2",  # Latest flagship
+                "gpt-5.2-instant",  # Fast version
+                "gpt-5-mini",  # Cost-efficient
                 "gpt-4o",
             ]
         elif provider == "google":
             model_options = [
                 "gemini-3-flash-preview",  # Fast + capable (recommended)
-                "gemini-3-pro-preview",    # Most capable
+                "gemini-3-pro-preview",  # Most capable
             ]
         else:  # anthropic
             model_options = [
                 "claude-sonnet-4-5-20250929",  # Best balance (recommended)
-                "claude-haiku-4-5-20251001",   # Fastest, cost-efficient
-                "claude-opus-4-5-20251101",    # Most capable
+                "claude-haiku-4-5-20251001",  # Fastest, cost-efficient
+                "claude-opus-4-5-20251101",  # Most capable
             ]
 
         model = st.selectbox(
@@ -335,7 +365,7 @@ def main():
             st.info(
                 "**Opus runtime:** 3-5 minutes expected. "
                 "Other models typically complete in under 1 minute.",
-                icon="⏱️"
+                icon="⏱️",
             )
 
         # Check if API key exists in environment
@@ -397,6 +427,7 @@ def main():
         )
 
         from datetime import datetime
+
         current_year = datetime.now().year
         cutoff_year = current_year - lookback_years
 
@@ -436,7 +467,9 @@ def main():
             st.success(f"LangSmith tracing: **{project}**")
             st.markdown(f"[View traces]({dashboard_url})")
 
-        st.caption("🧙 This langchain experiment was created by [Peter W. Szabo](https://www.linkedin.com/in/wszabopeter/).")
+        st.caption(
+            "🧙 This langchain experiment was created by [Peter W. Szabo](https://www.linkedin.com/in/wszabopeter/)."
+        )
 
     # Main content - Header with logo and title
     logo_path = project_root / "cv-warlock-logo-small.webp"
@@ -587,7 +620,7 @@ def main():
                     timing_container.markdown(
                         f'<div class="timing-display" style="background: #fff0f0; color: #cc0000;">'
                         f'<span class="realtime-timer">Failed after: {format_elapsed_time(elapsed)}</span>'
-                        f'</div>',
+                        f"</div>",
                         unsafe_allow_html=True,
                     )
                     status.update(
@@ -601,7 +634,9 @@ def main():
                     st.subheader("Error Details")
 
                     for error_msg in result["errors"]:
-                        error_info = parse_error_details(error_msg, params["provider"], params["model"])
+                        error_info = parse_error_details(
+                            error_msg, params["provider"], params["model"]
+                        )
                         render_error_details(error_info, elapsed)
 
                     # Store failed result so user can see partial progress
@@ -611,12 +646,14 @@ def main():
                     timing_container.markdown(
                         f'<div class="timing-display">'
                         f'<span class="realtime-timer">Total time: {format_elapsed_time(wall_clock_time)}</span>'
-                        f'<br>'
+                        f"<br>"
                         f'<span class="api-time">API processing: {format_elapsed_time(api_time)}</span>'
-                        f'</div>',
+                        f"</div>",
                         unsafe_allow_html=True,
                     )
-                    completion_msg = f"CV tailored successfully! Total: {format_elapsed_time(wall_clock_time)}"
+                    completion_msg = (
+                        f"CV tailored successfully! Total: {format_elapsed_time(wall_clock_time)}"
+                    )
                     if params["use_cot"] and refinements > 0:
                         completion_msg += f" ({refinements} refinements)"
                     status.update(label=completion_msg, state="complete")

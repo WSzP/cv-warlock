@@ -34,7 +34,6 @@ class Settings(BaseSettings):
         description="Only tailor experiences that ended within this many years",
     )
 
-
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 

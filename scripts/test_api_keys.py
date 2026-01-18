@@ -19,7 +19,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 # Load environment variables
 load_dotenv(project_root / ".env.local")
@@ -66,9 +66,7 @@ def test_anthropic_key(api_key: str | None = None) -> tuple[bool, str]:
     try:
         from langchain_anthropic import ChatAnthropic
 
-        model = ChatAnthropic(
-            model="claude-haiku-4-5-20251001", api_key=api_key, max_tokens=10
-        )
+        model = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=api_key, max_tokens=10)
         response = model.invoke("Say 'OK' if you can hear me.")
         return True, f"Anthropic API key is valid. Response: {response.content[:50]}"
     except Exception as e:

@@ -226,9 +226,7 @@ class HybridScorer:
         final_score = max(0.0, min(1.0, algo_scores.total + llm_assessment.adjustment))
 
         # Build strong/partial matches lists from algorithmic analysis
-        strong_matches, partial_matches = self._categorize_matches(
-            cv_data, job_requirements
-        )
+        strong_matches, partial_matches = self._categorize_matches(cv_data, job_requirements)
 
         # Identify gaps (missing required skills)
         gaps = self._identify_gaps(cv_data, job_requirements)

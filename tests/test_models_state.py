@@ -1,7 +1,5 @@
 """Tests for LangGraph state models."""
 
-import pytest
-
 from cv_warlock.models.state import (
     CVWarlockState,
     MatchAnalysis,

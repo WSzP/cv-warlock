@@ -108,7 +108,7 @@ def _render_match_score_card(result: dict[str, Any]) -> None:
                 st.markdown(
                     f"""
                     <div style="padding: 0.5rem; background: #fff0f0; border-radius: 4px; opacity: {opacity};">
-                        <span style="color: #dc3545;">**Knockout:** {analysis.get('knockout_reason', 'Missing required skills')}</span>
+                        <span style="color: #dc3545;">**Knockout:** {analysis.get("knockout_reason", "Missing required skills")}</span>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -122,8 +122,8 @@ def _render_match_score_card(result: dict[str, Any]) -> None:
                 st.markdown(
                     f"""
                     <div style="font-size: 0.85rem; color: #666; opacity: {opacity};">
-                        <div>Skills: {breakdown.get('exact_skill_match', 0):.0%} | Experience: {breakdown.get('experience_years_fit', 0):.0%}</div>
-                        <div>Education: {breakdown.get('education_match', 0):.0%} | Recency: {breakdown.get('recency_score', 0):.0%}</div>
+                        <div>Skills: {breakdown.get("exact_skill_match", 0):.0%} | Experience: {breakdown.get("experience_years_fit", 0):.0%}</div>
+                        <div>Education: {breakdown.get("education_match", 0):.0%} | Recency: {breakdown.get("recency_score", 0):.0%}</div>
                         <div style="margin-top: 0.25rem; font-style: italic;">Algo: {algo_score:.0%}, LLM: {adj_str}</div>
                     </div>
                     """,
@@ -144,7 +144,9 @@ def _render_match_score_card(result: dict[str, Any]) -> None:
         with col_action:
             # Retest button (only visible when edited)
             if is_edited and not is_retesting:
-                if st.button("Retest", key="retest_score_btn", type="primary", use_container_width=True):
+                if st.button(
+                    "Retest", key="retest_score_btn", type="primary", use_container_width=True
+                ):
                     st.session_state.is_retesting = True
                     st.rerun()
 
@@ -315,7 +317,6 @@ def render_match_analysis(result: dict[str, Any]) -> None:
 
     # Score display
     score = analysis["relevance_score"]
-    score_color = "green" if score >= 0.7 else "orange" if score >= 0.5 else "red"
 
     col1, col2, col3 = st.columns(3)
     with col2:

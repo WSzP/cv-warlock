@@ -1,11 +1,9 @@
 """Tests for CV data models and validators."""
 
-import pytest
-
 from cv_warlock.models.cv import (
-    CVData,
     Certification,
     ContactInfo,
+    CVData,
     Education,
     Experience,
     Project,

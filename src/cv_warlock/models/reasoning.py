@@ -297,9 +297,7 @@ class SkillsReasoning(BaseModel):
     category_groupings: dict[str, list[str]] = Field(
         default_factory=dict, description="How to group skills by category"
     )
-    ordering_rationale: str = Field(
-        default="", description="Why skills are ordered this way"
-    )
+    ordering_rationale: str = Field(default="", description="Why skills are ordered this way")
 
     # Omissions
     skills_to_omit: list[str] = Field(
@@ -326,18 +324,12 @@ class SkillsCritique(BaseModel):
     all_required_skills_present: bool = Field(
         description="All required skills (that candidate has) included?"
     )
-    uses_exact_job_terminology: bool = Field(
-        description="Uses exact wording from job posting?"
-    )
+    uses_exact_job_terminology: bool = Field(description="Uses exact wording from job posting?")
     appropriate_categorization: bool = Field(
         description="Skills grouped logically matching job structure?"
     )
-    no_irrelevant_skills: bool = Field(
-        description="No skills that dilute relevance signal?"
-    )
-    no_fabricated_skills: bool = Field(
-        description="No skills candidate doesn't actually have?"
-    )
+    no_irrelevant_skills: bool = Field(description="No skills that dilute relevance signal?")
+    no_fabricated_skills: bool = Field(description="No skills candidate doesn't actually have?")
 
     # Quality assessment
     quality_level: QualityLevel
@@ -397,9 +389,7 @@ class GenerationContext(BaseModel):
         default_factory=dict, description="How many times each keyword appears"
     )
 
-    @field_validator(
-        "primary_keywords_used", "metrics_used", "skills_demonstrated", mode="before"
-    )
+    @field_validator("primary_keywords_used", "metrics_used", "skills_demonstrated", mode="before")
     @classmethod
     def parse_list_fields(cls, v: Any) -> list[str]:
         return _parse_stringified_list(v)

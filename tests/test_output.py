@@ -3,8 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from cv_warlock.output.markdown import format_match_analysis, format_result, save_markdown
 
 

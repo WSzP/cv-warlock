@@ -3,8 +3,6 @@
 from datetime import datetime
 from unittest.mock import patch
 
-import pytest
-
 from cv_warlock.utils.date_utils import (
     PRESENT_TERMS,
     YEAR_PATTERN,

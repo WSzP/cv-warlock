@@ -6,7 +6,8 @@ significantly better tailored CVs.
 """
 
 import time
-from typing import Callable, Literal
+from collections.abc import Callable
+from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
 

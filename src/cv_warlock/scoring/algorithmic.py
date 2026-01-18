@@ -292,8 +292,7 @@ class AlgorithmicScorer:
 
         # Target skills for relevance check
         target_skills = {
-            s.lower()
-            for s in job_requirements.required_skills + job_requirements.preferred_skills
+            s.lower() for s in job_requirements.required_skills + job_requirements.preferred_skills
         }
 
         if not target_skills:
@@ -337,10 +336,7 @@ class AlgorithmicScorer:
             return None
 
         # Handle "Present", "Current", etc.
-        if any(
-            word in date_str.lower()
-            for word in ["present", "current", "now", "ongoing"]
-        ):
+        if any(word in date_str.lower() for word in ["present", "current", "now", "ongoing"]):
             return datetime.now().year
 
         # Try to find 4-digit year

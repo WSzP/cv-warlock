@@ -1,7 +1,5 @@
 """Tests for conditional edge functions in LangGraph workflow."""
 
-import pytest
-
 from cv_warlock.graph.edges import (
     should_continue_after_extraction,
     should_continue_after_validation,

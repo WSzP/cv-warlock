@@ -1,10 +1,12 @@
 """Base LLM provider abstraction."""
 
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, TypeVar
 
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class LLMProvider(ABC):
@@ -20,7 +22,7 @@ class LLMProvider(ABC):
         """Get a model optimized for structured extraction."""
         pass
 
-    def extract_structured[T: BaseModel](
+    def extract_structured(
         self,
         prompt: str,
         output_schema: type[T],

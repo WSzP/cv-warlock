@@ -2,7 +2,6 @@
 
 import streamlit as st
 
-
 SAMPLE_JOB = """# Senior Python Developer
 
 **Company:** Acme Tech

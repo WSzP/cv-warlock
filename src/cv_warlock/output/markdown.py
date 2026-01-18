@@ -44,7 +44,9 @@ def format_match_analysis(match_analysis: MatchAnalysis) -> str:
         output.append("")
 
         if knockout:
-            output.append(f"**⚠ Knockout Triggered:** {match_analysis.get('knockout_reason', 'Missing required skills')}")
+            output.append(
+                f"**⚠ Knockout Triggered:** {match_analysis.get('knockout_reason', 'Missing required skills')}"
+            )
             output.append("")
         else:
             output.append("### Score Breakdown")
@@ -60,7 +62,9 @@ def format_match_analysis(match_analysis: MatchAnalysis) -> str:
             llm_adj = match_analysis.get("llm_adjustment", 0)
             if llm_adj != 0:
                 adj_sign = "+" if llm_adj > 0 else ""
-                output.append(f"*Algorithmic: {algo_score:.0%}, LLM adjustment: {adj_sign}{llm_adj:.0%}*")
+                output.append(
+                    f"*Algorithmic: {algo_score:.0%}, LLM adjustment: {adj_sign}{llm_adj:.0%}*"
+                )
                 output.append("")
     else:
         output.append(f"## Match Analysis (Score: {score:.0%})")
@@ -98,7 +102,7 @@ def format_result(state: CVWarlockState) -> str:
         Formatted result string.
     """
     if state.get("errors"):
-        return f"Errors occurred:\n" + "\n".join(f"- {e}" for e in state["errors"])
+        return "Errors occurred:\n" + "\n".join(f"- {e}" for e in state["errors"])
 
     output = []
 

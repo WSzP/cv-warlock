@@ -50,13 +50,17 @@ class MatchAnalyzer:
             MatchAnalysis: Analysis results.
         """
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(MatchAnalysisOutput, method="function_calling")
+        structured_model = model.with_structured_output(
+            MatchAnalysisOutput, method="function_calling"
+        )
 
         chain = self.analysis_prompt | structured_model
-        result = chain.invoke({
-            "cv_data": cv_data.model_dump_json(indent=2),
-            "job_requirements": job_requirements.model_dump_json(indent=2),
-        })
+        result = chain.invoke(
+            {
+                "cv_data": cv_data.model_dump_json(indent=2),
+                "job_requirements": job_requirements.model_dump_json(indent=2),
+            }
+        )
 
         return MatchAnalysis(
             strong_matches=result.strong_matches,
@@ -83,14 +87,18 @@ class MatchAnalyzer:
             TailoringPlan: Plan for tailoring.
         """
         model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(TailoringPlanOutput, method="function_calling")
+        structured_model = model.with_structured_output(
+            TailoringPlanOutput, method="function_calling"
+        )
 
         chain = self.plan_prompt | structured_model
-        result = chain.invoke({
-            "match_analysis": str(match_analysis),
-            "cv_data": cv_data.model_dump_json(indent=2),
-            "job_requirements": job_requirements.model_dump_json(indent=2),
-        })
+        result = chain.invoke(
+            {
+                "match_analysis": str(match_analysis),
+                "cv_data": cv_data.model_dump_json(indent=2),
+                "job_requirements": job_requirements.model_dump_json(indent=2),
+            }
+        )
 
         return TailoringPlan(
             summary_focus=result.summary_focus,
