@@ -1,5 +1,11 @@
 """Prompt templates for CV Warlock."""
 
+from cv_warlock.prompts.cover_letter import (
+    COVER_LETTER_CRITIQUE_PROMPT,
+    COVER_LETTER_GENERATION_PROMPT,
+    COVER_LETTER_REASONING_PROMPT,
+    COVER_LETTER_REFINE_PROMPT,
+)
 from cv_warlock.prompts.extraction import CV_EXTRACTION_PROMPT, JOB_EXTRACTION_PROMPT
 from cv_warlock.prompts.generation import (
     CV_ASSEMBLY_PROMPT,
@@ -18,4 +24,8 @@ __all__ = [
     "EXPERIENCE_TAILORING_PROMPT",
     "SKILLS_TAILORING_PROMPT",
     "CV_ASSEMBLY_PROMPT",
+    "COVER_LETTER_REASONING_PROMPT",
+    "COVER_LETTER_GENERATION_PROMPT",
+    "COVER_LETTER_CRITIQUE_PROMPT",
+    "COVER_LETTER_REFINE_PROMPT",
 ]

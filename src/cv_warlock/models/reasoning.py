@@ -393,3 +393,112 @@ class GenerationContext(BaseModel):
     @classmethod
     def parse_list_fields(cls, v: Any) -> list[str]:
         return _parse_stringified_list(v)
+
+
+# =============================================================================
+# COVER LETTER REASONING MODELS
+# =============================================================================
+
+
+class CoverLetterReasoning(BaseModel):
+    """Intermediate reasoning for cover letter generation.
+
+    Captures strategic thinking before writing the cover letter.
+    """
+
+    # Analysis phase
+    opening_hook: str = Field(
+        description="How to open compellingly - specific connection to company/role"
+    )
+    key_selling_points: list[str] = Field(
+        description="Top 3 achievements/skills that best match job requirements"
+    )
+    strongest_alignment: str = Field(
+        description="The single best match between candidate background and role"
+    )
+    company_connection: str = Field(
+        description="Specific reason for interest in THIS company (not generic)"
+    )
+
+    # Strategy phase
+    paragraph_structure: list[str] = Field(
+        description="Planned content for each paragraph (3-4 paragraphs)"
+    )
+    keywords_to_incorporate: list[str] = Field(
+        description="Job posting terms to weave in naturally (max 5)"
+    )
+    metric_to_feature: str = Field(description="Most impressive relevant metric from CV")
+    call_to_action: str = Field(description="How to close with confidence (interview request)")
+
+    # Constraints
+    tone_guidance: str = Field(
+        description="Tone to strike: confident but not arrogant, specific but not verbose"
+    )
+    aspects_to_avoid: list[str] = Field(
+        default_factory=list,
+        description="Topics/phrasings to avoid (salary, generic praise, desperation)",
+    )
+    confidence_score: float = Field(
+        ge=0.0, le=1.0, description="Confidence in reasoning quality (0-1)"
+    )
+
+    @field_validator(
+        "key_selling_points",
+        "paragraph_structure",
+        "keywords_to_incorporate",
+        "aspects_to_avoid",
+        mode="before",
+    )
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
+
+
+class CoverLetterCritique(BaseModel):
+    """Self-critique for generated cover letter."""
+
+    # Quality checks
+    has_compelling_opening: bool = Field(
+        description="Does opening immediately establish relevance and interest?"
+    )
+    demonstrates_company_research: bool = Field(
+        description="Shows specific knowledge of company, not generic statements?"
+    )
+    includes_quantified_achievement: bool = Field(
+        description="Contains at least one hard metric from CV?"
+    )
+    mirrors_job_keywords: bool = Field(
+        description="Natural incorporation of 2-3 job posting terms?"
+    )
+    appropriate_length: bool = Field(description="Within specified character limit?")
+    professional_tone: bool = Field(
+        description="Confident but not arrogant, specific but not verbose?"
+    )
+    has_clear_call_to_action: bool = Field(description="Closes with clear next step request?")
+    is_plain_text: bool = Field(description="No markdown, HTML, or special formatting?")
+
+    # Overall assessment
+    quality_level: QualityLevel = Field(description="Overall quality assessment")
+    issues_found: list[str] = Field(
+        default_factory=list, description="Specific issues that need fixing"
+    )
+    improvement_suggestions: list[str] = Field(
+        default_factory=list, description="Actionable suggestions for refinement"
+    )
+    should_refine: bool = Field(description="Does this need another iteration?")
+
+    @field_validator("issues_found", "improvement_suggestions", mode="before")
+    @classmethod
+    def parse_list_fields(cls, v: Any) -> list[str]:
+        return _parse_stringified_list(v)
+
+
+class CoverLetterGenerationResult(BaseModel):
+    """Complete result of cover letter generation with reasoning chain."""
+
+    reasoning: CoverLetterReasoning
+    generated_cover_letter: str = Field(description="Initial generated cover letter")
+    critique: CoverLetterCritique
+    refinement_count: int = Field(default=0, description="Number of refinement iterations")
+    final_cover_letter: str = Field(description="Final cover letter after any refinements")
+    character_count: int = Field(description="Character count of final output")
