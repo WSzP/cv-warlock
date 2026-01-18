@@ -347,9 +347,7 @@ class TestExtractCVNode:
         sample_cv_data: CVData,
     ) -> None:
         """Test successful CV extraction."""
-        with patch(
-            "cv_warlock.graph.nodes.CVExtractor.extract", return_value=sample_cv_data
-        ):
+        with patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=sample_cv_data):
             nodes = create_nodes(mock_provider)
             result = nodes["extract_cv"](base_state)
 
@@ -601,9 +599,7 @@ class TestAssembleCVNode:
             {"step_name": "step2", "duration_seconds": 2.0},
         ]
 
-        with patch(
-            "cv_warlock.graph.nodes.CVTailor.assemble_cv", return_value="# Assembled CV"
-        ):
+        with patch("cv_warlock.graph.nodes.CVTailor.assemble_cv", return_value="# Assembled CV"):
             nodes = create_nodes(mock_provider)
             result = nodes["assemble_cv"](base_state)
 

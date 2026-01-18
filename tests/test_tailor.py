@@ -528,7 +528,9 @@ class TestCVTailorSkills:
         sample_job_requirements: JobRequirements,
     ) -> None:
         """Test that tailor_skills returns a string."""
-        with patch.object(CVTailor, "tailor_skills", return_value="**Languages:** Python\n**Cloud:** AWS"):
+        with patch.object(
+            CVTailor, "tailor_skills", return_value="**Languages:** Python\n**Cloud:** AWS"
+        ):
             tailor = CVTailor(mock_provider, use_cot=True)
             result = tailor.tailor_skills(sample_cv_data, sample_job_requirements)
 
@@ -582,7 +584,9 @@ class TestCVTailorAssembly:
         sample_cv_data: CVData,
     ) -> None:
         """Test CV assembly returns a string."""
-        with patch.object(CVTailor, "assemble_cv", return_value="# John Doe\n\n## Summary\n\nTailored summary..."):
+        with patch.object(
+            CVTailor, "assemble_cv", return_value="# John Doe\n\n## Summary\n\nTailored summary..."
+        ):
             tailor = CVTailor(mock_provider)
             result = tailor.assemble_cv(
                 sample_cv_data,

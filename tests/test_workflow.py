@@ -237,9 +237,7 @@ class TestCreateCVWarlockGraph:
 
         create_cv_warlock_graph(provider="google", model="gemini-3-flash-preview")
 
-        mock_get_provider.assert_called_once_with(
-            "google", "gemini-3-flash-preview", "google-key"
-        )
+        mock_get_provider.assert_called_once_with("google", "gemini-3-flash-preview", "google-key")
 
 
 class TestRunCVTailoring:
@@ -405,9 +403,7 @@ class TestRunCVTailoring:
             api_key="test-key",
         )
 
-        mock_create_graph.assert_called_once_with(
-            "openai", "gpt-5.2", "test-key", use_cot=True
-        )
+        mock_create_graph.assert_called_once_with("openai", "gpt-5.2", "test-key", use_cot=True)
 
     @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
     def test_run_cv_tailoring_adds_total_generation_time(
