@@ -1,3 +1,6 @@
+[![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates) 
+[![CI](https://github.com/WSzP/cv-warlock/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/ci.yml)
+
 <p align="center">
   <img src="cv-warlock-logo.webp" alt="CV Warlock Logo" width="200">
 </p>
