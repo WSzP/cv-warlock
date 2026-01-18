@@ -520,13 +520,111 @@ def main():
         )
 
     # How to use - collapsible
-    with st.expander("How to use it?"):
+    with st.expander("How to use CV Warlock?"):
         st.markdown(
             """
             1. Paste your CV in the left panel
             2. Paste the job posting in the right panel (copy-pasted job title and description from LinkedIn)
             3. Click "Tailor My CV"
             4. Download your tailored CV!
+            """
+        )
+
+    # CV Best Practices - collapsible
+    with st.expander("CV Best Practices for 2026 (tech focused for now)"):
+        st.markdown(
+            """
+CV should be organized into clear sections that tell your career story effectively. Below are the essential sections (in order), with notes on what each should contain:
+
+### Length
+
+Length expectations in Europe (2026): For senior-level applicants (CTO, Head of AI, Director roles), a two-page CV is commonly accepted and often expected. European CVs are essentially equivalent to US-style resumes and are typically kept concise: **"1 page is perfect, 2 are acceptable, 3 are rarely OK"**
+
+### Design & Layout Best Practices in 2026
+
+Modern CV design trends have shifted towards clarity and simplicity, especially in tech. In 2025–2026, the dominant trend is a clean, minimalist layout that emphasizes content over decoration.
+
+#### Clean, Structured Layout (Single-Column & Clear Sections)
+
+**Single-Column Format:** Use a one-column layout for optimal readability and ATS parsing. While multi-column templates became popular in the 2010s, today they're seen as less effective.
+
+**Standard Sections & Headings:** Organize your CV into the familiar sections that tech recruiters expect. Typically, include: Contact Information, a strong Executive Summary/Profile, Skills/Competencies, Work Experience (reverse-chronological), Education, and optionally Certifications/Projects/Publications if relevant. Use conventional headings for these (e.g. "Professional Experience" rather than a creative label) – ATS scanners look for keywords like Experience, Education, Skills to categorize your info.
+
+**Bullet Points & White Space:** Structure the details of your experience in bullet points (rather than long paragraphs) to improve skim-ability. Each bullet should highlight an accomplishment or responsibility, ideally quantified (e.g. "Implemented X, resulting in Y outcome"). Keep bullet points concise (1–2 lines each) and use 5-6 bullets for recent major roles, fewer for older ones.
+
+#### Use of Color
+
+In 2026, resume color schemes have trended back toward conservative palettes. The safest approach is a black (or dark gray) text on white background for the body of your CV. You can incorporate a limited accent color to give a modern touch – for example, a subtle navy or teal for headings or to underline your name at the top. If you do use an accent, keep it minimal and professional (avoid neon or overly bright tones) and ensure the CV is still clear if printed in grayscale.
+
+#### Icons
+
+**Icons and Symbols:** Resume icons (such as little symbols for phone, email, or skill graphs) became popular in graphic CV templates, but approach them with caution. Many hiring experts now advise avoiding icons entirely, or using them only in very limited ways, due to ATS and readability concerns.
+
+Outdated Applicant Tracking Systems are still used by many big brands, and those cannot reliably interpret images or icons, so an icon might either be ignored or, worse, interpreted as a random character that garbles your CV's text.
+
+**Graphics, Logos, and Photos:** For tech roles, avoid photos, graphics, or elaborate visuals on your CV. Including a headshot is common in some European countries, but the trend even in Europe is moving away from photos to reduce bias.
+
+### ATS Compatibility Considerations
+
+**Stick to Standard Formatting:** Use a traditional, simplified format that ATS software can easily parse. This means no text in headers or footers, no tables or multi-column text boxes, and no unusual fonts or encodings.
+
+**File Format:** Submit in the format requested by the employer. Both PDF and DOCX are generally accepted by modern ATS systems. PDFs preserve your layout and have become largely ATS-safe (Jobscan's 2025 tests even found PDFs parse slightly more accurately on average).
+
+**Keywords & Scannable Text:** Design choices should never hide the keywords your CV needs. For senior AI/ML roles (e.g. mentioning "LangChain, transformer models, cloud architecture"), make sure these terms appear as text in your CV (not buried in an image or graphic).
+
+### Header & Contact Information
+
+At the very top, include your name and updated contact details:
+
+- Name (full name, bold or larger text).
+- Email (professional address) and phone number (optional if you prefer calls).
+- LinkedIn URL (since your LinkedIn can provide richer detail).
+- Avoid adding a photo, age, or other personal data. They don't aid your candidacy and can introduce bias.
+
+### Summary
+
+A brief 3–5 sentence opening summary that highlights your unique value proposition as a leader. This should be tailored to the specific role/industry you target.
+
+State your title or expertise (e.g. "AI Engineering Executive with 15+ years in ML innovation…").
+
+Emphasize key achievements or specialties (for example, "led enterprise-wide AI transformations" or "built award-winning agentic AI platforms").
+
+**Core Skills & Expertise:** A concise section (possibly a bullet list or inline list) highlighting your technical proficiencies and leadership skills most relevant to the role:
+
+- **Technical Skills:** Include the emerging AI/ML technologies and tools you excel in. In 2026, AI fluency is crucial – mention things like "LLM orchestration (LangChain, Vector DBs)", "Deep Learning (PyTorch)", "Generative AI", and any domain-specific tools.
+- **Leadership & Soft Skills:** Don't omit the human skills that are vital for executives. Highlight abilities like strategic planning, team leadership, cross-functional collaboration, communication, and change management.
+- **Key Credentials:** If relevant, you can include certifications or noteworthy credentials here (e.g. "Ph.D. in Machine Learning", "MBA", "AWS Certified Solutions Architect").
+
+### Professional Experience
+
+This is the heart of your CV: detail your work history in reverse chronological order (most recent role first). For each role, focus on achievements and outcomes, not just duties:
+
+**Heading:** Include your title, company, location, and years. If the company is not well-known, you can add a one-line description (e.g. "Series B SaaS startup" or "Fortune 500 e-commerce leader").
+
+**Role Description:** 1–2 sentences (optional) summarizing your scope (e.g. "Led a 50-person data science and engineering organization with a $10M budget").
+
+**Bulleted Achievements:** 2 to 4 bullet points per role highlighting your key accomplishments. Each bullet should demonstrate impact with metrics or concrete outcomes whenever possible. Use strong action verbs and be specific about technology and results. For example:
+
+- "Grew data science team from 5 to 20 and implemented an ML platform that boosted model deployment speed 3×, enabling a 10x efficiency improvement in core operations"
+- "Led cross-functional initiative to integrate GPT-4-powered agents into customer support, reducing response time by 60% and improving customer satisfaction by 25%"
+- "Delivered a company-wide AI transformation (adopting automation and predictive analytics) that cut costs by $2M/year"
+
+Each achievement bullet should answer: What did you do? How did you do it (tools/techniques)? and What was the result or value?
+
+### Education & Certifications
+
+Include your education and any important certifications. List degrees (Ph.D., Masters, Bachelors) with field of study, institution, and year. Mention certifications or courses that bolster your candidacy (e.g. "AWS Certified ML Specialty", "Certified Scrum Master", or executive leadership programs).
+
+### Additional Sections (Optional)
+
+Depending on your background, you may include one or more extra sections if they add real value for the target role. Ensure anything here is relevant and noteworthy, **quality over quantity.**
+
+- **Key Achievements / Career Highlights:** A short bullet list (3–5 items) at the top of your CV that calls out your most impressive accomplishments across your career.
+- **Projects or Portfolio:** Showcase major personal or open-source projects, prototypes, or research work outside of your formal employment.
+- **Publications & Patents:** A brief section listing key publications or patents can establish your thought leadership and technical depth.
+- **Awards & Honors:** Include notable recognitions.
+
+Remember, focus on content that strengthens your fit for the specific role. Omit trivial or outdated items. Every section should add value or it can be removed.
             """
         )
 

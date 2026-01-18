@@ -136,3 +136,27 @@ class CVData(BaseModel):
     @classmethod
     def coerce_model_lists(cls, v: Any) -> list[Any]:
         return _coerce_to_model_list(v)
+
+    def to_scoring_dict(self) -> dict[str, Any]:
+        """Return CV data without PII for scoring/matching calls.
+
+        Excludes contact information (email, phone, linkedin, etc.) which is
+        not needed for scoring or tailoring operations. Only the candidate's
+        name is preserved for personalization.
+        """
+        data = self.model_dump()
+        # Replace full contact with just name for personalization
+        if "contact" in data:
+            data["contact"] = {"name": data["contact"].get("name", "")}
+        return data
+
+    def to_scoring_json(self, indent: int = 2) -> str:
+        """JSON serialization without PII for scoring/matching calls.
+
+        Args:
+            indent: JSON indentation level. Default 2.
+
+        Returns:
+            JSON string with contact info stripped except name.
+        """
+        return json.dumps(self.to_scoring_dict(), indent=indent)

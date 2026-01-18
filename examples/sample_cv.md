@@ -2,7 +2,7 @@
 
 Head of AI ★ Hands-on coder ★ UX-first Agentic AI (LangChain & LangGraph) ★ Autonomous agents, swarms + orchestrators ★ GenAI founder (Tengrai) ★ Author: User Experience Mapping
 
-peter@kaizen-ux.com | +40754947474 | www.linkedin.com/in/wszabopeter
+[peter@kaizen-ux.com](mailto:peter@kaizen-ux.com) | [+40 754 94 74 74](tel:+40754947474) | [www.linkedin.com/in/wszabopeter](https://www.linkedin.com/in/wszabopeter)
 
 ## Summary
 
@@ -133,11 +133,6 @@ October 2007 - June 2008
 
 Bachelor's Degree, Communication and Public Relations
 September 2003 - July 2007
-
-### Liceul Teoretic "Bolyai Farkas"
-
-High School, Computer Science
-September 1999 - July 2003
 
 ## Languages
 

@@ -207,7 +207,7 @@ uv run cv-warlock tailor my_cv.md job.txt --no-rlm
 uv run cv-warlock version
 ```
 
-## How It Works
+## How It Works?
 
 CV Warlock uses a [LangGraph](https://langchain-ai.github.io/langgraph/) workflow to process your CV in stages:
 
@@ -216,6 +216,8 @@ CV Warlock uses a [LangGraph](https://langchain-ai.github.io/langgraph/) workflo
 3. **Plan**: Create a tailoring strategy
 4. **Tailor**: Rewrite summary, experiences, and skills
 5. **Assemble**: Generate the final tailored CV
+
+**+** For best results, ensure your base CV follows modern best practices. See our [CV Best Practices Guide](docs/CV_BEST_PRACTICE.md) for 2026 tech-focused recommendations on layout, ATS compatibility, and content structure.
 
 ## Assume All Tech Skills
 

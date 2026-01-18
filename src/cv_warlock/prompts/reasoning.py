@@ -187,10 +187,10 @@ Think through each step:
    - Are the responsibilities similar?
    - Would a recruiter see clear connection?
 
-2. **EMPHASIS STRATEGY**: Based on relevance score:
-   - HIGH (0.7+): 4-5 detailed bullets, this is a cornerstone experience
-   - MEDIUM (0.4-0.7): 3-4 focused bullets, highlight transferable aspects
-   - LOW (<0.4): 2-3 brief bullets, or consider if worth including
+2. **EMPHASIS STRATEGY**: Based on relevance score (keep CV scannable!):
+   - HIGH (0.7+): 4-5 bullets max - cornerstone experience
+   - MEDIUM (0.4-0.7): 3 focused bullets - highlight transferable aspects only
+   - LOW (<0.4): 2 brief bullets - minimal coverage
 
 3. **ACHIEVEMENT PRIORITIZATION**: Which achievements prove fit for target role?
    - Rank by direct relevance to job requirements
@@ -239,12 +239,13 @@ BAD: "Responsible for API performance improvements" (passive, no metrics)
 GOOD: "Led migration of 15 microservices to Kubernetes, achieving 99.99% uptime and cutting costs $180K/year"
 BAD: "Worked on Kubernetes migration" (vague, no impact)
 
-=== CONSTRAINTS ===
-1. Every bullet starts with power verb (past tense for past roles)
-2. Every bullet shows measurable impact where data exists
-3. Order bullets by relevance to target role (most relevant FIRST)
-4. Keep each bullet under 20 words - scannable
-5. Incorporate keywords NATURALLY - don't force them
+=== CONSTRAINTS (STRICT) ===
+1. EXACTLY {bullet_count} bullets - no more, no less
+2. Every bullet starts with power verb (past tense for past roles)
+3. Every bullet shows measurable impact where data exists
+4. Max 15-20 words per bullet - must fit on 1-2 lines
+5. Order by relevance to target role (most relevant FIRST)
+6. Keywords NATURALLY incorporated - don't force them
 
 === OUTPUT FORMAT ===
 - [Bullet 1]

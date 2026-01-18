@@ -266,3 +266,64 @@ class TestCVData:
         assert len(cv.experiences) == 1
         assert len(cv.education) == 1
         assert len(cv.skills) == 3
+
+    def test_to_scoring_dict_strips_pii(self) -> None:
+        """Test that to_scoring_dict removes PII but keeps name."""
+        cv = CVData(
+            contact=ContactInfo(
+                name="John Doe",
+                email="john@secret.com",
+                phone="+1234567890",
+                linkedin="linkedin.com/in/johndoe",
+                github="github.com/johndoe",
+            ),
+            summary="Experienced engineer",
+            skills=["Python", "AWS"],
+        )
+        scoring_dict = cv.to_scoring_dict()
+
+        # Name should be preserved for personalization
+        assert scoring_dict["contact"]["name"] == "John Doe"
+
+        # PII should be stripped
+        assert "email" not in scoring_dict["contact"]
+        assert "phone" not in scoring_dict["contact"]
+        assert "linkedin" not in scoring_dict["contact"]
+        assert "github" not in scoring_dict["contact"]
+
+        # Other fields should be preserved
+        assert scoring_dict["summary"] == "Experienced engineer"
+        assert scoring_dict["skills"] == ["Python", "AWS"]
+
+    def test_to_scoring_json_is_valid_json(self) -> None:
+        """Test that to_scoring_json returns valid JSON without PII."""
+        import json
+
+        cv = CVData(
+            contact=ContactInfo(
+                name="Jane Smith",
+                email="jane@company.com",
+                phone="+9876543210",
+            ),
+            skills=["TypeScript", "React"],
+        )
+        scoring_json = cv.to_scoring_json()
+
+        # Should be valid JSON
+        parsed = json.loads(scoring_json)
+
+        # Name preserved, PII stripped
+        assert parsed["contact"]["name"] == "Jane Smith"
+        assert "email" not in parsed["contact"]
+        assert "phone" not in parsed["contact"]
+
+    def test_to_scoring_json_respects_indent(self) -> None:
+        """Test that to_scoring_json respects indent parameter."""
+        cv = CVData(contact=ContactInfo(name="Test User"))
+
+        # Different indent values should produce different output
+        json_indent_2 = cv.to_scoring_json(indent=2)
+        json_indent_4 = cv.to_scoring_json(indent=4)
+
+        # More indent = longer output
+        assert len(json_indent_4) > len(json_indent_2)

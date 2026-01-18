@@ -210,21 +210,35 @@ def render_result(result: dict[str, Any]) -> None:
     if "is_generating_cover_letter" not in st.session_state:
         st.session_state.is_generating_cover_letter = False
 
-    # Tabs for different views
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["Tailored CV", "Cover Letter", "Match Analysis", "Tailoring Plan"]
+    # Initialize active tab state for programmatic switching
+    if "active_result_tab" not in st.session_state:
+        st.session_state.active_result_tab = "Tailored CV"
+
+    # Tab options
+    tab_options = ["Tailored CV", "Cover Letter", "Match Analysis", "Tailoring Plan"]
+
+    # Tab selector using segmented control (allows programmatic switching via session state)
+    active_tab = st.radio(
+        "View",
+        tab_options,
+        index=tab_options.index(st.session_state.active_result_tab),
+        horizontal=True,
+        key="result_tab_selector",
+        label_visibility="collapsed",
     )
 
-    with tab1:
+    # Update session state if user manually switched tabs
+    if active_tab != st.session_state.active_result_tab:
+        st.session_state.active_result_tab = active_tab
+
+    # Render content based on active tab
+    if active_tab == "Tailored CV":
         render_tailored_cv(result)
-
-    with tab2:
+    elif active_tab == "Cover Letter":
         render_cover_letter(result)
-
-    with tab3:
+    elif active_tab == "Match Analysis":
         render_match_analysis(result)
-
-    with tab4:
+    elif active_tab == "Tailoring Plan":
         render_tailoring_plan(result)
 
 
@@ -280,6 +294,28 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
     # Download buttons
     st.write("**Download Options**")
     col1, col2, col3 = st.columns(3)
+
+    # Create Cover Letter button (full width, above download buttons)
+    col_cl_btn, col_cl_status = st.columns([1, 2])
+    with col_cl_btn:
+        if st.button(
+            "Create Cover Letter",
+            key="create_cover_letter_btn",
+            type="primary",
+            use_container_width=True,
+            disabled=st.session_state.get("is_generating_cover_letter", False),
+        ):
+            # Store the edited CV to be used for cover letter generation
+            st.session_state.cover_letter_source_cv = st.session_state.edited_cv
+            st.session_state.is_generating_cover_letter = True
+            # Switch to Cover Letter tab
+            st.session_state.active_result_tab = "Cover Letter"
+            st.rerun()
+    with col_cl_status:
+        if st.session_state.get("cover_letter"):
+            st.success("Cover letter ready! See the **Cover Letter** tab.")
+
+    st.write("")  # Small spacing
 
     # Get the content to export (edited version)
     cv_content = st.session_state.edited_cv
@@ -352,9 +388,12 @@ def _generate_cover_letter(result: dict[str, Any], char_limit: int) -> CoverLett
     # Create generator
     generator = CoverLetterGenerator(llm_provider)
 
+    # Use edited CV if available (from Create Cover Letter button), otherwise use result
+    tailored_cv = st.session_state.get("cover_letter_source_cv") or result.get("tailored_cv", "")
+
     # Generate cover letter
     return generator.generate(
-        tailored_cv=result.get("tailored_cv", ""),
+        tailored_cv=tailored_cv,
         job_requirements=result.get("job_requirements"),
         match_analysis=result.get("match_analysis", {}),
         character_limit=char_limit,

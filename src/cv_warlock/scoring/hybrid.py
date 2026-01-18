@@ -503,8 +503,8 @@ class HybridScorer:
 
     @staticmethod
     def _serialize_cv(cv_data: CVData) -> str:
-        """Serialize CV data for prompt using proper Pydantic JSON serialization."""
-        return cv_data.model_dump_json(indent=2)
+        """Serialize CV data for prompt without PII (email, phone, etc.)."""
+        return cv_data.to_scoring_json(indent=2)
 
     @staticmethod
     def _serialize_job(job_requirements: JobRequirements) -> str:

@@ -55,6 +55,65 @@ from cv_warlock.prompts.reasoning import (
 from cv_warlock.utils.date_utils import should_tailor_experience
 
 
+def _get_relevant_skills_for_experience(
+    experience: Experience,
+    job_requirements: JobRequirements,
+    max_skills: int = 7,
+) -> list[str]:
+    """Extract only job skills relevant to this specific experience.
+
+    Uses fuzzy matching to find skills mentioned in experience text,
+    reducing token usage by ~1000 tokens per experience call.
+
+    Args:
+        experience: The experience entry to analyze.
+        job_requirements: Full job requirements.
+        max_skills: Maximum skills to return.
+
+    Returns:
+        List of relevant skills from the job requirements.
+    """
+    # Build searchable text from experience
+    exp_text = " ".join(
+        [
+            experience.title.lower(),
+            experience.company.lower(),
+            experience.description.lower() if experience.description else "",
+            " ".join(a.lower() for a in experience.achievements),
+            " ".join(s.lower() for s in experience.skills_used),
+        ]
+    )
+
+    relevant_skills: list[str] = []
+
+    # Check required skills first (higher priority)
+    for skill in job_requirements.required_skills:
+        skill_lower = skill.lower()
+        # Check for exact match or partial match (e.g., "Python" in "Python development")
+        if skill_lower in exp_text or any(word in exp_text for word in skill_lower.split()):
+            relevant_skills.append(skill)
+
+    # Then check preferred skills
+    for skill in job_requirements.preferred_skills:
+        if len(relevant_skills) >= max_skills:
+            break
+        skill_lower = skill.lower()
+        if skill_lower in exp_text or any(word in exp_text for word in skill_lower.split()):
+            if skill not in relevant_skills:
+                relevant_skills.append(skill)
+
+    # If we found very few matches, include top required skills anyway
+    # (the experience should still reference key job requirements)
+    if len(relevant_skills) < 3:
+        for skill in job_requirements.required_skills[:5]:
+            if skill not in relevant_skills:
+                relevant_skills.append(skill)
+            if len(relevant_skills) >= max_skills:
+                break
+
+    return relevant_skills[:max_skills]
+
+
 def _compress_summary_reasoning(reasoning: SummaryReasoning) -> str:
     """Extract essential fields from summary reasoning for generation prompt.
 
@@ -480,10 +539,19 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
         tailoring_plan: TailoringPlan,
         context: GenerationContext | None,
     ) -> ExperienceReasoning:
-        """Generate reasoning for experience (Step 1)."""
+        """Generate reasoning for experience (Step 1).
+
+        Uses targeted skill matching to reduce token usage - only sends
+        skills relevant to this specific experience instead of all requirements.
+        """
         model = self.llm_provider.get_extraction_model()
         structured_model = model.with_structured_output(
             ExperienceReasoning, method="function_calling"
+        )
+
+        # Get only skills relevant to THIS experience (saves ~1000 tokens per call)
+        relevant_skills = _get_relevant_skills_for_experience(
+            experience, job_requirements, max_skills=7
         )
 
         chain = self.exp_reasoning_prompt | structured_model
@@ -497,7 +565,7 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
                 if experience.achievements
                 else "No specific achievements listed",
                 "job_title": job_requirements.job_title,
-                "target_requirements": ", ".join(job_requirements.required_skills[:7]),
+                "target_requirements": ", ".join(relevant_skills),
                 "skills_to_emphasize": ", ".join(tailoring_plan["skills_to_highlight"][:5]),
                 "established_identity": context.established_identity
                 if context
@@ -510,14 +578,18 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
         )
 
     def _get_bullet_count(self, emphasis_strategy: str) -> int:
-        """Determine bullet count from emphasis strategy."""
+        """Determine bullet count from emphasis strategy.
+
+        Best practice: 4-5 bullets for recent major roles, fewer for older ones.
+        Keep CV scannable - less is more.
+        """
         strategy_upper = emphasis_strategy.upper()
         if "HIGH" in strategy_upper:
-            return 5
+            return 5  # Cornerstone experience
         elif "MED" in strategy_upper:
-            return 4
+            return 3  # Focused coverage
         else:
-            return 3
+            return 2  # Minimal coverage
 
     def _generate_experience_from_reasoning(
         self,

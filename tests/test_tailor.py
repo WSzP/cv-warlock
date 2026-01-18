@@ -24,6 +24,7 @@ from cv_warlock.processors.tailor import (
     _compress_experience_reasoning,
     _compress_skills_reasoning,
     _compress_summary_reasoning,
+    _get_relevant_skills_for_experience,
 )
 
 
@@ -424,20 +425,20 @@ Fourth without prefix
         assert tailor._get_bullet_count("high relevance") == 5
 
     def test_get_bullet_count_medium(self, mock_provider: MagicMock) -> None:
-        """Test bullet count for MEDIUM emphasis."""
+        """Test bullet count for MEDIUM emphasis (focused coverage)."""
         tailor = CVTailor(mock_provider)
 
-        assert tailor._get_bullet_count("MEDIUM - Moderate detail") == 4
-        assert tailor._get_bullet_count("MED") == 4
-        assert tailor._get_bullet_count("medium") == 4
+        assert tailor._get_bullet_count("MEDIUM - Moderate detail") == 3
+        assert tailor._get_bullet_count("MED") == 3
+        assert tailor._get_bullet_count("medium") == 3
 
     def test_get_bullet_count_low(self, mock_provider: MagicMock) -> None:
-        """Test bullet count for LOW emphasis."""
+        """Test bullet count for LOW emphasis (minimal coverage)."""
         tailor = CVTailor(mock_provider)
 
-        assert tailor._get_bullet_count("LOW - Brief") == 3
-        assert tailor._get_bullet_count("minimal") == 3
-        assert tailor._get_bullet_count("") == 3
+        assert tailor._get_bullet_count("LOW - Brief") == 2
+        assert tailor._get_bullet_count("minimal") == 2
+        assert tailor._get_bullet_count("") == 2
 
     def test_format_passthrough_experience_with_achievements(
         self,
@@ -1183,3 +1184,118 @@ class TestCVTailorCritiqueAndRefine:
             )
 
         assert result == expected_improved
+
+
+class TestGetRelevantSkillsForExperience:
+    """Tests for the _get_relevant_skills_for_experience helper."""
+
+    def test_finds_matching_skills_in_title(self) -> None:
+        """Test finding skills mentioned in experience title."""
+        exp = Experience(
+            title="Python Developer",
+            company="Tech Corp",
+            start_date="2020",
+            description="Built applications",
+            achievements=["Delivered features"],
+        )
+        job = JobRequirements(
+            job_title="Senior Developer",
+            required_skills=["Python", "JavaScript", "SQL"],
+            preferred_skills=["Docker"],
+        )
+
+        result = _get_relevant_skills_for_experience(exp, job)
+        assert "Python" in result
+
+    def test_finds_matching_skills_in_description(self) -> None:
+        """Test finding skills mentioned in experience description."""
+        exp = Experience(
+            title="Engineer",
+            company="Corp",
+            start_date="2020",
+            description="Built REST APIs using FastAPI and PostgreSQL",
+            achievements=[],
+        )
+        job = JobRequirements(
+            job_title="Backend Developer",
+            required_skills=["FastAPI", "PostgreSQL", "Redis"],
+            preferred_skills=["Kubernetes"],
+        )
+
+        result = _get_relevant_skills_for_experience(exp, job)
+        assert "FastAPI" in result
+        assert "PostgreSQL" in result
+
+    def test_finds_matching_skills_in_achievements(self) -> None:
+        """Test finding skills mentioned in achievements."""
+        exp = Experience(
+            title="Engineer",
+            company="Corp",
+            start_date="2020",
+            achievements=["Deployed microservices to AWS", "Implemented CI/CD pipeline"],
+        )
+        job = JobRequirements(
+            job_title="DevOps",
+            required_skills=["AWS", "CI/CD", "Terraform"],
+            preferred_skills=["Docker"],
+        )
+
+        result = _get_relevant_skills_for_experience(exp, job)
+        assert "AWS" in result
+
+    def test_respects_max_skills_limit(self) -> None:
+        """Test that max_skills limit is respected."""
+        exp = Experience(
+            title="Full Stack Developer",
+            company="Corp",
+            start_date="2020",
+            description="Python React AWS Docker Kubernetes PostgreSQL Redis",
+            achievements=[],
+        )
+        job = JobRequirements(
+            job_title="Developer",
+            required_skills=["Python", "React", "AWS", "Docker", "Kubernetes"],
+            preferred_skills=["PostgreSQL", "Redis", "MongoDB"],
+        )
+
+        result = _get_relevant_skills_for_experience(exp, job, max_skills=3)
+        assert len(result) <= 3
+
+    def test_includes_minimum_skills_when_few_matches(self) -> None:
+        """Test that minimum skills are included even with few matches."""
+        exp = Experience(
+            title="Manager",
+            company="Corp",
+            start_date="2020",
+            description="Managed team and projects",
+            achievements=["Led team of 10"],
+        )
+        job = JobRequirements(
+            job_title="Developer",
+            required_skills=["Python", "JavaScript", "AWS"],
+            preferred_skills=["Docker"],
+        )
+
+        result = _get_relevant_skills_for_experience(exp, job)
+        # Should include at least some required skills even with no direct matches
+        assert len(result) >= 3
+
+    def test_prioritizes_required_over_preferred(self) -> None:
+        """Test that required skills come before preferred."""
+        exp = Experience(
+            title="Developer",
+            company="Corp",
+            start_date="2020",
+            description="Python Docker Kubernetes",
+            achievements=[],
+            skills_used=["Python"],
+        )
+        job = JobRequirements(
+            job_title="Developer",
+            required_skills=["Python"],
+            preferred_skills=["Docker", "Kubernetes"],
+        )
+
+        result = _get_relevant_skills_for_experience(exp, job)
+        # Python (required) should be first
+        assert result[0] == "Python"

@@ -57,7 +57,7 @@ class MatchAnalyzer:
         chain = self.analysis_prompt | structured_model
         result = chain.invoke(
             {
-                "cv_data": cv_data.model_dump_json(indent=2),
+                "cv_data": cv_data.to_scoring_json(indent=2),
                 "job_requirements": job_requirements.model_dump_json(indent=2),
             }
         )
@@ -95,7 +95,7 @@ class MatchAnalyzer:
         result = chain.invoke(
             {
                 "match_analysis": str(match_analysis),
-                "cv_data": cv_data.model_dump_json(indent=2),
+                "cv_data": cv_data.to_scoring_json(indent=2),
                 "job_requirements": job_requirements.model_dump_json(indent=2),
             }
         )
