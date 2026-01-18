@@ -19,6 +19,22 @@ from typing import Any
 
 from fpdf import FPDF  # type: ignore[import-untyped]
 
+
+def _sanitize_markdown_bold(text: str) -> str:
+    """Fix malformed markdown bold markers.
+
+    LLMs sometimes generate malformed bold like `*text:**` instead of `**text:**`.
+    This function normalizes these patterns.
+    """
+    # Fix *text:** pattern (single asterisk start, double end)
+    text = re.sub(r"(?<!\*)\*([^*]+):\*\*", r"**\1:**", text)
+    # Fix **text:* pattern (double asterisk start, single end)
+    text = re.sub(r"\*\*([^*]+):\*(?!\*)", r"**\1:**", text)
+    # Fix orphaned asterisks around category names (e.g., "*Category:**")
+    text = re.sub(r"(?<!\*)\*([A-Za-z][^*:]+):\*\*", r"**\1:**", text)
+    return text
+
+
 # Get the fonts directory (relative to project root)
 _FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 
@@ -56,12 +72,27 @@ class CVPDFGenerator(FPDF):
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(format="A4")
         self.set_auto_page_break(auto=True, margin=20)
         self.set_margins(left=20, top=20, right=20)
 
         # Load Poppins font for professional, modern look
         self._setup_poppins_font()
+
+    def _safe_multi_cell(self, w: float, h: float, text: str, **kwargs: object) -> None:
+        """Multi-cell with width validation to prevent fpdf errors."""
+        # Width of 0 means "use remaining page width" which is always safe
+        if w == 0:
+            self.multi_cell(w, h, text, **kwargs)  # type: ignore[arg-type]
+            return
+        # Ensure minimum width of 20 units (enough for a few characters)
+        safe_width = max(w, 20)
+        # If we're too close to right margin, start a new line
+        if self.get_x() + safe_width > self.w - self.r_margin:
+            self.ln()
+            self.set_x(self.l_margin)
+            safe_width = self.w - self.l_margin - self.r_margin
+        self.multi_cell(safe_width, h, text, **kwargs)  # type: ignore[arg-type]
 
     def _setup_poppins_font(self) -> None:
         """Set up Poppins font for the PDF."""
@@ -94,39 +125,77 @@ class CVPDFGenerator(FPDF):
     def add_name(self, name: str) -> None:
         """Add candidate name as main heading (H1 equivalent)."""
         self.set_font(self.font_name, "B", 18)
-        self.cell(0, 12, name.strip(), ln=True, align="C")
+        self.set_x(self.l_margin)  # Reset to left margin
+        self.multi_cell(0, 12, name.strip(), align="C")
         self.ln(2)
 
     def add_contact_line(self, contact: str) -> None:
         """Add contact info line (centered, smaller font)."""
         self.set_font(self.font_name, "", 10)
+        self.set_x(self.l_margin)  # Reset to left margin
         self.set_text_color(64, 64, 64)
-        self.cell(0, 6, contact.strip(), ln=True, align="C")
+        # Use multi_cell for long contact lines that might wrap
+        self.multi_cell(0, 6, contact.strip(), align="C")
         self.set_text_color(0, 0, 0)
 
     def add_section_header(self, title: str) -> None:
         """Add section header (H2 equivalent) with underline."""
         self.ln(6)
-        self.set_font(self.font_name, "B", 12)
-        self.cell(0, 8, title.upper(), ln=True)
+        self.set_font(self.font_name, "B", 16)
+        self.set_x(self.l_margin)  # Ensure we start at left margin
+        self.multi_cell(0, 10, title.upper())
         # Add subtle underline
         self.set_draw_color(200, 200, 200)
         self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
         self.ln(3)
 
     def add_experience_header(self, title: str, company: str, date_location: str) -> None:
-        """Add experience entry header with title, company, and date/location."""
-        self.set_font(self.font_name, "B", 11)
-        self.cell(0, 6, title.strip(), ln=True)
+        """Add experience entry header with title, company, and date/location.
 
-        self.set_font(self.font_name, "", 10)
-        # Company and date on same line
-        company_clean = company.strip()
-        company_width = self.get_string_width(company_clean) + 2
-        self.cell(company_width, 5, company_clean)
-        self.set_text_color(96, 96, 96)
-        self.cell(0, 5, date_location.strip(), ln=True, align="R")
-        self.set_text_color(0, 0, 0)
+        Uses multi_cell for title to handle long titles that might overflow page width.
+        """
+        self.set_font(self.font_name, "B", 12)
+        self.set_x(self.l_margin)  # Ensure we start at left margin
+        # Use multi_cell to wrap long titles instead of overflowing
+        self.multi_cell(0, 7, title.strip())
+
+        # Company and date on same line (if both provided)
+        if company or date_location:
+            self.set_font(self.font_name, "", 10)
+            self.set_x(self.l_margin)  # Reset position after multi_cell
+            company_clean = company.strip() if company else ""
+            date_clean = date_location.strip() if date_location else ""
+
+            if company_clean and date_clean:
+                # Both company and date - put on same line
+                company_width = self.get_string_width(company_clean) + 2
+                available_width = self.w - self.l_margin - self.r_margin
+                date_width = self.get_string_width(date_clean) + 2
+
+                # Check if both fit on one line (with some margin)
+                if company_width + date_width < available_width - 5:
+                    self.cell(company_width, 5, company_clean)
+                    self.set_text_color(96, 96, 96)
+                    self.cell(0, 5, date_clean, ln=True, align="R")
+                    self.set_text_color(0, 0, 0)
+                else:
+                    # Put on separate lines if too long
+                    self.multi_cell(0, 5, company_clean)
+                    self.set_text_color(96, 96, 96)
+                    self.set_x(self.l_margin)
+                    self.multi_cell(0, 5, date_clean)
+                    self.set_text_color(0, 0, 0)
+            elif company_clean:
+                # Only company
+                self.set_text_color(96, 96, 96)
+                self.multi_cell(0, 5, company_clean)
+                self.set_text_color(0, 0, 0)
+            elif date_clean:
+                # Only date
+                self.set_text_color(96, 96, 96)
+                self.multi_cell(0, 5, date_clean)
+                self.set_text_color(0, 0, 0)
+
         self.ln(1)
 
     def add_bullet_point(self, text: str, indent: int = 0) -> None:
@@ -144,8 +213,14 @@ class CVPDFGenerator(FPDF):
         text_start_x = self.get_x()
         available_width = self.w - self.r_margin - text_start_x
 
+        # Ensure minimum width to prevent fpdf error
+        if available_width < 20:
+            self.ln()
+            self.set_x(self.l_margin + bullet_indent + 5)
+            available_width = self.w - self.r_margin - self.get_x()
+
         # Text with word wrap
-        self.multi_cell(available_width, 5, text.strip())
+        self._safe_multi_cell(available_width, 5, text.strip())
 
     def add_paragraph(self, text: str) -> None:
         """Add a regular paragraph."""
@@ -158,12 +233,21 @@ class CVPDFGenerator(FPDF):
         """Add a skill category line (e.g., 'Languages: Python, TypeScript')."""
         self.set_font(self.font_name, "B", 10)
         self.set_x(self.l_margin)  # Reset to left margin
+
+        page_width = self.w - self.l_margin - self.r_margin
         cat_width = self.get_string_width(category + ": ") + 2
-        self.cell(cat_width, 5, f"{category}: ")
-        self.set_font(self.font_name, "", 10)
-        # Calculate remaining width
-        available_width = self.w - self.r_margin - self.get_x()
-        self.multi_cell(available_width, 5, skills.strip())
+
+        # If category is too long (>40% of page width), put skills on next line
+        if cat_width > page_width * 0.4:
+            self.multi_cell(0, 5, f"{category}:")
+            self.set_font(self.font_name, "", 10)
+            self.multi_cell(0, 5, skills.strip())
+        else:
+            self.cell(cat_width, 5, f"{category}: ")
+            self.set_font(self.font_name, "", 10)
+            # Calculate remaining width
+            available_width = self.w - self.r_margin - self.get_x()
+            self._safe_multi_cell(available_width, 5, skills.strip())
 
 
 def parse_markdown_cv(markdown: str) -> dict[str, Any]:
@@ -247,11 +331,13 @@ def generate_cv_pdf(markdown: str) -> bytes:
     Returns:
         PDF content as bytes.
     """
+    # Sanitize malformed markdown before parsing
+    markdown = _sanitize_markdown_bold(markdown)
     parsed = parse_markdown_cv(markdown)
     pdf = CVPDFGenerator()
 
     # Set PDF metadata for better indexing
-    pdf.set_title(f"CV - {parsed['name']}" if parsed["name"] else "Tailored CV")
+    pdf.set_title(f"{parsed['name']} | CV" if parsed["name"] else "Tailored CV")
     pdf.set_author(parsed["name"] or "")
     pdf.set_subject("Curriculum Vitae")
     pdf.set_keywords("CV, Resume, Professional Experience")
@@ -362,20 +448,31 @@ def _render_skills_section(pdf: CVPDFGenerator, content: list[str]) -> None:
         if not line:
             continue
 
-        # Check for category: skills pattern
-        if ":" in line and not line.startswith(("-", "*", "•")):
-            parts = line.split(":", 1)
-            category = parts[0].strip("*_ ")
-            skills = parts[1].strip() if len(parts) > 1 else ""
+        # Check for category: skills pattern (handles bold markers around category)
+        # Matches patterns like: "Languages:", "**Languages:**", "*Languages:**"
+        category_match = re.match(r"^[\*_]*([A-Za-z][A-Za-z &/]+?)[\*_]*:\s*(.*)$", line)
+        if category_match and not line.startswith(("-", "•")):
+            category = category_match.group(1).strip()
+            skills = category_match.group(2).strip()
+            # Clean any remaining bold markers from skills
+            skills = re.sub(r"^\*+\s*", "", skills)  # Leading asterisks
+            skills = re.sub(r"\*+$", "", skills)  # Trailing asterisks
             pdf.add_skill_line(category, skills)
-        # Bullet point
-        elif line.startswith(("-", "*", "•")):
+        # Bullet point (but not bold markers **)
+        elif (
+            line.startswith("-")
+            or line.startswith("•")
+            or (line.startswith("*") and not line.startswith("**") and ":" not in line[:30])
+        ):
             skill_text = re.sub(r"^[-*•]\s*", "", line)
-            skill_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", skill_text)
+            # Clean all markdown formatting
+            skill_text = re.sub(r"\*+([^*]+)\*+", r"\1", skill_text)  # Any asterisk pattern
+            skill_text = skill_text.strip("*_ ")
             pdf.add_bullet_point(skill_text)
         # Regular text
         elif line:
-            pdf.add_paragraph(line.strip("*_ "))
+            clean = re.sub(r"\*+([^*]+)\*+", r"\1", line)  # Any asterisk pattern
+            pdf.add_paragraph(clean.strip("*_ "))
 
 
 def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:

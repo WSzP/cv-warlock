@@ -374,6 +374,11 @@ Think through each step:
    - Including them dilutes the relevance signal
    - Be aggressive about cutting irrelevant skills
 
+7. **TENSORFLOW RULE**:
+   - ONLY include TensorFlow if it is EXPLICITLY mentioned in the job requirements
+   - If TensorFlow is NOT in the job spec but a deep learning framework seems beneficial, use PyTorch instead
+   - This applies even if the candidate lists TensorFlow in their skills
+
 Provide structured reasoning output following the SkillsReasoning schema."""
 
 
@@ -392,6 +397,8 @@ SKILLS_GENERATION_PROMPT = """Generate the skills section based on your strategi
 6. Include dual formats for key acronyms: "AWS (Amazon Web Services)"
 7. Do NOT include skills candidate doesn't have (no fabrication)
 8. Do NOT include irrelevant skills (they dilute the signal)
+9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY required in job posting.
+   If deep learning framework is needed but TensorFlow not specified, use PyTorch instead.
 
 === OUTPUT FORMAT ===
 

@@ -24,6 +24,7 @@ CV_EXTRACTION_PROMPT = """Extract ALL structured data from this CV. Preserve exa
 **CERTIFICATIONS**: Name, issuer, date, expiration
 
 **CONTACT**: Name, email, phone, LinkedIn, GitHub, location
+- **raw_contact_line**: Copy the EXACT contact line from the CV header (preserve markdown links like `[email](mailto:email)` and `[phone](tel:phone)` EXACTLY as written)
 
 === PRIORITIES ===
 1. METRICS: Extract ALL numbers (revenue, %, scale, time, counts)

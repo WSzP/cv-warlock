@@ -242,6 +242,64 @@ def render_error_details(error_info: dict, elapsed_time: float | None = None):
         st.code(error_info["technical"], language=None)
 
 
+# Ordered workflow steps for checklist display
+WORKFLOW_STEPS = [
+    ("validate_inputs", "Validate inputs"),
+    ("extract_cv", "Extract CV structure"),
+    ("extract_job", "Analyze job requirements"),
+    ("analyze_match", "Match profile to requirements"),
+    ("create_plan", "Create tailoring strategy"),
+    ("tailor_skills", "Tailor skills section"),
+    ("tailor_experiences", "Tailor work experiences"),
+    ("tailor_summary", "Craft professional summary"),
+    ("assemble_cv", "Assemble final CV"),
+]
+
+
+def render_step_checklist(
+    completed_steps: set[str],
+    current_step: str | None,
+    failed_step: str | None,
+    current_description: str | None = None,
+) -> str:
+    """Render the step checklist as HTML with status icons.
+
+    Args:
+        completed_steps: Set of step names that have completed successfully
+        current_step: The step currently being processed (or None)
+        failed_step: The step that failed (or None)
+        current_description: Optional description for the current step
+
+    Returns:
+        HTML string for the checklist
+    """
+    lines = []
+    for step_name, step_label in WORKFLOW_STEPS:
+        if step_name in completed_steps:
+            # Completed - green checkmark
+            icon = '<span style="color: #28a745;">✓</span>'
+            style = "color: #28a745;"
+        elif step_name == failed_step:
+            # Failed - red X
+            icon = '<span style="color: #dc3545;">✗</span>'
+            style = "color: #dc3545; font-weight: bold;"
+        elif step_name == current_step:
+            # In progress - spinning indicator
+            icon = '<span class="step-spinner">◐</span>'
+            style = "color: #007bff; font-weight: bold;"
+            # Use custom description if provided
+            if current_description:
+                step_label = current_description.rstrip(".")
+        else:
+            # Pending - empty circle
+            icon = '<span style="color: #6c757d;">○</span>'
+            style = "color: #6c757d;"
+
+        lines.append(f'<div style="margin: 4px 0; {style}">{icon} {step_label}</div>')
+
+    return "\n".join(lines)
+
+
 # Page configuration - use favicon from favicon-pack
 favicon_path = project_root / "favicon-pack" / "favicon.ico"
 st.set_page_config(
@@ -307,6 +365,27 @@ st.markdown(
         font-family: monospace;
         font-size: 0.95rem;
         color: #666;
+    }
+    /* Step checklist styles */
+    .step-checklist {
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    @keyframes spin {
+        0% { content: "◐"; }
+        25% { content: "◓"; }
+        50% { content: "◑"; }
+        75% { content: "◒"; }
+    }
+    .step-spinner {
+        display: inline-block;
+        animation: rotate 1s linear infinite;
+        color: #007bff;
+    }
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     </style>
     """,
@@ -723,6 +802,13 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
         params = st.session_state.process_params
         wall_start_time = st.session_state.process_start_time
         last_step = "Initializing"
+        last_step_name = "start"
+
+        # Track step completion for checklist
+        completed_steps: set[str] = set()
+        current_step_name: str | None = None
+        current_step_desc: str | None = None
+        failed_step_name: str | None = None
 
         try:
             # Import here to avoid loading dependencies until needed
@@ -740,13 +826,33 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
             )
 
             with st.status(status_label, expanded=True) as status:
-                progress_container = st.empty()
+                checklist_container = st.empty()
                 timing_container = st.empty()
 
-                def update_progress(_step_name: str, description: str, _elapsed: float):
-                    nonlocal last_step
+                def update_progress(step_name: str, description: str, _elapsed: float):
+                    nonlocal last_step, last_step_name, current_step_name, current_step_desc
+                    nonlocal completed_steps
+
+                    # Mark previous step as completed (if it was a valid workflow step)
+                    if current_step_name and current_step_name != step_name:
+                        completed_steps.add(current_step_name)
+
                     last_step = description
-                    progress_container.markdown(f"**{description}**")
+                    last_step_name = step_name
+                    current_step_name = step_name
+                    current_step_desc = description
+
+                    # Render the updated checklist
+                    checklist_html = render_step_checklist(
+                        completed_steps=completed_steps,
+                        current_step=current_step_name,
+                        failed_step=None,
+                        current_description=current_step_desc,
+                    )
+                    checklist_container.markdown(
+                        f'<div class="step-checklist">{checklist_html}</div>',
+                        unsafe_allow_html=True,
+                    )
 
                 update_progress("start", "Initializing...", 0)
 
@@ -770,6 +876,20 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                 # Check for workflow errors (stored in result["errors"])
                 if result.get("errors"):
                     elapsed = time.time() - wall_start_time
+                    failed_step_name = last_step_name
+
+                    # Render checklist with failed step
+                    checklist_html = render_step_checklist(
+                        completed_steps=completed_steps,
+                        current_step=None,
+                        failed_step=failed_step_name,
+                        current_description=None,
+                    )
+                    checklist_container.markdown(
+                        f'<div class="step-checklist">{checklist_html}</div>',
+                        unsafe_allow_html=True,
+                    )
+
                     timing_container.markdown(
                         f'<div class="timing-display" style="background: #fff0f0; color: #cc0000;">'
                         f'<span class="realtime-timer">Failed after: {format_elapsed_time(elapsed)}</span>'
@@ -780,7 +900,6 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                         label=f"CV tailoring failed after {format_elapsed_time(elapsed)}",
                         state="error",
                     )
-                    progress_container.markdown(f"**Failed during:** {last_step}")
 
                     # Show detailed error information
                     st.divider()
@@ -795,7 +914,19 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                     # Store failed result so user can see partial progress
                     st.session_state["result"] = None
                 else:
-                    # Success
+                    # Success - mark all steps completed
+                    all_step_names = {step[0] for step in WORKFLOW_STEPS}
+                    checklist_html = render_step_checklist(
+                        completed_steps=all_step_names,
+                        current_step=None,
+                        failed_step=None,
+                        current_description=None,
+                    )
+                    checklist_container.markdown(
+                        f'<div class="step-checklist">{checklist_html}</div>',
+                        unsafe_allow_html=True,
+                    )
+
                     timing_container.markdown(
                         f'<div class="timing-display">'
                         f'<span class="realtime-timer">Total time: {format_elapsed_time(wall_clock_time)}</span>'
@@ -810,7 +941,6 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                     if params["use_cot"] and refinements > 0:
                         completion_msg += f" ({refinements} refinements)"
                     status.update(label=completion_msg, state="complete")
-                    progress_container.markdown("**Done!**")
 
                     # Store result in session state
                     st.session_state["result"] = result

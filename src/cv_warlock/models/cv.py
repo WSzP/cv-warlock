@@ -58,6 +58,10 @@ class ContactInfo(BaseModel):
     linkedin: str | None = None
     github: str | None = None
     website: str | None = None
+    raw_contact_line: str | None = Field(
+        default=None,
+        description="Original contact line exactly as it appears in the CV, preserving markdown links",
+    )
 
 
 class Experience(BaseModel):

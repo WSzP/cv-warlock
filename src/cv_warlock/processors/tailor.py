@@ -1058,19 +1058,24 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
         """
         model = self.llm_provider.get_chat_model()
 
-        # Format contact info
+        # Format contact info - prefer raw_contact_line to preserve markdown links
         contact = cv_data.contact
-        contact_str = f"**{contact.name}**\n"
-        if contact.email:
-            contact_str += f"Email: {contact.email}\n"
-        if contact.phone:
-            contact_str += f"Phone: {contact.phone}\n"
-        if contact.location:
-            contact_str += f"Location: {contact.location}\n"
-        if contact.linkedin:
-            contact_str += f"LinkedIn: {contact.linkedin}\n"
-        if contact.github:
-            contact_str += f"GitHub: {contact.github}\n"
+        if contact.raw_contact_line:
+            # Use exact original formatting with markdown links preserved
+            contact_str = f"# {contact.name}\n{contact.raw_contact_line}"
+        else:
+            # Fallback to individual fields if raw line not available
+            contact_str = f"**{contact.name}**\n"
+            if contact.email:
+                contact_str += f"Email: {contact.email}\n"
+            if contact.phone:
+                contact_str += f"Phone: {contact.phone}\n"
+            if contact.location:
+                contact_str += f"Location: {contact.location}\n"
+            if contact.linkedin:
+                contact_str += f"LinkedIn: {contact.linkedin}\n"
+            if contact.github:
+                contact_str += f"GitHub: {contact.github}\n"
 
         # Format education
         education_str = ""

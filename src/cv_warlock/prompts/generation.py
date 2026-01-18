@@ -25,6 +25,8 @@ RULES:
 6. Group logically: Languages, Frameworks, Cloud/DevOps, Databases, Tools
 7. Order: Required matches > Preferred matches > Relevant existing
 8. Omit irrelevant skills that dilute ATS score
+9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY mentioned in job requirements.
+   If TensorFlow is not in the job spec but a deep learning framework seems needed, use PyTorch instead.
 
 FORMAT:
 **Technical Skills**
@@ -105,7 +107,7 @@ Output ONLY the summary."""
 
 CV_ASSEMBLY_PROMPT = """Assemble these sections into a clean, ATS-compatible CV in Markdown.
 
-CONTACT: {contact}
+CONTACT (USE EXACTLY AS PROVIDED - DO NOT MODIFY): {contact}
 SUMMARY: {tailored_summary}
 SKILLS: {tailored_skills}
 EXPERIENCE: {tailored_experiences}
@@ -116,9 +118,9 @@ CERTIFICATIONS: {certifications}
 SECTION ORDER: Contact > Summary > Skills > Experience > Education > Projects > Certifications
 (Omit Projects/Certifications if "Not provided")
 
+CRITICAL: The CONTACT section is pre-formatted. Copy it EXACTLY as provided above, including any markdown links. Do NOT add city, country, or any other fields not already present.
+
 FORMAT:
-# [Name]
-[Email] | [Phone] | [Location] | [LinkedIn]
 
 ## Professional Summary
 [Summary paragraph]
