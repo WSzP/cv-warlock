@@ -5,9 +5,10 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
 
+[![codecov](https://codecov.io/gh/WSzP/cv-warlock/graph/badge.svg?token=VWQVK7DE9K)](https://codecov.io/gh/WSzP/cv-warlock)
 [![Type Check](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml)
 [![Unit Tests](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/WSzP/cv-warlock/graph/badge.svg?token=VWQVK7DE9K)](https://codecov.io/gh/WSzP/cv-warlock)
+[![E2E Tests](https://github.com/WSzP/cv-warlock/actions/workflows/e2e.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/e2e.yml)
 [![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates)
 
 <p><img src="assets/cv-warlock-logo-md.webp" width="200" height="188" alt="CV Warlock Logo"></p>
