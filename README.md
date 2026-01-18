@@ -34,12 +34,47 @@ But please share the results of your experiments with me and the world on Linked
 
 - **Smart CV Tailoring**: Analyzes job requirements and rewrites your CV to highlight relevant experience
 - **Chain-of-Thought Reasoning**: High quality generation with CoT method (REASON → GENERATE → CRITIQUE → REFINE)
+- **RLM (Recursive Language Model)**: Handles arbitrarily long CVs and job specs through recursive orchestration
 - **Match Analysis**: Shows how well your CV matches the job, including gaps and transferable skills
 - **Assume All Tech Skills**: Checkbox option (enabled by default) that assumes you have all technical skills from the job posting
 - **Multi-Provider LLM Support**: Works with OpenAI, Anthropic Claude, and Google Gemini
 - **CLI & Web UI**: Use via command line or Streamlit web interface
 - **LangGraph Workflow**: Robust multi-step processing with state management
 - **Real-Time Progress**: Live timing display during CV generation
+
+## RLM (Recursive Language Model)
+
+CV Warlock includes an advanced **RLM mode** (enabled by default) for handling arbitrarily long CVs and job specifications. RLM uses a recursive orchestration pattern where the model can explore context through code execution and spawn sub-calls to analyze specific chunks.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **REPL Environment** | Sandboxed Python execution where CV/job spec are stored as variables |
+| **Smart Chunking** | Parses documents by section (experience, skills, education, requirements) |
+| **RLM Orchestrator** | Root model plans analysis, spawns sub-calls for chunk analysis |
+| **Dual-Model Strategy** | Strong model for root orchestration, faster model for sub-calls (based on your provider selection) |
+| **Automatic Routing** | Uses RLM only when document size exceeds threshold (8K chars default, configurable) |
+| **Graceful Fallback** | Falls back to direct calls if RLM fails |
+| **Full Observability** | Trajectory logging, iteration counts, sub-call tracking |
+
+### How RLM Works
+
+1. **Root Model** orchestrates the analysis without seeing the full CV/job spec in its prompt
+2. **Environment** stores documents as variables (`cv_text`, `job_text`) accessible via code
+3. **Smart Chunking** pre-parses documents into sections for targeted analysis
+4. **Sub-Calls** analyze specific chunks when needed (e.g., "Does this experience match requirement X?")
+5. **Dual-Model Strategy** uses your selected provider's strongest model for root and fastest model for sub-calls
+
+### Disabling RLM
+
+RLM is enabled by default. To disable it:
+
+- **CLI**: Use the `--no-rlm` flag
+- **Web UI**: Uncheck "Enable RLM" in the sidebar
+- **Environment**: Set `CV_WARLOCK_RLM_ENABLED=false`
+
+For detailed technical documentation on RLM architecture and implementation, see [docs/RLM_INTEGRATION.md](docs/RLM_INTEGRATION.md).
 
 ## Vibe Coding
 
@@ -87,6 +122,31 @@ CV_WARLOCK_PROVIDER=anthropic
 CV_WARLOCK_MODEL=claude-sonnet-4-5-20250929
 ```
 
+### RLM Configuration
+
+RLM (Recursive Language Model) is enabled by default. You can customize its behavior with these environment variables:
+
+```bash
+# Enable/disable RLM (default: true)
+CV_WARLOCK_RLM_ENABLED=true
+
+# Character count threshold to trigger RLM mode (default: 8000)
+# Documents smaller than this use direct LLM calls
+CV_WARLOCK_RLM_SIZE_THRESHOLD=8000
+
+# Maximum orchestrator iterations per analysis (default: 20)
+CV_WARLOCK_RLM_MAX_ITERATIONS=20
+
+# Maximum sub-LLM calls per analysis (default: 15)
+CV_WARLOCK_RLM_MAX_SUB_CALLS=15
+
+# Total timeout for RLM analysis in seconds (default: 300)
+CV_WARLOCK_RLM_TIMEOUT_SECONDS=300
+
+# Sandbox mode for code execution: local, docker, modal (default: local)
+CV_WARLOCK_RLM_SANDBOX_MODE=local
+```
+
 ### Testing API Keys
 
 You can validate your API keys using the included test script:
@@ -130,6 +190,9 @@ uv run cv-warlock analyze my_cv.md job_posting.txt
 
 # Use a specific provider/model
 uv run cv-warlock tailor my_cv.md job.txt --provider anthropic --model claude-opus-4-5-20251101
+
+# Disable RLM mode (enabled by default)
+uv run cv-warlock tailor my_cv.md job.txt --no-rlm
 
 # Show version
 uv run cv-warlock version
@@ -201,7 +264,7 @@ Each CV section goes through a 4-phase process:
 
 ### When to Disable CoT
 
-**Disabling CoT is not recommended** and only possible by passing `use_cot=False` in CLI/code. 
+**Disabling CoT is not recommended** and only possible by passing `use_cot=False` in CLI/code.
 
 Turn off CoT reasoning only if:
 
@@ -246,6 +309,7 @@ cv-warlock/
 │   ├── processors/          # Matching and tailoring logic
 │   ├── scoring/             # Hybrid ATS scoring system
 │   ├── graph/               # LangGraph workflow
+│   ├── rlm/                 # RLM orchestration (chunking, environment, orchestrator)
 │   ├── prompts/             # Prompt templates
 │   └── output/              # Output formatters
 ├── app/                     # Streamlit web UI

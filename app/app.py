@@ -452,6 +452,24 @@ def main():
 
         st.divider()
 
+        # RLM (Recursive Language Model) settings
+        st.subheader("RLM Mode")
+
+        st.checkbox(
+            "Enable RLM",
+            value=True,
+            help="Use Recursive Language Model for handling large CVs and job specs",
+            key="use_rlm",
+        )
+
+        st.caption(
+            "**Dual-Model Strategy:** RLM uses a strong model (Opus/GPT-5) for "
+            "orchestration and a faster model (Haiku/GPT-5-mini) for sub-calls. "
+            "This enables processing of arbitrarily long documents with interpretable reasoning."
+        )
+
+        st.divider()
+
         # LangSmith tracing status
         langsmith_enabled = (
             os.getenv("LANGSMITH_API_KEY") and os.getenv("LANGSMITH_TRACING", "").lower() == "true"
@@ -563,6 +581,7 @@ def main():
             "model": model,
             "api_key": effective_api_key,
             "use_cot": True,  # Always use high quality CoT mode
+            "use_rlm": st.session_state.get("use_rlm", True),
             "lookback_years": st.session_state.get("lookback_years", 4),
             "assume_all_tech_skills": st.session_state.get("assume_all_tech_skills", True),
         }
@@ -606,6 +625,7 @@ def main():
                     progress_callback=update_progress,
                     assume_all_tech_skills=params["assume_all_tech_skills"],
                     use_cot=params["use_cot"],
+                    use_rlm=params["use_rlm"],
                     lookback_years=params["lookback_years"],
                 )
 

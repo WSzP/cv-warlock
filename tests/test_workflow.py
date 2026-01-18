@@ -403,7 +403,9 @@ class TestRunCVTailoring:
             api_key="test-key",
         )
 
-        mock_create_graph.assert_called_once_with("openai", "gpt-5.2", "test-key", use_cot=True)
+        mock_create_graph.assert_called_once_with(
+            "openai", "gpt-5.2", "test-key", use_cot=True, use_rlm=False
+        )
 
     @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
     def test_run_cv_tailoring_adds_total_generation_time(
@@ -497,7 +499,7 @@ class TestWorkflowStepDescriptions:
             use_cot=False,
         )
 
-        mock_create_graph.assert_called_with(None, None, None, use_cot=False)
+        mock_create_graph.assert_called_with(None, None, None, use_cot=False, use_rlm=False)
 
 
 class TestWorkflowInitialState:

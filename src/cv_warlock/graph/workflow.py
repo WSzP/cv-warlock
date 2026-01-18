@@ -3,6 +3,9 @@
 Supports chain-of-thought reasoning mode for higher quality generation.
 When CoT is enabled, generation is slower (3-4x more LLM calls) but produces
 significantly better tailored CVs.
+
+Supports RLM (Recursive Language Model) mode for handling arbitrarily long
+CVs and job specs through code-based context exploration and sub-model calls.
 """
 
 import time
@@ -21,11 +24,28 @@ from cv_warlock.llm.base import get_llm_provider
 from cv_warlock.models.state import CVWarlockState
 
 
+def _get_fast_model_for_provider(provider: str) -> str:
+    """Get the fast/efficient model for a given provider.
+
+    Used for RLM sub-calls where a faster model is preferred.
+    """
+    if provider == "anthropic":
+        return "claude-haiku-4-5-20251001"
+    elif provider == "openai":
+        return "gpt-5-mini"
+    elif provider == "google":
+        return "gemini-3-flash-preview"
+    else:
+        # Fallback to the provider's default model
+        return "claude-haiku-4-5-20251001"
+
+
 def create_cv_warlock_graph(
     provider: Literal["openai", "anthropic", "google"] | None = None,
     model: str | None = None,
     api_key: str | None = None,
     use_cot: bool = True,
+    use_rlm: bool = False,
 ) -> StateGraph:
     """Create and compile the CV tailoring workflow graph.
 
@@ -35,6 +55,9 @@ def create_cv_warlock_graph(
         api_key: API key for the provider.
         use_cot: Whether to use chain-of-thought reasoning for generation.
                  Default True for higher quality, False for faster generation.
+        use_rlm: Whether to use RLM for large context handling.
+                 Default False. When True, uses recursive orchestration
+                 for documents exceeding the size threshold.
 
     Returns:
         Compiled StateGraph.
@@ -54,9 +77,40 @@ def create_cv_warlock_graph(
         else:
             api_key = settings.anthropic_api_key
 
-    # Create LLM provider and nodes
+    # Create LLM provider
     llm_provider = get_llm_provider(provider, model, api_key)
-    nodes = create_nodes(llm_provider, use_cot=use_cot)
+
+    # Create nodes - use RLM nodes if enabled
+    if use_rlm:
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+        from cv_warlock.rlm.models import RLMConfig
+
+        # Create RLM config using user's selected provider (not settings.rlm_root_provider)
+        # This respects the user's choice of provider (anthropic, openai, google)
+        rlm_config = RLMConfig(
+            root_provider=provider,
+            root_model=model,
+            sub_provider=provider,  # Use same provider for sub-calls
+            sub_model=_get_fast_model_for_provider(provider),  # Use faster model for sub-calls
+            max_iterations=settings.rlm_max_iterations,
+            max_sub_calls=settings.rlm_max_sub_calls,
+            timeout_seconds=settings.rlm_timeout_seconds,
+            size_threshold=settings.rlm_size_threshold,
+            sandbox_mode=settings.rlm_sandbox_mode,
+        )
+
+        # Create sub-provider using a faster model from the same provider
+        sub_model = _get_fast_model_for_provider(provider)
+        sub_provider_instance = get_llm_provider(provider, sub_model, api_key)
+
+        nodes = create_rlm_nodes(
+            root_provider=llm_provider,
+            sub_provider=sub_provider_instance,
+            config=rlm_config,
+            use_cot=use_cot,
+        )
+    else:
+        nodes = create_nodes(llm_provider, use_cot=use_cot)
 
     # Build the graph
     workflow = StateGraph(CVWarlockState)
@@ -118,6 +172,7 @@ def run_cv_tailoring(
     progress_callback: Callable[[str, str, float], None] | None = None,
     assume_all_tech_skills: bool = True,
     use_cot: bool = True,
+    use_rlm: bool = False,
     lookback_years: int | None = None,
 ) -> CVWarlockState:
     """Run the CV tailoring workflow.
@@ -133,13 +188,15 @@ def run_cv_tailoring(
         assume_all_tech_skills: If True, assumes user has all tech skills from job spec.
         use_cot: If True, uses chain-of-thought reasoning for higher quality (slower).
                  If False, uses direct generation (faster but lower quality).
+        use_rlm: If True, uses RLM for large context handling.
+                 Enables recursive orchestration for long documents.
         lookback_years: Only tailor jobs ending within this many years. If None, uses
                        settings default (4 years).
 
     Returns:
         Final workflow state with tailored CV.
     """
-    graph = create_cv_warlock_graph(provider, model, api_key, use_cot=use_cot)
+    graph = create_cv_warlock_graph(provider, model, api_key, use_cot=use_cot, use_rlm=use_rlm)
 
     # Step descriptions for progress updates
     # New order: skills → experiences → summary
@@ -174,6 +231,7 @@ def run_cv_tailoring(
         "raw_job_spec": raw_job_spec,
         "assume_all_tech_skills": assume_all_tech_skills,
         "use_cot": use_cot,
+        "use_rlm": use_rlm,
         "lookback_years": lookback_years,
         "cv_data": None,
         "job_requirements": None,
@@ -196,6 +254,7 @@ def run_cv_tailoring(
         "current_step": "start",
         "current_step_description": "Initializing...",
         "errors": [],
+        "rlm_metadata": None,
     }
 
     start_time = time.time()

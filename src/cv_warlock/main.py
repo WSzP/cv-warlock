@@ -53,6 +53,13 @@ def tailor(
             help="Only tailor jobs ending within N years (default: 4)",
         ),
     ] = None,
+    no_rlm: Annotated[
+        bool,
+        typer.Option(
+            "--no-rlm",
+            help="Disable RLM (Recursive Language Model) for large document handling",
+        ),
+    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Show detailed progress")
     ] = False,
@@ -75,6 +82,7 @@ def tailor(
         console.print(f"[dim]Provider:[/dim] {provider}")
         console.print(f"[dim]Model:[/dim] {model or 'default'}")
         console.print(f"[dim]Lookback:[/dim] {lookback_years or 4} years")
+        console.print(f"[dim]RLM Mode:[/dim] {'Disabled' if no_rlm else 'Enabled'}")
         console.print()
 
     # Run the tailoring workflow
@@ -93,12 +101,23 @@ def tailor(
                 provider=provider,
                 model=model,
                 lookback_years=lookback_years,
+                use_rlm=not no_rlm,
             )
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from e
 
         progress.update(task, completed=True)
+
+    # Show RLM metadata if used
+    if not no_rlm and result.get("rlm_metadata"):
+        rlm_meta = result["rlm_metadata"]
+        if rlm_meta.get("used"):
+            console.print(
+                f"[dim]RLM: {rlm_meta['total_iterations']} iterations, "
+                f"{rlm_meta['sub_call_count']} sub-calls, "
+                f"{rlm_meta['execution_time_seconds']:.1f}s[/dim]"
+            )
 
     # Check for errors
     if result.get("errors"):
@@ -166,6 +185,13 @@ def analyze(
         typer.Option("--provider", "-p", help="LLM provider to use"),
     ] = "openai",
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
+    no_rlm: Annotated[
+        bool,
+        typer.Option(
+            "--no-rlm",
+            help="Disable RLM (Recursive Language Model) for large document handling",
+        ),
+    ] = False,
 ) -> None:
     """Analyze CV-job fit without generating a tailored CV."""
     console.print(
@@ -194,12 +220,23 @@ def analyze(
                 raw_job_spec=raw_job_spec,
                 provider=provider,
                 model=model,
+                use_rlm=not no_rlm,
             )
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from e
 
         progress.update(task, completed=True)
+
+    # Show RLM metadata if used
+    if not no_rlm and result.get("rlm_metadata"):
+        rlm_meta = result["rlm_metadata"]
+        if rlm_meta.get("used"):
+            console.print(
+                f"[dim]RLM: {rlm_meta['total_iterations']} iterations, "
+                f"{rlm_meta['sub_call_count']} sub-calls, "
+                f"{rlm_meta['execution_time_seconds']:.1f}s[/dim]"
+            )
 
     # Check for errors
     if result.get("errors"):

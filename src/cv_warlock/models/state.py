@@ -63,11 +63,37 @@ class StepTiming(TypedDict):
     duration_seconds: float | None  # Computed duration
 
 
+class RLMTrajectoryStep(TypedDict):
+    """A step in the RLM trajectory for observability."""
+
+    step_number: int
+    action_type: str  # "code", "query", "final"
+    execution_result: str | None
+    sub_call_made: bool
+    duration_ms: float
+
+
+class RLMMetadata(TypedDict):
+    """Metadata from RLM execution."""
+
+    enabled: bool
+    used: bool  # Whether RLM was actually used (vs direct)
+    total_iterations: int
+    sub_call_count: int
+    execution_time_seconds: float
+    trajectory: list[RLMTrajectoryStep]
+    intermediate_findings: dict[str, str]
+
+
 class CVWarlockState(TypedDict):
     """Main state object for the CV tailoring workflow.
 
     When use_cot=True, generation is slower (3-4x more LLM calls) but produces
     significantly higher quality tailored CVs through chain-of-thought reasoning.
+
+    When use_rlm=True, the workflow uses Recursive Language Model techniques
+    to handle arbitrarily long CVs and job specs through code-based context
+    exploration and sub-model calls.
     """
 
     # Input data
@@ -77,6 +103,7 @@ class CVWarlockState(TypedDict):
     # Settings
     assume_all_tech_skills: bool  # If True, assume user has all tech skills from job spec
     use_cot: bool  # If True, use chain-of-thought reasoning (slower but better quality)
+    use_rlm: bool  # If True, use RLM for large context handling
     lookback_years: int | None  # Override for lookback window (None = use settings default)
 
     # Extracted structured data
@@ -115,3 +142,6 @@ class CVWarlockState(TypedDict):
     current_step: str
     current_step_description: str  # Human-readable description for UI
     errors: list[str]
+
+    # RLM metadata (for observability when use_rlm=True)
+    rlm_metadata: RLMMetadata | None

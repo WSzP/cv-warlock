@@ -1,10 +1,13 @@
 """Configuration management for CV Warlock."""
 
 from functools import lru_cache
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from cv_warlock.rlm.models import RLMConfig
 
 
 class Settings(BaseSettings):
@@ -45,10 +48,77 @@ class Settings(BaseSettings):
     )
     langsmith_project: str = Field(default="cv-warlock", alias="LANGSMITH_PROJECT")
 
+    # RLM (Recursive Language Model) Configuration
+    rlm_enabled: bool = Field(
+        default=True,
+        description="Enable RLM for handling large CVs and job specs",
+    )
+    rlm_size_threshold: int = Field(
+        default=8000,
+        ge=1000,
+        le=100000,
+        description="Character count threshold to automatically trigger RLM mode",
+    )
+    rlm_root_provider: Literal["openai", "anthropic", "google"] = Field(
+        default="anthropic",
+        description="Provider for RLM root model (needs strong coding ability)",
+    )
+    rlm_root_model: str = Field(
+        default="claude-opus-4-5-20251101",
+        description="Model ID for RLM root model",
+    )
+    rlm_sub_provider: Literal["openai", "anthropic", "google"] | None = Field(
+        default=None,
+        description="Provider for RLM sub-calls (defaults to root provider)",
+    )
+    rlm_sub_model: str | None = Field(
+        default=None,
+        description="Model for sub-calls (defaults to faster model)",
+    )
+    rlm_max_iterations: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Maximum orchestrator iterations per analysis",
+    )
+    rlm_max_sub_calls: int = Field(
+        default=15,
+        ge=1,
+        le=50,
+        description="Maximum sub-LLM calls per analysis",
+    )
+    rlm_timeout_seconds: int = Field(
+        default=300,
+        ge=30,
+        le=600,
+        description="Total timeout for RLM analysis in seconds",
+    )
+    rlm_sandbox_mode: Literal["local", "docker", "modal"] = Field(
+        default="local",
+        description="Sandbox mode for code execution (local for dev, docker for prod)",
+    )
+
     @property
     def langsmith_enabled(self) -> bool:
         """Check if LangSmith tracing is enabled and configured."""
         return bool(self.langsmith_api_key and self.langsmith_tracing)
+
+    @property
+    def rlm_config(self) -> "RLMConfig":
+        """Get RLM configuration object."""
+        from cv_warlock.rlm.models import RLMConfig
+
+        return RLMConfig(
+            root_provider=self.rlm_root_provider,
+            root_model=self.rlm_root_model,
+            sub_provider=self.rlm_sub_provider,
+            sub_model=self.rlm_sub_model,
+            max_iterations=self.rlm_max_iterations,
+            max_sub_calls=self.rlm_max_sub_calls,
+            timeout_seconds=self.rlm_timeout_seconds,
+            size_threshold=self.rlm_size_threshold,
+            sandbox_mode=self.rlm_sandbox_mode,
+        )
 
 
 @lru_cache
