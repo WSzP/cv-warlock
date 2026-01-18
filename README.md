@@ -188,17 +188,18 @@ Each CV section goes through a 4-phase process:
 ### Trade-offs
 
 - **Slower Generation**: CoT mode makes 3-4x more LLM calls per section
-- **Higher Cost**: More API calls means higher token usage
+- **Higher Cost**: More API calls mean higher token usage
 
 ### When to Disable CoT
 
-Turn off CoT reasoning if:
+**Disabling CoT is not recommended** and only possible by passing `use_cot=False` in CLI/code. 
+
+Turn off CoT reasoning only if:
 
 - You need quick iterations and are willing to trade quality for speed
 - You're testing or debugging the workflow
 - Cost is a concern, and you want minimal API usage
 
-Toggle CoT is not recommended and only possible by passing `use_cot=False` in CLI/code.
 
 ## Supported Models
 
