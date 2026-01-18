@@ -48,37 +48,41 @@ uv run python scripts/test_api_keys.py anthropic  # Test specific provider
 
 View traces at: <https://smith.langchain.com>
 
+### Test Output Location
+
+**IMPORTANT**: All test output files MUST be saved in the `test_results/` folder, which is gitignored. Never create test output files in the project root or other directories.
+
 ### Test Output Naming Convention
 
 **IMPORTANT**: All test output files MUST follow this naming format:
 
 ```text
-YYYY-MM-DD_HH-MM_modelname.md
+test_results/YYYY-MM-DD_HH-MM_modelname.md
 ```
 
 Examples:
 
-- `2026-01-17_14-30_claude-sonnet-4-5.md`
-- `2026-01-17_09-15_gpt-5-2.md`
-- `2026-01-17_16-45_gemini-3-pro.md`
+- `test_results/2026-01-17_14-30_claude-sonnet-4-5.md`
+- `test_results/2026-01-17_09-15_gpt-5-2.md`
+- `test_results/2026-01-17_16-45_gemini-3-pro.md`
 
 Example test commands with tracing:
 
 ```bash
 # Test with Anthropic (default - Sonnet 4.5)
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-sonnet-4-5.md -p anthropic -m claude-sonnet-4-5-20250929 -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_claude-sonnet-4-5.md -p anthropic -m claude-sonnet-4-5-20250929 -v
 
 # Test with Anthropic Haiku 4.5 (fast)
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-haiku-4-5.md -p anthropic -m claude-haiku-4-5-20251001 -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_claude-haiku-4-5.md -p anthropic -m claude-haiku-4-5-20251001 -v
 
 # Test with Anthropic Opus 4.5 (best quality)
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-opus-4-5.md -p anthropic -m claude-opus-4-5-20251101 -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_claude-opus-4-5.md -p anthropic -m claude-opus-4-5-20251101 -v
 
 # Test with OpenAI GPT-5.2
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_gpt-5-2.md -p openai -m gpt-5.2 -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_gpt-5-2.md -p openai -m gpt-5.2 -v
 
 # Test with Google Gemini 3 Pro
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_gemini-3-pro.md -p google -m gemini-3-pro-preview -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_gemini-3-pro.md -p google -m gemini-3-pro-preview -v
 ```
 
 ## Architecture
