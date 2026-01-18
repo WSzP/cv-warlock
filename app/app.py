@@ -221,6 +221,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Sidebar logo
+logo_for_sidebar = project_root / "cv-warlock-logo-small.webp"
+if logo_for_sidebar.exists():
+    st.logo(image=str(logo_for_sidebar))
+
 # Custom CSS
 st.markdown(
     """
@@ -289,7 +294,7 @@ def main():
 
     # Sidebar configuration
     with st.sidebar:
-        st.header("Settings")
+        st.title("AI Model")
 
         provider = st.selectbox(
             "LLM Provider",
@@ -431,15 +436,7 @@ def main():
             st.success(f"LangSmith tracing: **{project}**")
             st.markdown(f"[View traces]({dashboard_url})")
 
-        st.markdown(
-            """
-            ### How it works
-            1. Paste your CV in the left panel
-            2. Paste the job posting in the right panel
-            3. Click "Tailor My CV"
-            4. Download your tailored CV!
-            """
-        )
+        st.caption("🧙 This langchain experiment was created by [Peter W. Szabo](https://www.linkedin.com/in/wszabopeter/).")
 
     # Main content - Header with logo and title
     logo_path = project_root / "cv-warlock-logo-small.webp"
@@ -466,6 +463,17 @@ def main():
         st.markdown(
             '<p class="header-tagline">AI-powered CV tailoring for job applications</p>',
             unsafe_allow_html=True,
+        )
+
+    # How to use - collapsible
+    with st.expander("How to use it?"):
+        st.markdown(
+            """
+            1. Paste your CV in the left panel
+            2. Paste the job posting in the right panel (copy-pasted job title and description from LinkedIn)
+            3. Click "Tailor My CV"
+            4. Download your tailored CV!
+            """
         )
 
     # Input columns
