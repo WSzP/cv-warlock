@@ -470,6 +470,39 @@ def main():
 
         st.divider()
 
+        # Cover Letter settings
+        st.subheader("Cover Letter")
+
+        st.slider(
+            "Character limit",
+            min_value=500,
+            max_value=5000,
+            value=2500,
+            step=250,
+            help="Target length for generated cover letter",
+            key="cover_letter_char_limit",
+        )
+
+        # Show guidance based on character limit
+        char_limit = st.session_state.get("cover_letter_char_limit", 2500)
+        if char_limit < 1500:
+            st.caption(
+                "**Short format:** Best for quick applications or character-limited forms. "
+                "Will focus on 2-3 key points."
+            )
+        elif char_limit < 3000:
+            st.caption(
+                "**Standard format:** Ideal for most applications. "
+                "Balances detail with readability."
+            )
+        else:
+            st.caption(
+                "**Extended format:** For applications allowing longer responses. "
+                "Includes more context and achievements."
+            )
+
+        st.divider()
+
         # LangSmith tracing status
         langsmith_enabled = (
             os.getenv("LANGSMITH_API_KEY") and os.getenv("LANGSMITH_TRACING", "").lower() == "true"
