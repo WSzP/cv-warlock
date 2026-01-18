@@ -10,16 +10,35 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class LLMProvider(ABC):
-    """Abstract base class for LLM providers."""
+    """Abstract base class for LLM providers.
+
+    Implements model caching to avoid repeated instantiation overhead.
+    Models are cached on first access and reused for subsequent calls.
+    """
+
+    _chat_model: BaseChatModel | None = None
+    _extraction_model: BaseChatModel | None = None
+
+    def get_chat_model(self) -> BaseChatModel:
+        """Get a cached chat model instance with API default temperature."""
+        if self._chat_model is None:
+            self._chat_model = self._create_chat_model()
+        return self._chat_model
+
+    def get_extraction_model(self) -> BaseChatModel:
+        """Get a cached model optimized for structured extraction."""
+        if self._extraction_model is None:
+            self._extraction_model = self._create_extraction_model()
+        return self._extraction_model
 
     @abstractmethod
-    def get_chat_model(self) -> BaseChatModel:
-        """Get a chat model instance with API default temperature."""
+    def _create_chat_model(self) -> BaseChatModel:
+        """Create a new chat model instance. Override in subclasses."""
         pass
 
     @abstractmethod
-    def get_extraction_model(self) -> BaseChatModel:
-        """Get a model optimized for structured extraction."""
+    def _create_extraction_model(self) -> BaseChatModel:
+        """Create a new extraction model instance. Override in subclasses."""
         pass
 
     def extract_structured(

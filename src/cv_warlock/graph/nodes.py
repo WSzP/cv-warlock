@@ -144,6 +144,9 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
         Uses hybrid scoring combining algorithmic sub-scores (exact string matching,
         experience years, education, recency) with LLM qualitative assessment.
 
+        OPTIMIZATION: Uses score_with_plan() to get both match analysis and tailoring
+        plan in a single LLM call, saving ~10-20 seconds.
+
         If assume_all_tech_skills is True, augments CV skills with all required
         technical skills from the job spec before analysis. The augmented CV
         is persisted in state so downstream nodes use the enhanced skill list.
@@ -159,31 +162,42 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
             job_requirements = state["job_requirements"]
 
             # If assume_all_tech_skills is enabled, augment CV skills with job requirements
+            # OPTIMIZATION: Use lightweight skill augmentation instead of deep copy
             if state.get("assume_all_tech_skills", True):
-                cv_data = copy.deepcopy(cv_data)
-                # Add required and preferred skills to CV skills list
-                existing_skills = set(s.lower() for s in cv_data.skills)
-                for skill in job_requirements.required_skills + job_requirements.preferred_skills:
-                    if skill.lower() not in existing_skills:
-                        cv_data.skills.append(skill)
-                        existing_skills.add(skill.lower())
-                # Persist augmented CV data for downstream nodes
-                result["cv_data"] = cv_data
+                existing_skills = {s.lower() for s in cv_data.skills}
+                skills_to_add = [
+                    skill
+                    for skill in job_requirements.required_skills
+                    + job_requirements.preferred_skills
+                    if skill.lower() not in existing_skills
+                ]
+                if skills_to_add:
+                    # Only copy if we need to add skills
+                    cv_data = copy.deepcopy(cv_data)
+                    cv_data.skills.extend(skills_to_add)
+                    result["cv_data"] = cv_data
 
-            # Use hybrid scoring (algorithmic + LLM)
+            # OPTIMIZATION: Use combined scoring + plan in single LLM call
             from cv_warlock.scoring.hybrid import HybridScorer
 
             hybrid_scorer = HybridScorer(llm_provider)
-            match_analysis = hybrid_scorer.score(cv_data, job_requirements)
+            match_analysis, tailoring_plan = hybrid_scorer.score_with_plan(
+                cv_data, job_requirements
+            )
 
             result["match_analysis"] = match_analysis
+            result["tailoring_plan"] = tailoring_plan  # Pre-compute for create_plan node
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"Match analysis failed: {e!s}"]
 
         return _end_step(state, step_name, result)
 
     def create_plan(state: CVWarlockState) -> dict:
-        """Create tailoring plan based on match analysis."""
+        """Create tailoring plan based on match analysis.
+
+        OPTIMIZATION: If tailoring_plan was already computed by analyze_match
+        (via score_with_plan), this node just passes it through.
+        """
         step_name = "create_plan"
         result = _start_step(state, step_name, use_cot)
 
@@ -191,12 +205,17 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
             return _end_step(state, step_name, result)
 
         try:
-            tailoring_plan = match_analyzer.create_tailoring_plan(
-                state["cv_data"],
-                state["job_requirements"],
-                state["match_analysis"],
-            )
-            result["tailoring_plan"] = tailoring_plan
+            # Check if plan was already computed by analyze_match (optimization)
+            if state.get("tailoring_plan") is not None:
+                result["tailoring_plan"] = state["tailoring_plan"]
+            else:
+                # Fallback to separate LLM call if not pre-computed
+                tailoring_plan = match_analyzer.create_tailoring_plan(
+                    state["cv_data"],
+                    state["job_requirements"],
+                    state["match_analysis"],
+                )
+                result["tailoring_plan"] = tailoring_plan
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"Tailoring plan failed: {e!s}"]
 

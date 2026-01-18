@@ -85,7 +85,7 @@ def create_cv_warlock_graph(
         },
     )
 
-    # Sequential extraction
+    # Sequential extraction (parallel execution requires complex state annotations)
     workflow.add_edge("extract_cv", "extract_job")
 
     # Conditional edge after extraction

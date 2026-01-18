@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
+from cv_warlock.models.state import TailoringPlan
 from cv_warlock.scoring.algorithmic import AlgorithmicScorer
 from cv_warlock.scoring.models import (
     AlgorithmicScores,
@@ -66,6 +67,40 @@ Provide qualitative assessment that algorithms cannot capture:
 
 Be concise and actionable. Focus on insights the algorithm cannot provide."""
 
+# Combined prompt for assessment + tailoring plan in single LLM call (optimization)
+COMBINED_ANALYSIS_PROMPT = """You are an expert CV strategist. Analyze the match and create a tailoring plan.
+
+**Algorithmic Sub-Scores:**
+- Exact skill match: {exact_match:.0%}
+- Experience years fit: {years_fit:.0%}
+- Education match: {edu_match:.0%}
+- Recency score: {recency:.0%}
+- Combined Algorithmic Score: {algo_score:.0%}
+
+=== CV DATA ===
+{cv_data}
+
+=== JOB REQUIREMENTS ===
+{job_requirements}
+
+=== PROVIDE BOTH: QUALITATIVE ASSESSMENT & TAILORING PLAN ===
+
+**PART 1: QUALITATIVE ASSESSMENT**
+1. Transferable Skills: Non-obvious skills that transfer (leadership, domain knowledge, soft skills)
+2. Contextual Strengths: Career narrative that matches (progression, company types, project scale)
+3. Concerns: Red flags the algorithm missed (job hopping, skill depth vs breadth)
+4. Score Adjustment: -0.10 to +0.10 based on qualitative factors
+
+**PART 2: TAILORING PLAN**
+1. Summary Focus: Key points for professional summary (identity, differentiator, headline metric)
+2. Experiences to Emphasize: Which roles to highlight and why
+3. Skills to Highlight: Priority skills matching required/preferred from job posting
+4. Achievements to Feature: Top 3-5 achievements demonstrating relevant capabilities
+5. Keywords to Incorporate: ATS-critical terms from job posting (aim for 2-3 mentions each)
+6. Section Ordering: Recommended section order for this candidate + role
+
+Be concise. Focus on actionable tailoring decisions."""
+
 
 class _LLMAssessmentOutput(BaseModel):
     """Internal Pydantic model for structured LLM output."""
@@ -94,6 +129,59 @@ class _LLMAssessmentOutput(BaseModel):
     )
 
 
+class _CombinedAnalysisOutput(BaseModel):
+    """Combined assessment + tailoring plan for single LLM call optimization."""
+
+    # Assessment fields
+    transferable_skills: list[str] = Field(
+        default_factory=list,
+        description="Non-obvious transferable skills",
+    )
+    contextual_strengths: list[str] = Field(
+        default_factory=list,
+        description="Narrative strengths for this role",
+    )
+    concerns: list[str] = Field(
+        default_factory=list,
+        description="Red flags or concerns",
+    )
+    adjustment: float = Field(
+        default=0.0,
+        ge=-0.1,
+        le=0.1,
+        description="Score adjustment (-0.1 to +0.1)",
+    )
+    adjustment_rationale: str = Field(
+        default="",
+        description="Brief explanation for adjustment",
+    )
+    # Tailoring plan fields
+    summary_focus: list[str] = Field(
+        default_factory=list,
+        description="Key points for summary",
+    )
+    experiences_to_emphasize: list[str] = Field(
+        default_factory=list,
+        description="Which experiences to highlight",
+    )
+    skills_to_highlight: list[str] = Field(
+        default_factory=list,
+        description="Priority skills",
+    )
+    achievements_to_feature: list[str] = Field(
+        default_factory=list,
+        description="Key achievements",
+    )
+    keywords_to_incorporate: list[str] = Field(
+        default_factory=list,
+        description="ATS keywords",
+    )
+    sections_to_reorder: list[str] = Field(
+        default_factory=list,
+        description="Section ordering",
+    )
+
+
 class HybridScorer:
     """Combines algorithmic scoring with LLM qualitative assessment.
 
@@ -116,8 +204,9 @@ class HybridScorer:
         self.llm_provider = llm_provider
         self.algorithmic = AlgorithmicScorer()
 
-        # Set up LLM chain for qualitative assessment
+        # Set up LLM chains for assessment
         self._prompt = ChatPromptTemplate.from_template(LLM_ASSESSMENT_PROMPT)
+        self._combined_prompt = ChatPromptTemplate.from_template(COMBINED_ANALYSIS_PROMPT)
 
     def score(
         self,
@@ -148,6 +237,110 @@ class HybridScorer:
 
         # Step 4: Combine scores
         return self._combine_scores(cv_data, job_requirements, algo_scores, llm_assessment)
+
+    def score_with_plan(
+        self,
+        cv_data: CVData,
+        job_requirements: JobRequirements,
+    ) -> tuple[HybridMatchResult, TailoringPlan]:
+        """Compute hybrid match score AND tailoring plan in a single LLM call.
+
+        This is an optimized version that combines what would normally be 2 LLM calls
+        (qualitative assessment + tailoring plan) into 1, saving ~10-20 seconds.
+
+        Args:
+            cv_data: Parsed CV data.
+            job_requirements: Parsed job requirements.
+
+        Returns:
+            Tuple of (HybridMatchResult, TailoringPlan).
+        """
+        # Step 1: Compute algorithmic scores (fast, no API calls)
+        logger.info("Computing algorithmic scores...")
+        algo_scores = self.algorithmic.compute(cv_data, job_requirements)
+
+        # Step 2: Check knockout rule
+        if algo_scores.knockout_triggered:
+            logger.info(f"Knockout triggered: {algo_scores.knockout_reason}")
+            match_result = self._create_knockout_result(algo_scores)
+            # Return empty plan for knockout case
+            plan = TailoringPlan(
+                summary_focus=[],
+                experiences_to_emphasize=[],
+                skills_to_highlight=[],
+                achievements_to_feature=[],
+                keywords_to_incorporate=[],
+                sections_to_reorder=[],
+            )
+            return match_result, plan
+
+        # Step 3: Get COMBINED LLM assessment + tailoring plan (single call)
+        logger.info("Getting combined LLM assessment and tailoring plan...")
+        combined = self._get_combined_analysis(cv_data, job_requirements, algo_scores)
+
+        # Step 4: Build results from combined output
+        llm_assessment = LLMAssessmentOutput(
+            transferable_skills=combined.transferable_skills,
+            contextual_strengths=combined.contextual_strengths,
+            concerns=combined.concerns,
+            adjustment=combined.adjustment,
+            adjustment_rationale=combined.adjustment_rationale,
+        )
+
+        match_result = self._combine_scores(cv_data, job_requirements, algo_scores, llm_assessment)
+
+        tailoring_plan = TailoringPlan(
+            summary_focus=combined.summary_focus,
+            experiences_to_emphasize=combined.experiences_to_emphasize,
+            skills_to_highlight=combined.skills_to_highlight,
+            achievements_to_feature=combined.achievements_to_feature,
+            keywords_to_incorporate=combined.keywords_to_incorporate,
+            sections_to_reorder=combined.sections_to_reorder,
+        )
+
+        return match_result, tailoring_plan
+
+    def _get_combined_analysis(
+        self,
+        cv_data: CVData,
+        job_requirements: JobRequirements,
+        algo_scores: AlgorithmicScores,
+    ) -> _CombinedAnalysisOutput:
+        """Get combined assessment + tailoring plan from LLM in single call."""
+        try:
+            prompt_vars = {
+                "exact_match": algo_scores.exact_skill_match,
+                "years_fit": algo_scores.experience_years_fit,
+                "edu_match": algo_scores.education_match,
+                "recency": algo_scores.recency_score,
+                "algo_score": algo_scores.total,
+                "cv_data": self._serialize_cv(cv_data),
+                "job_requirements": self._serialize_job(job_requirements),
+            }
+
+            model = self.llm_provider.get_extraction_model()
+            chain = self._combined_prompt | model.with_structured_output(
+                _CombinedAnalysisOutput,
+                method="function_calling",
+            )
+
+            return chain.invoke(prompt_vars)
+
+        except Exception as e:
+            logger.warning(f"Combined analysis failed, using defaults: {e}")
+            return _CombinedAnalysisOutput(
+                transferable_skills=[],
+                contextual_strengths=[],
+                concerns=[f"Analysis failed: {e!s}"],
+                adjustment=0.0,
+                adjustment_rationale="Failed to get LLM analysis",
+                summary_focus=[],
+                experiences_to_emphasize=[],
+                skills_to_highlight=[],
+                achievements_to_feature=[],
+                keywords_to_incorporate=[],
+                sections_to_reorder=[],
+            )
 
     def _create_knockout_result(
         self,

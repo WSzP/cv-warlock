@@ -1,6 +1,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C.svg?logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C.svg?logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-E92063.svg?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
@@ -44,7 +45,7 @@ But please share the results of your experiments with me and the world on Linked
 
 This project was created using [Claude Code 2](https://claude.com/product/claude-code) - [Opus 4.5](https://www.anthropic.com/news/claude-opus-4-5).  
 
-The `.claude` folder and `CLAUDE.md` are committed, so you can adapt this to your specific needs, or use the project as a vibe coding langchain testbed.
+The `.claude` folder and `CLAUDE.md` are committed, so you can adapt this to your specific needs, or use the project as a vibe coding LangChain/LangGraph testbed.
 
 In the `.claude` folder, you can find custom agents that can help you if you wish to create features that are not yet implemented, such as a PostgreSQL database, a NextJS or React responsive website, and localization (i18n). Finally, you can use my custom-made web design agent, `wyr`, to create a great web design. If I create a NextJS frontend to replace Streamlit, I will use that.
 
@@ -136,7 +137,7 @@ uv run cv-warlock version
 
 ## How It Works
 
-CV Warlock uses a LangGraph workflow to process your CV in stages:
+CV Warlock uses a [LangGraph](https://langchain-ai.github.io/langgraph/) workflow to process your CV in stages:
 
 1. **Extract**: Parse CV and job spec into structured data
 2. **Analyze**: Find matches, gaps, and transferable skills

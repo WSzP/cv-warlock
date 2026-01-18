@@ -81,9 +81,13 @@ class TestLLMProviderInterface:
 
     def test_abstract_methods(self) -> None:
         """Test that abstract methods are defined."""
+        # Public caching methods
         assert hasattr(LLMProvider, "get_chat_model")
         assert hasattr(LLMProvider, "get_extraction_model")
         assert hasattr(LLMProvider, "extract_structured")
+        # Abstract creation methods (to be overridden)
+        assert hasattr(LLMProvider, "_create_chat_model")
+        assert hasattr(LLMProvider, "_create_extraction_model")
 
 
 class TestLLMProviderExtractStructured:
@@ -96,11 +100,14 @@ class TestLLMProviderExtractStructured:
         class MockProvider(LLMProvider):
             def __init__(self) -> None:
                 self.mock_model = MagicMock()
+                # Initialize cache attributes from parent (required for model caching)
+                self._chat_model = None
+                self._extraction_model = None
 
-            def get_chat_model(self):
+            def _create_chat_model(self):
                 return self.mock_model
 
-            def get_extraction_model(self):
+            def _create_extraction_model(self):
                 return self.mock_model
 
         from pydantic import BaseModel

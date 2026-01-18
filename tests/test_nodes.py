@@ -414,6 +414,7 @@ class TestAnalyzeMatchNode:
         sample_cv_data: CVData,
         sample_job_requirements: JobRequirements,
         sample_match_analysis: MatchAnalysis,
+        sample_tailoring_plan: TailoringPlan,
     ) -> None:
         """Test successful match analysis."""
         base_state["cv_data"] = sample_cv_data
@@ -422,12 +423,14 @@ class TestAnalyzeMatchNode:
 
         mock_scorer = MagicMock()
         mock_scorer_class.return_value = mock_scorer
-        mock_scorer.score.return_value = sample_match_analysis
+        # score_with_plan returns tuple of (match_analysis, tailoring_plan)
+        mock_scorer.score_with_plan.return_value = (sample_match_analysis, sample_tailoring_plan)
 
         nodes = create_nodes(mock_provider)
         result = nodes["analyze_match"](base_state)
 
         assert result["match_analysis"] is sample_match_analysis
+        assert result["tailoring_plan"] is sample_tailoring_plan
 
     @patch("cv_warlock.scoring.hybrid.HybridScorer")
     def test_analyze_match_augments_skills_when_enabled(
@@ -438,6 +441,7 @@ class TestAnalyzeMatchNode:
         sample_cv_data: CVData,
         sample_job_requirements: JobRequirements,
         sample_match_analysis: MatchAnalysis,
+        sample_tailoring_plan: TailoringPlan,
     ) -> None:
         """Test that analyze_match augments CV skills when assume_all_tech_skills is True."""
         base_state["cv_data"] = sample_cv_data
@@ -447,7 +451,8 @@ class TestAnalyzeMatchNode:
 
         mock_scorer = MagicMock()
         mock_scorer_class.return_value = mock_scorer
-        mock_scorer.score.return_value = sample_match_analysis
+        # score_with_plan returns tuple of (match_analysis, tailoring_plan)
+        mock_scorer.score_with_plan.return_value = (sample_match_analysis, sample_tailoring_plan)
 
         nodes = create_nodes(mock_provider)
         result = nodes["analyze_match"](base_state)

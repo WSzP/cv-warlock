@@ -21,14 +21,23 @@ class MockLLMProvider(LLMProvider):
     def __init__(self):
         self._provider = "mock"
         self._model = "mock-model"
+        # Initialize cache attributes from parent (required for model caching)
+        self._chat_model = None
+        self._extraction_model = None
 
-    def get_chat_model(self):
-        """Return a mock chat model."""
+    def _create_chat_model(self):
+        """Create a mock chat model."""
         mock = MagicMock()
         mock.invoke.return_value = MagicMock(content="Mock response")
         return mock
 
-    def get_extraction_model(self, schema):
+    def _create_extraction_model(self):
+        """Create a mock extraction model."""
+        mock = MagicMock()
+        mock.invoke.return_value = MagicMock(content="Mock response")
+        return mock
+
+    def get_extraction_model_with_schema(self, schema):
         """Return a mock that returns appropriate Pydantic models."""
         mock = MagicMock()
 
@@ -155,19 +164,22 @@ class TestE2EWorkflowWithMocks:
             patch("cv_warlock.graph.nodes.JobExtractor") as mock_job_ext,
             patch("cv_warlock.graph.nodes.MatchAnalyzer") as mock_analyzer,
             patch("cv_warlock.graph.nodes.CVTailor") as mock_tailor,
-            patch("cv_warlock.graph.nodes.HybridScorer", create=True) as mock_scorer,
+            patch("cv_warlock.scoring.hybrid.HybridScorer") as mock_scorer,
             patch("cv_warlock.graph.workflow.get_llm_provider", return_value=mock_provider),
         ):
             # Configure mock extractors
             mock_cv_ext.return_value.extract.return_value = mock_provider._mock_cv_data()
             mock_job_ext.return_value.extract.return_value = mock_provider._mock_job_requirements()
 
-            # Configure mock scorer
+            # Configure mock scorer - uses score_with_plan() which returns (match_analysis, plan)
             mock_scorer_instance = MagicMock()
-            mock_scorer_instance.score.return_value = mock_provider._mock_match_analysis()
+            mock_scorer_instance.score_with_plan.return_value = (
+                mock_provider._mock_match_analysis(),
+                mock_provider._mock_tailoring_plan(),
+            )
             mock_scorer.return_value = mock_scorer_instance
 
-            # Configure mock analyzer
+            # Configure mock analyzer (fallback if plan not from scorer)
             mock_analyzer.return_value.create_tailoring_plan.return_value = (
                 mock_provider._mock_tailoring_plan()
             )
