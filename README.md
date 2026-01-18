@@ -42,7 +42,7 @@ But please share the results of your experiments with me and the world on Linked
 
 ## Vibe Coding
 
-This project was created using Claude Code 2 - Opus 4.5.  
+This project was created using [Claude Code 2](https://claude.com/product/claude-code) - [Opus 4.5](https://www.anthropic.com/news/claude-opus-4-5).  
 
 The `.claude` folder and `CLAUDE.md` are committed, so you can adapt this to your specific needs, or use the project as a vibe coding langchain testbed.
 
