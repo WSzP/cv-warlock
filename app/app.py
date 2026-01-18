@@ -19,7 +19,6 @@ import streamlit as st
 from components.cv_input import render_cv_input
 from components.job_input import render_job_input
 from components.result_display import render_result
-from utils.styles import apply_custom_styles
 
 
 def get_env_api_key(provider: str) -> str | None:
@@ -213,30 +212,43 @@ def render_error_details(error_info: dict, elapsed_time: float | None = None):
         st.code(error_info["technical"], language=None)
 
 
-# Page configuration
+# Page configuration - use favicon from favicon-pack
+favicon_path = project_root / "favicon-pack" / "favicon.ico"
 st.set_page_config(
     page_title="CV Warlock",
-    page_icon=":magic_wand:",
+    page_icon=str(favicon_path) if favicon_path.exists() else ":magic_wand:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-# Apply Poppins font styling
-apply_custom_styles()
 
 # Custom CSS
 st.markdown(
     """
     <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
+    .header-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 1rem 0 1.5rem 0;
     }
-    .sub-header {
-        font-size: 1.2rem;
+    .header-logo {
+        max-width: 280px;
+        width: 100%;
+        height: auto;
+        margin-bottom: 0.5rem;
+    }
+    .header-tagline {
+        font-size: 1.15rem;
         color: #666;
-        margin-bottom: 2rem;
+        margin: 0;
+        font-weight: 400;
+    }
+    /* Dark mode support for tagline */
+    @media (prefers-color-scheme: dark) {
+        .header-tagline {
+            color: #a0a0a0;
+        }
     }
     .stTextArea textarea {
         font-family: monospace;
@@ -429,12 +441,32 @@ def main():
             """
         )
 
-    # Main content
-    st.markdown('<p class="main-header">CV Warlock</p>', unsafe_allow_html=True)
-    st.markdown(
-        '<p class="sub-header">AI-powered CV tailoring for job applications</p>',
-        unsafe_allow_html=True,
-    )
+    # Main content - Header with logo and title
+    logo_path = project_root / "cv-warlock-logo-small.webp"
+
+    # Logo on left, title + tagline on right
+    if logo_path.exists():
+        logo_col, title_col = st.columns([1, 11], gap="small")
+        with logo_col:
+            st.image(str(logo_path))
+        with title_col:
+            st.markdown(
+                '<h1 style="margin: 0; padding: 0;">'
+                '<span style="color: #a9e53f;">CV</span> '
+                '<span style="color: #4b2d73;">Warlock</span></h1>'
+                '<p class="header-tagline" style="margin: 0;">AI-powered CV tailoring for job applications</p>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            '<h1><span style="color: #a9e53f;">CV</span> '
+            '<span style="color: #4b2d73;">Warlock</span></h1>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<p class="header-tagline">AI-powered CV tailoring for job applications</p>',
+            unsafe_allow_html=True,
+        )
 
     # Input columns
     col1, col2 = st.columns(2)
