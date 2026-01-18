@@ -93,3 +93,19 @@ module = [
     "cv_warlock.main",
 ]
 ignore_errors = true
+
+[tool.coverage.run]
+source = ["src/cv_warlock"]
+omit = [
+    # LLM-heavy modules where logic lives in prompts, not testable Python code
+    "src/cv_warlock/processors/*",
+    # CLI entry point - tested via integration tests, not unit tests
+    "src/cv_warlock/main.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
