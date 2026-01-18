@@ -110,6 +110,39 @@ def sample_state(sample_cv_text, sample_job_text):
     }
 
 
+def create_mock_standard_nodes(**overrides):
+    """Create a complete mock standard nodes dict with optional overrides.
+
+    Args:
+        **overrides: Node names and their mock return values to override.
+
+    Returns:
+        Dict with all required node functions as MagicMocks.
+    """
+    base_nodes = {
+        "validate_inputs": MagicMock(return_value={}),
+        "extract_cv": MagicMock(return_value={"cv_data": None, "current_step": "extract_cv"}),
+        "extract_job": MagicMock(
+            return_value={"job_requirements": None, "current_step": "extract_job"}
+        ),
+        "analyze_match": MagicMock(
+            return_value={"match_analysis": None, "current_step": "analyze_match"}
+        ),
+        "create_plan": MagicMock(return_value={}),
+        "tailor_skills": MagicMock(return_value={}),
+        "tailor_experiences": MagicMock(return_value={}),
+        "tailor_summary": MagicMock(return_value={}),
+        "assemble_cv": MagicMock(return_value={}),
+    }
+    # Apply overrides
+    for node_name, mock_return in overrides.items():
+        if isinstance(mock_return, dict):
+            base_nodes[node_name] = MagicMock(return_value=mock_return)
+        else:
+            base_nodes[node_name] = mock_return
+    return base_nodes
+
+
 # =============================================================================
 # Orchestrator Tests
 # =============================================================================
@@ -715,30 +748,74 @@ class TestRLMNodesCreation:
         assert "tailor_summary" in nodes
         assert "assemble_cv" in nodes
 
-    def test_should_use_rlm_disabled(self, mock_llm_provider, sample_state):
-        """Test should_use_rlm when disabled."""
+    def test_extract_cv_rlm_disabled(self, mock_llm_provider, sample_cv_text, sample_job_text):
+        """Test extract_cv_rlm when RLM is disabled - uses standard extraction."""
         from cv_warlock.graph.rlm_nodes import create_rlm_nodes
 
-        sample_state["use_rlm"] = False
+        state = {
+            "raw_cv": sample_cv_text,
+            "raw_job_spec": sample_job_text,
+            "use_rlm": False,  # RLM disabled
+            "errors": [],
+        }
 
-        # Create nodes - the extract_cv_rlm should check use_rlm and fall back
-        nodes = create_rlm_nodes(mock_llm_provider)
+        # Mock the standard extraction to return a result
+        cv_data = CVData(
+            contact=ContactInfo(name="Test", email="test@test.com"),
+            summary="Test summary",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
 
-        # The function exists and RLM is disabled in state
-        # When RLM is disabled, should_use_rlm returns False
-        # and it falls back to standard extraction
-        assert "extract_cv" in nodes
-        assert callable(nodes["extract_cv"])
+        with patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes:
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": cv_data, "current_step": "extract_cv"}
+            )
 
-    def test_should_use_rlm_below_threshold(self, mock_llm_provider):
-        """Test should_use_rlm when below size threshold."""
+            nodes = create_rlm_nodes(mock_llm_provider)
+            result = nodes["extract_cv"](state)
+
+            # Should use standard extraction and add RLM metadata
+            assert result["cv_data"] == cv_data
+            assert result["rlm_metadata"]["enabled"] is False
+            assert result["rlm_metadata"]["used"] is False
+
+    def test_extract_cv_rlm_below_threshold(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm when below size threshold - uses standard extraction."""
         from cv_warlock.graph.rlm_nodes import create_rlm_nodes
 
-        config = RLMConfig(size_threshold=1000)  # High threshold
-        nodes = create_rlm_nodes(mock_llm_provider, config=config)
+        state = {
+            "raw_cv": sample_cv_text,  # Small CV
+            "raw_job_spec": sample_job_text,  # Small job
+            "use_rlm": True,  # RLM enabled but below threshold
+            "errors": [],
+        }
 
-        # Nodes are created successfully
-        assert "extract_cv" in nodes
+        cv_data = CVData(
+            contact=ContactInfo(name="Test", email="test@test.com"),
+            summary="Test summary",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        with patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes:
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": cv_data, "current_step": "extract_cv"}
+            )
+
+            # High threshold so documents are below it
+            config = RLMConfig(size_threshold=100000)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
+
+            # Should use standard extraction
+            assert result["cv_data"] == cv_data
+            assert result["rlm_metadata"]["enabled"] is True
+            assert result["rlm_metadata"]["used"] is False
 
     def test_extract_cv_rlm_success(self, mock_llm_provider, sample_cv_text, sample_job_text):
         """Test extract_cv_rlm with successful RLM result."""
@@ -778,8 +855,10 @@ class TestRLMNodesCreation:
             assert result["cv_data"] == cv_data
             assert result["rlm_metadata"]["used"] is True
 
-    def test_extract_cv_rlm_fallback(self, mock_llm_provider, sample_cv_text, sample_job_text):
-        """Test extract_cv_rlm falling back on failure."""
+    def test_extract_cv_rlm_fallback_on_failure(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm falling back on RLM failure."""
         from cv_warlock.graph.rlm_nodes import create_rlm_nodes
 
         large_cv = sample_cv_text * 10
@@ -788,35 +867,71 @@ class TestRLMNodesCreation:
             "raw_cv": large_cv,
             "raw_job_spec": large_job,
             "use_rlm": True,
+            "errors": [],
         }
 
-        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+        cv_data = CVData(
+            contact=ContactInfo(name="Fallback", email="fallback@test.com"),
+            summary="Fallback summary",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM fails
             mock_complete.return_value = RLMResult(
                 answer=None,
                 trajectory=[],
                 sub_call_count=0,
                 total_iterations=1,
                 success=False,
-                error="Test error",
+                error="Test RLM error",
+            )
+            # Standard extraction succeeds
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": cv_data, "current_step": "extract_cv"}
             )
 
             config = RLMConfig(size_threshold=100)
             nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
 
-            # Verify nodes were created (fallback logic is internal)
-            assert "extract_cv" in nodes
-            assert callable(nodes["extract_cv"])
-            # State is available for the node function
-            assert state["use_rlm"] is True
+            # Should fall back to standard extraction
+            assert result["cv_data"] == cv_data
+            assert result["rlm_metadata"]["used"] is False
 
-    def test_extract_cv_rlm_wrong_type(self, mock_llm_provider, sample_cv_text):
-        """Test extract_cv_rlm with wrong answer type."""
+    def test_extract_cv_rlm_wrong_type_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm with wrong answer type falls back to standard."""
         from cv_warlock.graph.rlm_nodes import create_rlm_nodes
 
         large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
 
-        with patch.object(RLMOrchestrator, "complete") as mock_complete:
-            # Return wrong type (string instead of CVData)
+        cv_data = CVData(
+            contact=ContactInfo(name="Standard", email="standard@test.com"),
+            summary="Standard summary",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM returns wrong type (string instead of CVData)
             mock_complete.return_value = RLMResult(
                 answer="Not a CVData object",
                 trajectory=[],
@@ -824,14 +939,61 @@ class TestRLMNodesCreation:
                 total_iterations=1,
                 success=True,
             )
+            # Standard extraction succeeds
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": cv_data, "current_step": "extract_cv"}
+            )
 
             config = RLMConfig(size_threshold=100)
             nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
 
-            # Verify nodes created and can handle wrong type
-            assert "extract_cv" in nodes
-            # Large CV would trigger RLM path
-            assert len(large_cv) > config.size_threshold
+            # Should fall back to standard extraction
+            assert result["cv_data"] == cv_data
+            assert result["rlm_metadata"]["used"] is False
+
+    def test_extract_cv_rlm_exception_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm falls back when exception occurs."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        cv_data = CVData(
+            contact=ContactInfo(name="Exception", email="exception@test.com"),
+            summary="Exception fallback summary",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM raises exception
+            mock_complete.side_effect = Exception("RLM crashed!")
+            # Standard extraction succeeds
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": cv_data, "current_step": "extract_cv"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
+
+            # Should fall back to standard extraction and record error
+            assert result["cv_data"] == cv_data
+            assert result["rlm_metadata"]["used"] is False
+            assert any("RLM extraction fallback" in e for e in result["errors"])
 
     def test_extract_job_rlm_success(self, mock_llm_provider, sample_cv_text, sample_job_text):
         """Test extract_job_rlm with successful result."""
@@ -870,6 +1032,199 @@ class TestRLMNodesCreation:
             # Should combine metadata
             assert result["rlm_metadata"]["total_iterations"] == 5  # 2 + 3
 
+    def test_extract_job_rlm_success_no_existing_metadata(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm with successful result but no existing metadata."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            # No rlm_metadata - tests the else branch
+        }
+
+        job_requirements = JobRequirements(
+            job_title="Senior Developer",
+            required_skills=["Python"],
+            preferred_skills=["Kubernetes"],
+            responsibilities=["Code review"],
+        )
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer=job_requirements,
+                trajectory=[],
+                sub_call_count=2,
+                total_iterations=3,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_job"](state)
+
+            assert result["job_requirements"] == job_requirements
+            # No existing metadata to combine with
+            assert result["rlm_metadata"]["total_iterations"] == 3
+
+    def test_extract_job_rlm_disabled(self, mock_llm_provider, sample_cv_text, sample_job_text):
+        """Test extract_job_rlm when RLM is disabled."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        state = {
+            "raw_cv": sample_cv_text,
+            "raw_job_spec": sample_job_text,
+            "use_rlm": False,  # Disabled
+            "errors": [],
+        }
+
+        job_requirements = JobRequirements(
+            job_title="Fallback Job",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        with patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes:
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_job={"job_requirements": job_requirements, "current_step": "extract_job"}
+            )
+
+            nodes = create_rlm_nodes(mock_llm_provider)
+            result = nodes["extract_job"](state)
+
+            assert result["job_requirements"] == job_requirements
+
+    def test_extract_job_rlm_wrong_type_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm with wrong answer type falls back to standard."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        job_requirements = JobRequirements(
+            job_title="Standard Job",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM returns wrong type (string instead of JobRequirements)
+            mock_complete.return_value = RLMResult(
+                answer="Not a JobRequirements object",
+                trajectory=[],
+                sub_call_count=0,
+                total_iterations=1,
+                success=True,
+            )
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_job={"job_requirements": job_requirements, "current_step": "extract_job"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_job"](state)
+
+            assert result["job_requirements"] == job_requirements
+
+    def test_extract_job_rlm_failure_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm falls back on RLM failure."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        job_requirements = JobRequirements(
+            job_title="Fallback Job",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+                error="RLM job extraction failed",
+            )
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_job={"job_requirements": job_requirements, "current_step": "extract_job"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_job"](state)
+
+            assert result["job_requirements"] == job_requirements
+
+    def test_extract_job_rlm_exception_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm falls back when exception occurs."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        job_requirements = JobRequirements(
+            job_title="Exception Fallback",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            mock_complete.side_effect = Exception("RLM job extraction crashed!")
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_job={"job_requirements": job_requirements, "current_step": "extract_job"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_job"](state)
+
+            assert result["job_requirements"] == job_requirements
+            assert any("RLM job extraction fallback" in e for e in result["errors"])
+
     def test_analyze_match_rlm_dict_answer(
         self, mock_llm_provider, sample_cv_text, sample_job_text
     ):
@@ -906,6 +1261,168 @@ class TestRLMNodesCreation:
             assert "match_analysis" in result
             # MatchAnalysis is a TypedDict, so access as dict
             assert result["match_analysis"]["relevance_score"] == 0.75
+
+    def test_analyze_match_rlm_disabled(self, mock_llm_provider, sample_cv_text, sample_job_text):
+        """Test analyze_match_rlm when RLM is disabled."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        state = {
+            "raw_cv": sample_cv_text,
+            "raw_job_spec": sample_job_text,
+            "use_rlm": False,  # Disabled
+            "errors": [],
+        }
+
+        match_result = {
+            "match_analysis": {
+                "strong_matches": ["Python"],
+                "partial_matches": [],
+                "gaps": [],
+                "transferable_skills": [],
+                "relevance_score": 0.8,
+            },
+            "current_step": "analyze_match",
+        }
+
+        with patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes:
+            mock_create_nodes.return_value = create_mock_standard_nodes(analyze_match=match_result)
+
+            nodes = create_rlm_nodes(mock_llm_provider)
+            result = nodes["analyze_match"](state)
+
+            assert result["match_analysis"]["relevance_score"] == 0.8
+
+    def test_analyze_match_rlm_non_dict_answer_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test analyze_match_rlm with non-dict answer falls back to standard."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        match_result = {
+            "match_analysis": {
+                "strong_matches": ["Fallback"],
+                "partial_matches": [],
+                "gaps": [],
+                "transferable_skills": [],
+                "relevance_score": 0.6,
+            },
+            "current_step": "analyze_match",
+        }
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM returns non-dict (string instead of dict)
+            mock_complete.return_value = RLMResult(
+                answer="Not a dict answer",
+                trajectory=[],
+                sub_call_count=0,
+                total_iterations=1,
+                success=True,
+            )
+            mock_create_nodes.return_value = create_mock_standard_nodes(analyze_match=match_result)
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["analyze_match"](state)
+
+            assert result["match_analysis"]["relevance_score"] == 0.6
+
+    def test_analyze_match_rlm_failure_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test analyze_match_rlm falls back on RLM failure."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        match_result = {
+            "match_analysis": {
+                "strong_matches": ["Failure Fallback"],
+                "partial_matches": [],
+                "gaps": [],
+                "transferable_skills": [],
+                "relevance_score": 0.5,
+            },
+            "current_step": "analyze_match",
+        }
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+                error="RLM match analysis failed",
+            )
+            mock_create_nodes.return_value = create_mock_standard_nodes(analyze_match=match_result)
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["analyze_match"](state)
+
+            assert result["match_analysis"]["relevance_score"] == 0.5
+
+    def test_analyze_match_rlm_exception_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test analyze_match_rlm falls back when exception occurs."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        match_result = {
+            "match_analysis": {
+                "strong_matches": ["Exception Fallback"],
+                "partial_matches": [],
+                "gaps": [],
+                "transferable_skills": [],
+                "relevance_score": 0.4,
+            },
+            "current_step": "analyze_match",
+        }
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            mock_complete.side_effect = Exception("RLM match analysis crashed!")
+            mock_create_nodes.return_value = create_mock_standard_nodes(analyze_match=match_result)
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["analyze_match"](state)
+
+            assert result["match_analysis"]["relevance_score"] == 0.4
+            assert any("RLM match analysis fallback" in e for e in result["errors"])
 
 
 # =============================================================================
