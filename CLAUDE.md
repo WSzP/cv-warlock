@@ -20,6 +20,9 @@ uv run pytest tests/test_file.py
 # Run linting
 uv run ruff check .
 
+# Format code (REQUIRED before committing)
+uv run ruff format .
+
 # Run type checking
 uv run mypy src/cv_warlock
 
@@ -148,3 +151,5 @@ Settings loaded via Pydantic Settings in `config.py`.
 - Line length: 100 characters (ruff config)
 - Strict mypy mode enabled
 - Uses Pydantic v2 for all data models
+
+**IMPORTANT**: Always run `uv run ruff format .` before committing to avoid CI failures.
