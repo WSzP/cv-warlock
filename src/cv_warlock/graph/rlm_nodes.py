@@ -4,8 +4,14 @@ These nodes use RLM orchestration for handling large documents
 with interpretable reasoning and chunk-by-chunk analysis.
 """
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cv_warlock.models.cv import CVData
 
 from cv_warlock.llm.base import LLMProvider
 from cv_warlock.models.state import CVWarlockState, RLMMetadata, RLMTrajectoryStep
@@ -21,6 +27,29 @@ from cv_warlock.rlm.prompts import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _is_valid_cv_data(cv_data: CVData) -> bool:
+    """Check if CVData has meaningful content (not empty/placeholder values).
+
+    Returns:
+        True if the CVData has at least a name and some experiences/skills.
+    """
+    from cv_warlock.models.cv import CVData
+
+    if not isinstance(cv_data, CVData):
+        return False
+
+    # Must have a real name (not placeholder)
+    name = cv_data.contact.name if cv_data.contact else ""
+    if not name or name.upper() in ["<UNKNOWN>", "UNKNOWN", "NAME NOT PROVIDED", "N/A", ""]:
+        return False
+
+    # Must have at least some content - either experiences or skills
+    has_experiences = len(cv_data.experiences) > 0
+    has_skills = len(cv_data.skills) > 0
+
+    return has_experiences or has_skills
 
 
 def _convert_trajectory(rlm_result: RLMResult) -> list[RLMTrajectoryStep]:
@@ -140,7 +169,8 @@ def create_rlm_nodes(
             if rlm_result.success and rlm_result.answer:
                 cv_data = rlm_result.answer if isinstance(rlm_result.answer, CVData) else None
 
-                if cv_data is not None:
+                # Validate that CVData has meaningful content (not empty/placeholder)
+                if cv_data is not None and _is_valid_cv_data(cv_data):
                     return {
                         "cv_data": cv_data,
                         "current_step": "extract_cv",
@@ -148,8 +178,8 @@ def create_rlm_nodes(
                         "rlm_metadata": _create_rlm_metadata(True, True, rlm_result),
                     }
                 else:
-                    # RLM returned answer but not in correct format - fallback
-                    logger.warning("RLM returned non-CVData answer, falling back to standard")
+                    # RLM returned empty or invalid CVData - fallback
+                    logger.warning("RLM returned empty/invalid CVData, falling back to standard")
                     result = standard_nodes["extract_cv"](state)
                     result["rlm_metadata"] = _create_rlm_metadata(True, False)
                     return result

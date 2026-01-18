@@ -171,6 +171,34 @@ class RLMOrchestrator:
                     result = env.execute(action.content)
                     step.execution_result = result.output if result.success else result.error
 
+                    # Check if FINAL was also present in the same response
+                    # (model may create variable and call FINAL in same response)
+                    text_without_code = model_output
+                    for match in reversed(list(self.CODE_BLOCK_PATTERN.finditer(model_output))):
+                        text_without_code = (
+                            text_without_code[: match.start()] + text_without_code[match.end() :]
+                        )
+                    final_in_output = self.FINAL_PATTERN.search(text_without_code)
+                    final_var_in_output = (
+                        self.FINAL_VAR_PATTERN.search(text_without_code)
+                        if not final_in_output
+                        else None
+                    )
+
+                    if final_in_output or final_var_in_output:
+                        # FINAL was present - process it now that code has been executed
+                        final_content = (
+                            final_in_output.group(1).strip()
+                            if final_in_output
+                            else final_var_in_output.group(1)
+                        )
+                        final_answer = self._process_final_answer(final_content, output_schema, env)
+                        step.execution_result = (
+                            f"Code executed, then FINAL: {step.execution_result}"
+                        )
+                        trajectory.append(step)
+                        break
+
                     # Add result to conversation
                     if result.success:
                         feedback = f"Execution output:\n{result.output}"
@@ -295,30 +323,32 @@ class RLMOrchestrator:
         Returns:
             Parsed ModelAction.
         """
-        # Check for FINAL answer first
-        final_match = self.FINAL_PATTERN.search(output)
-        if final_match:
-            return ModelAction(
-                action_type=ActionType.FINAL,
-                content=final_match.group(1).strip(),
+        # Step 1: Extract all code blocks and create text without code blocks
+        # This prevents FINAL() inside code blocks from being matched
+        code_blocks = list(self.CODE_BLOCK_PATTERN.finditer(output))
+        text_without_code = output
+        for match in reversed(code_blocks):  # Reverse to preserve indices
+            text_without_code = (
+                text_without_code[: match.start()] + text_without_code[match.end() :]
             )
 
-        # Check for FINAL_VAR
-        final_var_match = self.FINAL_VAR_PATTERN.search(output)
-        if final_var_match:
-            return ModelAction(
-                action_type=ActionType.FINAL,
-                content=final_var_match.group(1),  # Variable name
-            )
+        # Step 2: Check for FINAL answer ONLY in text outside code blocks
+        final_match = self.FINAL_PATTERN.search(text_without_code)
+        final_var_match = (
+            self.FINAL_VAR_PATTERN.search(text_without_code) if not final_match else None
+        )
 
-        # Check for code blocks
-        code_match = self.CODE_BLOCK_PATTERN.search(output)
-        if code_match:
-            code = code_match.group(1).strip()
+        # Step 3: PRIORITY - If we have code blocks, execute them FIRST
+        # The model often builds variables in code and then calls FINAL(var)
+        # We need to execute the code before we can resolve the FINAL
+        if code_blocks:
+            # Combine ALL code blocks - model may create vars in one and use in another
+            all_code = "\n\n".join(match.group(1).strip() for match in code_blocks)
 
-            # Check if code contains rlm_query call
-            if "rlm_query(" in code:
-                # Extract the query parameters
+            # Check if any code contains rlm_query call
+            if "rlm_query(" in all_code:
+                # Execute first code block (may need sub-call)
+                code = code_blocks[0].group(1).strip()
                 query_match = re.search(
                     r"rlm_query\s*\(\s*(.+?)\s*,\s*[\"'](.+?)[\"']\s*\)",
                     code,
@@ -332,9 +362,24 @@ class RLMOrchestrator:
                         question=query_match.group(2).strip(),
                     )
 
+            # Return code for execution - FINAL will be processed in next iteration
+            # after the variables have been created
             return ModelAction(
                 action_type=ActionType.CODE,
-                content=code,
+                content=all_code,
+            )
+
+        # Step 4: No code blocks - now check for FINAL
+        if final_match:
+            return ModelAction(
+                action_type=ActionType.FINAL,
+                content=final_match.group(1).strip(),
+            )
+
+        if final_var_match:
+            return ModelAction(
+                action_type=ActionType.FINAL,
+                content=final_var_match.group(1),  # Variable name
             )
 
         # No specific action detected - treat as thinking/text
@@ -420,15 +465,104 @@ class RLMOrchestrator:
 
         # Try to parse as JSON if schema provided
         if output_schema:
+            # First try direct JSON parse
             try:
-                # Try direct JSON parse
                 data = json.loads(content)
                 return output_schema.model_validate(data)
             except (json.JSONDecodeError, Exception):
-                # Fall back to string content
                 pass
 
+            # Try to extract JSON from within the content (model may wrap in text)
+            json_match = re.search(r"\{[\s\S]*\}", content)
+            if json_match:
+                try:
+                    data = json.loads(json_match.group())
+                    return output_schema.model_validate(data)
+                except (json.JSONDecodeError, Exception):
+                    pass
+
+            # Fall back to LLM-based structured extraction
+            return self._extract_with_llm(content, output_schema, env)
+
         return content
+
+    def _extract_with_llm(
+        self,
+        content: str,
+        output_schema: type[T],
+        env: REPLEnvironment,
+    ) -> T | str:
+        """Use LLM to extract structured data from text content.
+
+        Falls back to direct extraction from raw CV/job text if analysis is empty.
+
+        Args:
+            content: Text content from RLM analysis.
+            output_schema: Pydantic model to extract.
+            env: REPL environment with context.
+
+        Returns:
+            Extracted Pydantic model or original content on failure.
+        """
+        # Get schema info for the prompt
+        schema_name = output_schema.__name__
+        schema_fields = list(output_schema.model_fields.keys())
+
+        # Check if we have meaningful analysis content
+        has_analysis = content and len(content.strip()) > 100
+
+        if has_analysis:
+            # Build context from environment variables
+            context_parts = []
+            for key, value in env.variables.items():
+                if isinstance(value, (dict, list)):
+                    context_parts.append(f"{key}: {json.dumps(value, indent=2)}")
+                else:
+                    context_parts.append(f"{key}: {value}")
+            context = "\n".join(context_parts) if context_parts else "No additional context"
+
+            extraction_prompt = f"""Based on the following analysis and context, extract the structured data.
+
+## Analysis Result
+{content}
+
+## Additional Context from Analysis
+{context}
+
+## Required Output
+Extract the information into a {schema_name} with these fields: {", ".join(schema_fields)}
+
+Be thorough and include all relevant information found in the analysis."""
+        else:
+            # No meaningful analysis - fall back to direct extraction from raw text
+            logger.info(f"No analysis content, using direct extraction for {schema_name}")
+
+            # Use the raw CV text from environment (this is the source of truth)
+            raw_cv = env.cv_text if hasattr(env, "cv_text") else ""
+            raw_job = env.job_text if hasattr(env, "job_text") else ""
+
+            extraction_prompt = f"""Extract structured information from this CV document.
+
+## CV TEXT
+{raw_cv}
+
+## JOB REQUIREMENTS (for context)
+{raw_job}
+
+## Required Output
+Extract the information into a {schema_name} with these fields: {", ".join(schema_fields)}
+
+Be thorough and extract all relevant information from the CV."""
+
+        try:
+            model = self.sub_provider.get_extraction_model()
+            structured_model = model.with_structured_output(output_schema)
+            result = structured_model.invoke(extraction_prompt)
+            logger.info(f"LLM extraction successful for {schema_name}")
+            return result
+        except Exception as e:
+            logger.warning(f"LLM extraction failed for {schema_name}: {e}")
+            return content
 
     def _extract_fallback_answer(
         self,
@@ -459,7 +593,25 @@ class RLMOrchestrator:
                             return output_schema.model_validate(data)
                     except Exception:
                         pass
+                # If we found a value but couldn't parse it, try LLM extraction
+                if output_schema and value:
+                    content = str(value) if not isinstance(value, str) else value
+                    result = self._extract_with_llm(content, output_schema, env)
+                    if isinstance(result, output_schema):
+                        return result
                 return value
+
+        # If we have variables but none matched result keys, try LLM extraction
+        # on the combined context
+        if env.variables and output_schema:
+            combined = "\n".join(
+                f"{k}: {json.dumps(v) if isinstance(v, (dict, list)) else v}"
+                for k, v in env.variables.items()
+            )
+            result = self._extract_with_llm(combined, output_schema, env)
+            if isinstance(result, output_schema):
+                return result
+            return dict(env.variables)
 
         # Return all variables as fallback
         if env.variables:

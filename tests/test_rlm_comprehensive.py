@@ -299,12 +299,22 @@ class TestRLMOrchestratorFinalAnswer:
     def test_process_final_answer_invalid_json(
         self, mock_llm_provider, sample_cv_text, sample_job_text
     ):
-        """Test processing invalid JSON with schema falls back to string."""
+        """Test processing invalid JSON with schema triggers LLM extraction."""
+        # Set up mock for LLM extraction fallback
+        mock_structured_model = MagicMock()
+        mock_extracted_config = RLMConfig(max_iterations=5)
+        mock_structured_model.invoke.return_value = mock_extracted_config
+        mock_llm_provider.get_extraction_model.return_value.with_structured_output.return_value = (
+            mock_structured_model
+        )
+
         orchestrator = RLMOrchestrator(mock_llm_provider)
         env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
 
         result = orchestrator._process_final_answer("not valid json", RLMConfig, env)
-        assert result == "not valid json"
+        # Now we attempt LLM extraction instead of returning the string
+        assert isinstance(result, RLMConfig)
+        assert result.max_iterations == 5
 
 
 class TestRLMOrchestratorFallback:
@@ -830,13 +840,14 @@ class TestRLMNodesCreation:
             "use_rlm": True,
         }
 
-        # Mock the orchestrator to return CVData
+        # Mock the orchestrator to return CVData with valid content
+        # Note: _is_valid_cv_data requires at least name + (experiences OR skills)
         cv_data = CVData(
             contact=ContactInfo(name="Test", email="test@test.com"),
             summary="Test summary",
             experiences=[],
             education=[],
-            skills=[],
+            skills=["Python", "TypeScript"],  # Need at least one skill for validation
         )
 
         with patch.object(RLMOrchestrator, "complete") as mock_complete:
