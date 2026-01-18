@@ -16,9 +16,9 @@
 
 # CV Warlock
 
-**AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). The ATS is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview.
+**RLM-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then uses Recursive Language Models (RLMs) to generate a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). The ATS is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview.
 
-This is an opinionated, model-agnostic, quality-assured CV improver. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. In even simpler words: Waaagh!
+This is an opinionated, model-agnostic, quality-assured CV improver. It is nontrivial to detect the output automatically. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. It is also hard to catch, should someone use an AI detector. In even simpler words: Waaagh!
 
 # Is this cheating?
 
@@ -45,6 +45,10 @@ But please share the results of your experiments with me and the world on Linked
 ## RLM (Recursive Language Model)
 
 CV Warlock includes an advanced **RLM mode** (enabled by default) for handling arbitrarily long CVs and job specifications. RLM uses a recursive orchestration pattern where the model can explore context through code execution and spawn sub-calls to analyze specific chunks.
+
+### Recursive Language Model?
+
+Recursive Language Models (RLMs) ([Zhang et al., 2025](https://arxiv.org/abs/2512.24601v1)) are a novel inference strategy that allows an LLM to handle essentially unbounded input sizes by recursively calling itself on portions of the input context. Instead of ingesting an entire lengthy prompt (like a multi-page CV or job spec) in one go, an RLM treats the prompt as an external environment (e.g. a scratchpad or REPL with the text stored as a variable) which the model can programmatically inspect and decompose. This gives the model a form of near-infinite context, enabling it to parse very long documents without hitting fixed context window limits or suffering the usual “context rot” (degradation on long inputs). In fact, RLMs have been shown to successfully process inputs far beyond standard context limits (on the order of millions of tokens) with minimal performance degradation, and to outperform base LLMs and other long-context methods by significant margins. All while keeping inference costs comparable to a normal model call. Adopting RLMs in CV Warlock is thus a technically innovative decision that brings cutting-edge long-context handling into production, allowing accurate and efficient analysis of full-length CVs and detailed job descriptions that would exceed traditional LLM limits.
 
 ### Key Features
 
