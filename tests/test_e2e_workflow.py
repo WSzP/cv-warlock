@@ -151,7 +151,7 @@ class TestE2EWorkflowWithMocks:
     def test_workflow_graph_compiles(self, mock_llm_provider):
         """Test that the workflow graph compiles successfully."""
         with patch("cv_warlock.graph.workflow.get_llm_provider", return_value=mock_llm_provider):
-            graph = create_cv_warlock_graph(provider="anthropic", model="test-model")
+            graph = create_cv_warlock_graph(provider="anthropic")
             assert graph is not None
 
     def test_full_workflow_with_mocks(self, sample_cv_text, sample_job_text):
@@ -201,7 +201,6 @@ class TestE2EWorkflowWithMocks:
                 raw_cv=sample_cv_text,
                 raw_job_spec=sample_job_text,
                 provider="anthropic",
-                model="test-model",
                 use_cot=False,  # Disable CoT for faster mock testing
             )
 
@@ -223,7 +222,6 @@ class TestE2EWorkflowWithMocks:
                 raw_cv="",  # Empty CV
                 raw_job_spec=sample_job_text,
                 provider="anthropic",
-                model="test-model",
             )
 
             assert len(result.get("errors", [])) > 0
@@ -238,7 +236,6 @@ class TestE2EWorkflowWithMocks:
                 raw_cv=sample_cv_text,
                 raw_job_spec="",  # Empty job spec
                 provider="anthropic",
-                model="test-model",
             )
 
             assert len(result.get("errors", [])) > 0
@@ -272,7 +269,6 @@ class TestE2EWorkflowWithMocks:
                 raw_cv=sample_cv_text,
                 raw_job_spec=sample_job_text,
                 provider="anthropic",
-                model="test-model",
                 use_cot=False,
             )
 
@@ -318,7 +314,6 @@ class TestE2EWorkflowWithMocks:
                 raw_cv=sample_cv_text,
                 raw_job_spec=sample_job_text,
                 provider="anthropic",
-                model="test-model",
                 use_cot=False,
                 progress_callback=progress_callback,
             )

@@ -66,23 +66,17 @@ Examples:
 - `test_results/2026-01-17_09-15_gpt-5-2.md`
 - `test_results/2026-01-17_16-45_gemini-3-pro.md`
 
-Example test commands with tracing:
+Example test commands with tracing (model is auto-selected via Dual-Model Strategy):
 
 ```bash
-# Test with Anthropic (default - Sonnet 4.5)
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_claude-sonnet-4-5.md -p anthropic -m claude-sonnet-4-5-20250929 -v
+# Test with Anthropic (default)
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_anthropic.md -p anthropic -v
 
-# Test with Anthropic Haiku 4.5 (fast)
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_claude-haiku-4-5.md -p anthropic -m claude-haiku-4-5-20251001 -v
+# Test with OpenAI
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_openai.md -p openai -v
 
-# Test with Anthropic Opus 4.5 (best quality)
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_claude-opus-4-5.md -p anthropic -m claude-opus-4-5-20251101 -v
-
-# Test with OpenAI GPT-5.2
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_gpt-5-2.md -p openai -m gpt-5.2 -v
-
-# Test with Google Gemini 3 Pro
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_gemini-3-pro.md -p google -m gemini-3-pro-preview -v
+# Test with Google
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_google.md -p google -v
 ```
 
 ## Architecture
@@ -156,7 +150,8 @@ When `use_rlm=True`, enables recursive orchestration for handling large document
 Environment variables loaded from `.env.local`:
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`: Provider API keys
 - `CV_WARLOCK_PROVIDER`: Default provider (anthropic/openai/google)
-- `CV_WARLOCK_MODEL`: Default model name
+
+Model selection is automatic via Dual-Model Strategy based on the provider.
 
 Settings loaded via Pydantic Settings in `config.py`.
 

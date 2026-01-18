@@ -127,9 +127,8 @@ OPENAI_API_KEY=sk-your-openai-key-here
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
 GOOGLE_API_KEY=your-google-api-key-here
 
-# Optional: Default provider and model
+# Optional: Default provider (model is auto-selected via Dual-Model Strategy)
 CV_WARLOCK_PROVIDER=anthropic
-CV_WARLOCK_MODEL=claude-sonnet-4-5-20250929
 ```
 
 ### RLM Configuration
@@ -198,8 +197,8 @@ uv run cv-warlock tailor my_cv.md job_posting.txt --output tailored_cv.md
 # Analyze CV-job fit without generating a tailored CV
 uv run cv-warlock analyze my_cv.md job_posting.txt
 
-# Use a specific provider/model
-uv run cv-warlock tailor my_cv.md job.txt --provider anthropic --model claude-opus-4-5-20251101
+# Use a specific provider (model is auto-selected)
+uv run cv-warlock tailor my_cv.md job.txt --provider openai
 
 # Disable RLM mode (enabled by default)
 uv run cv-warlock tailor my_cv.md job.txt --no-rlm
@@ -348,26 +347,29 @@ uv run mypy src/cv_warlock
 **IMPORTANT**: All test output files MUST follow this naming format to track solution evolution:
 
 ```text
-YYYY-MM-DD_HH-MM_modelname.md
+YYYY-MM-DD_HH-MM_provider.md
 ```
 
 Examples:
 
-- `2026-01-17_14-30_claude-sonnet-4-5.md`
-- `2026-01-17_09-15_gpt-5-2.md`
-- `2026-01-17_16-45_gemini-3-pro.md`
+- `2026-01-17_14-30_anthropic.md`
+- `2026-01-17_09-15_openai.md`
+- `2026-01-17_16-45_google.md`
 
-Example test commands:
+Example test commands (model is auto-selected via Dual-Model Strategy):
 
 ```bash
 # Test with Anthropic
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_claude-sonnet-4-5.md -p anthropic -m claude-sonnet-4-5-20250929 -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_anthropic.md -p anthropic -v
 
 # Test with OpenAI
-uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_gpt-5-2.md -p openai -m gpt-5.2 -v
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_openai.md -p openai -v
+
+# Test with Google
+uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o 2026-01-17_14-30_google.md -p google -v
 ```
 
-This naming convention helps track the evolution of the solution across different models and time.
+This naming convention helps track the evolution of the solution across different providers and time.
 
 ## Fonts
 

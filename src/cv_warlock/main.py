@@ -41,10 +41,9 @@ def tailor(
         "tailored_cv.md"
     ),
     provider: Annotated[
-        Literal["openai", "anthropic"],
-        typer.Option("--provider", "-p", help="LLM provider to use"),
-    ] = "openai",
-    model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
+        Literal["openai", "anthropic", "google"],
+        typer.Option("--provider", "-p", help="LLM provider (model auto-selected)"),
+    ] = "anthropic",
     lookback_years: Annotated[
         int | None,
         typer.Option(
@@ -79,8 +78,7 @@ def tailor(
     if verbose:
         console.print(f"[dim]CV:[/dim] {cv}")
         console.print(f"[dim]Job:[/dim] {job}")
-        console.print(f"[dim]Provider:[/dim] {provider}")
-        console.print(f"[dim]Model:[/dim] {model or 'default'}")
+        console.print(f"[dim]Provider:[/dim] {provider} (model auto-selected)")
         console.print(f"[dim]Lookback:[/dim] {lookback_years or 4} years")
         console.print(f"[dim]RLM Mode:[/dim] {'Disabled' if no_rlm else 'Enabled'}")
         console.print()
@@ -99,7 +97,6 @@ def tailor(
                 raw_cv=raw_cv,
                 raw_job_spec=raw_job_spec,
                 provider=provider,
-                model=model,
                 lookback_years=lookback_years,
                 use_rlm=not no_rlm,
             )
@@ -181,10 +178,9 @@ def analyze(
     cv: Annotated[Path, typer.Argument(help="Path to your CV")],
     job: Annotated[Path, typer.Argument(help="Path to job specification")],
     provider: Annotated[
-        Literal["openai", "anthropic"],
-        typer.Option("--provider", "-p", help="LLM provider to use"),
-    ] = "openai",
-    model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
+        Literal["openai", "anthropic", "google"],
+        typer.Option("--provider", "-p", help="LLM provider (model auto-selected)"),
+    ] = "anthropic",
     no_rlm: Annotated[
         bool,
         typer.Option(
@@ -219,7 +215,6 @@ def analyze(
                 raw_cv=raw_cv,
                 raw_job_spec=raw_job_spec,
                 provider=provider,
-                model=model,
                 use_rlm=not no_rlm,
             )
         except Exception as e:

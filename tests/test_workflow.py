@@ -152,8 +152,10 @@ class TestCreateCVWarlockGraph:
         mock_provider = MagicMock()
         mock_get_provider.return_value = mock_provider
 
-        create_cv_warlock_graph(provider="openai", model="gpt-5.2")
+        # Model is auto-selected based on provider (Dual-Model Strategy)
+        create_cv_warlock_graph(provider="openai")
 
+        # Model is auto-selected as gpt-5.2 for openai provider
         mock_get_provider.assert_called_once_with("openai", "gpt-5.2", "test-openai-key")
 
     @patch("cv_warlock.graph.workflow.get_settings")
@@ -235,8 +237,10 @@ class TestCreateCVWarlockGraph:
         mock_provider = MagicMock()
         mock_get_provider.return_value = mock_provider
 
-        create_cv_warlock_graph(provider="google", model="gemini-3-flash-preview")
+        # Model is auto-selected based on provider (Dual-Model Strategy)
+        create_cv_warlock_graph(provider="google")
 
+        # Model is auto-selected as gemini-3-flash-preview for google provider
         mock_get_provider.assert_called_once_with("google", "gemini-3-flash-preview", "google-key")
 
 
@@ -395,17 +399,15 @@ class TestRunCVTailoring:
         mock_create_graph.return_value = mock_graph
         mock_graph.invoke.return_value = {"tailored_cv": "CV", "errors": []}
 
+        # Model is auto-selected based on provider (Dual-Model Strategy)
         run_cv_tailoring(
             sample_cv_text,
             sample_job_text,
             provider="openai",
-            model="gpt-5.2",
             api_key="test-key",
         )
 
-        mock_create_graph.assert_called_once_with(
-            "openai", "gpt-5.2", "test-key", use_cot=True, use_rlm=False
-        )
+        mock_create_graph.assert_called_once_with("openai", "test-key", use_cot=True, use_rlm=False)
 
     @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
     def test_run_cv_tailoring_adds_total_generation_time(
@@ -499,7 +501,8 @@ class TestWorkflowStepDescriptions:
             use_cot=False,
         )
 
-        mock_create_graph.assert_called_with(None, None, None, use_cot=False, use_rlm=False)
+        # Model is auto-selected, so only provider and api_key are passed
+        mock_create_graph.assert_called_with(None, None, use_cot=False, use_rlm=False)
 
 
 class TestWorkflowInitialState:

@@ -24,6 +24,36 @@ from cv_warlock.llm.base import get_llm_provider
 from cv_warlock.models.state import CVWarlockState
 
 
+def _get_default_model_for_provider(provider: str) -> str:
+    """Get the default/recommended model for a given provider.
+
+    Returns the best balanced model for general use (non-RLM mode).
+    """
+    if provider == "anthropic":
+        return "claude-sonnet-4-5-20250929"
+    elif provider == "openai":
+        return "gpt-5.2"
+    elif provider == "google":
+        return "gemini-3-flash-preview"
+    else:
+        return "claude-sonnet-4-5-20250929"
+
+
+def _get_strong_model_for_provider(provider: str) -> str:
+    """Get the strongest/most capable model for a given provider.
+
+    Used for RLM root orchestration where maximum capability is needed.
+    """
+    if provider == "anthropic":
+        return "claude-opus-4-5-20251101"
+    elif provider == "openai":
+        return "gpt-5.2"
+    elif provider == "google":
+        return "gemini-3-pro-preview"
+    else:
+        return "claude-opus-4-5-20251101"
+
+
 def _get_fast_model_for_provider(provider: str) -> str:
     """Get the fast/efficient model for a given provider.
 
@@ -36,13 +66,11 @@ def _get_fast_model_for_provider(provider: str) -> str:
     elif provider == "google":
         return "gemini-3-flash-preview"
     else:
-        # Fallback to the provider's default model
         return "claude-haiku-4-5-20251001"
 
 
 def create_cv_warlock_graph(
     provider: Literal["openai", "anthropic", "google"] | None = None,
-    model: str | None = None,
     api_key: str | None = None,
     use_cot: bool = True,
     use_rlm: bool = False,
@@ -51,7 +79,6 @@ def create_cv_warlock_graph(
 
     Args:
         provider: LLM provider to use (openai, anthropic, or google).
-        model: Model name to use.
         api_key: API key for the provider.
         use_cot: Whether to use chain-of-thought reasoning for generation.
                  Default True for higher quality, False for faster generation.
@@ -61,12 +88,18 @@ def create_cv_warlock_graph(
 
     Returns:
         Compiled StateGraph.
+
+    Note:
+        Model selection is automatic based on provider (Dual-Model Strategy):
+        - Default model: Best balanced model for the provider
+        - RLM sub-calls: Fastest model for the provider
     """
     settings = get_settings()
 
-    # Use provided values or fall back to settings
+    # Use provided provider or fall back to settings
     provider = provider or settings.provider
-    model = model or settings.model
+    # Auto-select model based on provider (Dual-Model Strategy)
+    model = _get_default_model_for_provider(provider)
 
     # Get API key from settings if not provided
     if api_key is None:
@@ -77,21 +110,25 @@ def create_cv_warlock_graph(
         else:
             api_key = settings.anthropic_api_key
 
-    # Create LLM provider
-    llm_provider = get_llm_provider(provider, model, api_key)
-
     # Create nodes - use RLM nodes if enabled
     if use_rlm:
         from cv_warlock.graph.rlm_nodes import create_rlm_nodes
         from cv_warlock.rlm.models import RLMConfig
 
-        # Create RLM config using user's selected provider (not settings.rlm_root_provider)
-        # This respects the user's choice of provider (anthropic, openai, google)
+        # Dual-Model Strategy for RLM:
+        # - Root orchestration: strongest model (Opus, GPT-5.2, Gemini Pro)
+        # - Sub-calls: fastest model (Haiku, GPT-5-mini, Gemini Flash)
+        root_model = _get_strong_model_for_provider(provider)
+        sub_model = _get_fast_model_for_provider(provider)
+
+        # Create root provider with strongest model for orchestration
+        llm_provider = get_llm_provider(provider, root_model, api_key)
+
         rlm_config = RLMConfig(
             root_provider=provider,
-            root_model=model,
-            sub_provider=provider,  # Use same provider for sub-calls
-            sub_model=_get_fast_model_for_provider(provider),  # Use faster model for sub-calls
+            root_model=root_model,
+            sub_provider=provider,
+            sub_model=sub_model,
             max_iterations=settings.rlm_max_iterations,
             max_sub_calls=settings.rlm_max_sub_calls,
             timeout_seconds=settings.rlm_timeout_seconds,
@@ -99,8 +136,7 @@ def create_cv_warlock_graph(
             sandbox_mode=settings.rlm_sandbox_mode,
         )
 
-        # Create sub-provider using a faster model from the same provider
-        sub_model = _get_fast_model_for_provider(provider)
+        # Create sub-provider with fastest model for sub-calls
         sub_provider_instance = get_llm_provider(provider, sub_model, api_key)
 
         nodes = create_rlm_nodes(
@@ -110,6 +146,8 @@ def create_cv_warlock_graph(
             use_cot=use_cot,
         )
     else:
+        # Non-RLM mode: use balanced model (Sonnet, GPT-5.2, Gemini Flash)
+        llm_provider = get_llm_provider(provider, model, api_key)
         nodes = create_nodes(llm_provider, use_cot=use_cot)
 
     # Build the graph
@@ -167,7 +205,6 @@ def run_cv_tailoring(
     raw_cv: str,
     raw_job_spec: str,
     provider: Literal["openai", "anthropic", "google"] | None = None,
-    model: str | None = None,
     api_key: str | None = None,
     progress_callback: Callable[[str, str, float], None] | None = None,
     assume_all_tech_skills: bool = True,
@@ -180,8 +217,7 @@ def run_cv_tailoring(
     Args:
         raw_cv: Raw CV text.
         raw_job_spec: Raw job specification text.
-        provider: LLM provider to use.
-        model: Model name to use.
+        provider: LLM provider to use. Model is auto-selected based on provider.
         api_key: API key for the provider.
         progress_callback: Optional callback function(step_name, description, elapsed_seconds)
                           for progress updates with timing.
@@ -196,7 +232,7 @@ def run_cv_tailoring(
     Returns:
         Final workflow state with tailored CV.
     """
-    graph = create_cv_warlock_graph(provider, model, api_key, use_cot=use_cot, use_rlm=use_rlm)
+    graph = create_cv_warlock_graph(provider, api_key, use_cot=use_cot, use_rlm=use_rlm)
 
     # Step descriptions for progress updates
     # New order: skills → experiences → summary

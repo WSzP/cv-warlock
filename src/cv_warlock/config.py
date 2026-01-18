@@ -25,9 +25,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
 
-    # Provider configuration
+    # Provider configuration (model is auto-selected via Dual-Model Strategy)
     provider: Literal["openai", "anthropic", "google"] = "anthropic"
-    model: str = "claude-sonnet-4-5-20250929"
 
     # Tailoring configuration
     lookback_years: int = Field(

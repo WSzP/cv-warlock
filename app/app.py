@@ -324,49 +324,19 @@ def main():
 
     # Sidebar configuration
     with st.sidebar:
-        st.title("AI Model")
+        st.title("AI Provider")
 
         provider = st.selectbox(
             "LLM Provider",
             options=["anthropic", "openai", "google"],
             index=0,
-            help="Choose the AI provider for CV tailoring",
+            help="Choose the AI provider. Model is auto-selected via Dual-Model Strategy.",
         )
 
-        # Model options per provider with latest versions
-        if provider == "openai":
-            model_options = [
-                "gpt-5.2",  # Latest flagship
-                "gpt-5.2-instant",  # Fast version
-                "gpt-5-mini",  # Cost-efficient
-                "gpt-4o",
-            ]
-        elif provider == "google":
-            model_options = [
-                "gemini-3-flash-preview",  # Fast + capable (recommended)
-                "gemini-3-pro-preview",  # Most capable
-            ]
-        else:  # anthropic
-            model_options = [
-                "claude-sonnet-4-5-20250929",  # Best balance (recommended)
-                "claude-haiku-4-5-20251001",  # Fastest, cost-efficient
-                "claude-opus-4-5-20251101",  # Most capable
-            ]
-
-        model = st.selectbox(
-            "Model",
-            options=model_options,
-            index=0,
-            help="Select the specific model to use",
+        st.caption(
+            "**Dual-Model Strategy:** Model is auto-selected based on provider. "
+            "RLM uses the strongest model for orchestration and fastest for sub-calls."
         )
-
-        # Show runtime warning for slower models
-        if "opus" in model.lower():
-            st.info(
-                "**Opus runtime:** 3-5 minutes expected. "
-                "Other models typically complete in under 1 minute.",
-                icon="⏱️",
-            )
 
         # Check if API key exists in environment
         env_api_key = get_env_api_key(provider)
@@ -611,7 +581,6 @@ def main():
             "raw_cv": raw_cv,
             "raw_job_spec": raw_job_spec,
             "provider": provider,
-            "model": model,
             "api_key": effective_api_key,
             "use_cot": True,  # Always use high quality CoT mode
             "use_rlm": st.session_state.get("use_rlm", True),
@@ -653,7 +622,6 @@ def main():
                     raw_cv=params["raw_cv"],
                     raw_job_spec=params["raw_job_spec"],
                     provider=params["provider"],
-                    model=params["model"],
                     api_key=params["api_key"],
                     progress_callback=update_progress,
                     assume_all_tech_skills=params["assume_all_tech_skills"],

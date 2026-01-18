@@ -17,7 +17,7 @@ class TestSettings:
             # Note: Settings reads from .env.local file, so we mock the file loading
             settings = Settings(_env_file=None)  # Disable env file loading
             assert settings.provider == "anthropic"
-            assert settings.model == "claude-sonnet-4-5-20250929"
+            # Model is auto-selected via Dual-Model Strategy, not configured
             assert settings.lookback_years == 4
             assert settings.log_level == "INFO"
             assert settings.openai_api_key is None
@@ -29,12 +29,6 @@ class TestSettings:
         with patch.dict(os.environ, {"CV_WARLOCK_PROVIDER": "openai"}, clear=True):
             settings = Settings()
             assert settings.provider == "openai"
-
-    def test_model_from_env(self) -> None:
-        """Test model setting from environment variable."""
-        with patch.dict(os.environ, {"CV_WARLOCK_MODEL": "gpt-5.2"}, clear=True):
-            settings = Settings()
-            assert settings.model == "gpt-5.2"
 
     def test_lookback_years_from_env(self) -> None:
         """Test lookback_years setting from environment variable."""
