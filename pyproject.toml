@@ -99,6 +99,8 @@ source = ["src/cv_warlock"]
 omit = [
     # LLM-heavy modules where logic lives in prompts, not testable Python code
     "src/cv_warlock/processors/*",
+    # LLM provider wrappers - thin pass-through to LangChain
+    "src/cv_warlock/llm/*",
     # CLI entry point - tested via integration tests, not unit tests
     "src/cv_warlock/main.py",
 ]
