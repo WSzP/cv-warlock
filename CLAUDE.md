@@ -79,6 +79,40 @@ uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o
 uv run cv-warlock tailor examples/sample_cv.md examples/sample_job_posting.md -o test_results/2026-01-17_14-30_google.md -p google -v
 ```
 
+### Test Data Guidelines
+
+**CRITICAL**: Always use REAL sample data from `examples/` directory in tests, NOT mock/fake data:
+
+- `examples/sample_cv.md` - Real-world CV with actual experiences, skills, education
+- `examples/sample_job_posting.md` - Real-world job posting with actual requirements
+
+**Why this matters:**
+
+- Mock data often has unrealistic structures that pass tests but fail in production
+- Real examples validate the full parsing and extraction pipeline
+- Tests catch edge cases that only appear with real-world formatting
+- RLM orchestrator requires realistic document structure to function correctly
+
+**In pytest fixtures**, load real data:
+
+```python
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
+
+@pytest.fixture
+def sample_cv_text():
+    """Load REAL sample CV from examples/sample_cv.md."""
+    cv_path = PROJECT_ROOT / "examples" / "sample_cv.md"
+    return cv_path.read_text(encoding="utf-8")
+
+@pytest.fixture
+def sample_job_text():
+    """Load REAL sample job posting from examples/sample_job_posting.md."""
+    job_path = PROJECT_ROOT / "examples" / "sample_job_posting.md"
+    return job_path.read_text(encoding="utf-8")
+```
+
 ## Architecture
 
 ### LangGraph Workflow

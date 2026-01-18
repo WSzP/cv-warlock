@@ -7,6 +7,7 @@ Tests for:
 - environment.py: sandbox modes
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,8 +28,11 @@ from cv_warlock.rlm.models import (
 from cv_warlock.rlm.orchestrator import RLMOrchestrator
 
 # =============================================================================
-# Fixtures
+# Fixtures - Using REAL sample data from examples/
 # =============================================================================
+
+# Get the project root directory
+PROJECT_ROOT = Path(__file__).parent.parent
 
 
 @pytest.fixture
@@ -45,58 +49,16 @@ def mock_llm_provider():
 
 @pytest.fixture
 def sample_cv_text():
-    """Sample CV text for testing."""
-    return """# John Doe
-
-## Summary
-Experienced software engineer with 10 years of experience.
-
-## Experience
-### Senior Developer at TechCorp
-2020 - Present
-- Led development team
-- Implemented CI/CD
-
-### Developer at StartupInc
-2015 - 2020
-- Built web applications
-- Worked with Python
-
-## Education
-### MS Computer Science
-University of Example, 2015
-
-## Skills
-Python, JavaScript, Docker, Kubernetes
-"""
+    """Load REAL sample CV from examples/sample_cv.md."""
+    cv_path = PROJECT_ROOT / "examples" / "sample_cv.md"
+    return cv_path.read_text(encoding="utf-8")
 
 
 @pytest.fixture
 def sample_job_text():
-    """Sample job text for testing."""
-    return """# Senior Software Engineer
-
-## About the Role
-Join our growing team to build amazing products.
-
-## Requirements
-- 5+ years of Python experience (required)
-- Experience with cloud platforms (must have)
-- Strong communication skills
-
-## Nice to Have
-- Kubernetes experience (nice to have)
-- ML/AI background (bonus)
-
-## Responsibilities
-- Design and implement features
-- Review code
-- Mentor junior developers
-
-## Benefits
-- Health insurance
-- Remote work
-"""
+    """Load REAL sample job posting from examples/sample_job_posting.md."""
+    job_path = PROJECT_ROOT / "examples" / "sample_job_posting.md"
+    return job_path.read_text(encoding="utf-8")
 
 
 @pytest.fixture
