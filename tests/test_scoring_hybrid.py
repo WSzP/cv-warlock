@@ -707,6 +707,235 @@ class TestSerializeMethods:
         assert "Acme Inc" in result
 
 
+class TestScoreWithPlan:
+    """Tests for the score_with_plan optimized method."""
+
+    def test_score_with_plan_returns_tuple(
+        self,
+        mock_llm_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_algorithmic_scores: AlgorithmicScores,
+    ) -> None:
+        """Test that score_with_plan returns tuple of result and plan."""
+        from cv_warlock.scoring.hybrid import _CombinedAnalysisOutput
+
+        scorer = HybridScorer(mock_llm_provider)
+
+        # Setup mock combined analysis output
+        mock_combined = _CombinedAnalysisOutput(
+            transferable_skills=["Leadership"],
+            contextual_strengths=["Career progression"],
+            concerns=[],
+            adjustment=0.03,
+            adjustment_rationale="Good fit",
+            summary_focus=["Highlight Python expertise"],
+            experiences_to_emphasize=["Senior Software Engineer at Tech Corp"],
+            skills_to_highlight=["Python", "AWS"],
+            achievements_to_feature=["Led team of 5"],
+            keywords_to_incorporate=["cloud-native", "scalable"],
+            sections_to_reorder=["Experience", "Skills", "Education"],
+        )
+
+        with patch.object(scorer.algorithmic, "compute", return_value=sample_algorithmic_scores):
+            with patch.object(scorer, "_get_combined_analysis", return_value=mock_combined):
+                result, plan = scorer.score_with_plan(sample_cv_data, sample_job_requirements)
+
+        # Verify result structure
+        assert isinstance(result, dict)
+        assert "relevance_score" in result
+        assert result["scoring_method"] == "hybrid"
+
+        # Verify plan structure (TailoringPlan is a TypedDict, so check dict keys)
+        assert isinstance(plan, dict)
+        assert plan["summary_focus"] == ["Highlight Python expertise"]
+        assert plan["experiences_to_emphasize"] == ["Senior Software Engineer at Tech Corp"]
+        assert plan["skills_to_highlight"] == ["Python", "AWS"]
+
+    def test_score_with_plan_knockout_returns_empty_plan(
+        self,
+        mock_llm_provider: MagicMock,
+        sample_knockout_scores: AlgorithmicScores,
+    ) -> None:
+        """Test that knockout case returns empty tailoring plan."""
+        scorer = HybridScorer(mock_llm_provider)
+
+        cv_data = CVData(
+            contact=ContactInfo(name="Jane Doe"),
+            skills=["Java", "Spring"],  # No required skills
+        )
+
+        job_requirements = JobRequirements(
+            job_title="Python Developer",
+            required_skills=["Python", "Django"],
+        )
+
+        with patch.object(scorer.algorithmic, "compute", return_value=sample_knockout_scores):
+            result, plan = scorer.score_with_plan(cv_data, job_requirements)
+
+        # Verify knockout result
+        assert result["knockout_triggered"] is True
+        assert result["relevance_score"] == 0.0
+
+        # Verify empty plan returned (TailoringPlan is a TypedDict, so check dict keys)
+        assert isinstance(plan, dict)
+        assert plan["summary_focus"] == []
+        assert plan["experiences_to_emphasize"] == []
+        assert plan["skills_to_highlight"] == []
+        assert plan["achievements_to_feature"] == []
+        assert plan["keywords_to_incorporate"] == []
+        assert plan["sections_to_reorder"] == []
+
+    def test_score_with_plan_applies_llm_adjustment(
+        self,
+        mock_llm_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that LLM adjustment is applied in score_with_plan."""
+        from cv_warlock.scoring.hybrid import _CombinedAnalysisOutput
+
+        scorer = HybridScorer(mock_llm_provider)
+
+        algo_scores = AlgorithmicScores(
+            exact_skill_match=0.80,
+            semantic_skill_match=0.80,
+            document_similarity=0.80,
+            experience_years_fit=0.80,
+            education_match=0.80,
+            recency_score=0.80,
+            total=0.80,
+        )
+
+        mock_combined = _CombinedAnalysisOutput(
+            adjustment=0.05,
+            adjustment_rationale="Strong transferable skills",
+        )
+
+        with patch.object(scorer.algorithmic, "compute", return_value=algo_scores):
+            with patch.object(scorer, "_get_combined_analysis", return_value=mock_combined):
+                result, _ = scorer.score_with_plan(sample_cv_data, sample_job_requirements)
+
+        # 0.80 + 0.05 = 0.85
+        assert result["relevance_score"] == pytest.approx(0.85)
+        assert result["algorithmic_score"] == 0.80
+        assert result["llm_adjustment"] == 0.05
+
+
+class TestGetCombinedAnalysis:
+    """Tests for the _get_combined_analysis method."""
+
+    def test_handles_exception_gracefully(
+        self,
+        mock_llm_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_algorithmic_scores: AlgorithmicScores,
+    ) -> None:
+        """Test that _get_combined_analysis returns defaults on error."""
+        from cv_warlock.scoring.hybrid import _CombinedAnalysisOutput
+
+        scorer = HybridScorer(mock_llm_provider)
+
+        # Make the LLM call raise an exception
+        mock_model = MagicMock()
+        mock_model.with_structured_output.side_effect = Exception("API Error")
+        mock_llm_provider.get_extraction_model.return_value = mock_model
+
+        result = scorer._get_combined_analysis(
+            sample_cv_data, sample_job_requirements, sample_algorithmic_scores
+        )
+
+        # Should return default _CombinedAnalysisOutput
+        assert isinstance(result, _CombinedAnalysisOutput)
+        assert result.adjustment == 0.0
+        assert "Failed to get LLM analysis" in result.adjustment_rationale
+        assert any("failed" in c.lower() for c in result.concerns)
+        assert result.summary_focus == []
+        assert result.experiences_to_emphasize == []
+
+    def test_calls_llm_with_correct_prompt_vars(
+        self,
+        mock_llm_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_algorithmic_scores: AlgorithmicScores,
+    ) -> None:
+        """Test that _get_combined_analysis calls LLM with correct variables."""
+        from cv_warlock.scoring.hybrid import _CombinedAnalysisOutput
+
+        scorer = HybridScorer(mock_llm_provider)
+
+        mock_result = _CombinedAnalysisOutput(
+            transferable_skills=["Leadership"],
+            adjustment=0.02,
+        )
+
+        # Create a mock runnable that captures the invoke call
+        mock_runnable = MagicMock()
+        mock_runnable.invoke.return_value = mock_result
+
+        # Mock the entire chain creation
+        mock_model = MagicMock()
+        mock_model.with_structured_output.return_value = MagicMock()
+        mock_llm_provider.get_extraction_model.return_value = mock_model
+
+        # Patch the prompt's __or__ at class level
+        from langchain_core.prompts import ChatPromptTemplate
+
+        def mock_or(self, other):  # noqa: ARG001
+            return mock_runnable
+
+        with patch.object(ChatPromptTemplate, "__or__", mock_or):
+            result = scorer._get_combined_analysis(
+                sample_cv_data, sample_job_requirements, sample_algorithmic_scores
+            )
+
+        # Verify invoke was called
+        mock_runnable.invoke.assert_called_once()
+
+        # Verify result contains expected values
+        assert result.transferable_skills == ["Leadership"]
+        assert result.adjustment == 0.02
+
+
+class TestCategorizeMatchesPreferred:
+    """Tests for preferred skill partial matching in _categorize_matches."""
+
+    def test_preferred_skill_in_experience_text_is_partial_match(
+        self,
+        mock_llm_provider: MagicMock,
+    ) -> None:
+        """Test that preferred skills mentioned in experience text are partial matches."""
+        scorer = HybridScorer(mock_llm_provider)
+
+        cv_data = CVData(
+            contact=ContactInfo(name="John Doe"),
+            skills=[],  # Terraform not in skills list
+            experiences=[
+                Experience(
+                    title="DevOps Engineer",
+                    company="Tech Corp",
+                    start_date="2020",
+                    description="Managed infrastructure using Terraform and Ansible",
+                )
+            ],
+        )
+
+        job_requirements = JobRequirements(
+            job_title="Infrastructure Engineer",
+            required_skills=["AWS"],  # Not in CV
+            preferred_skills=["Terraform", "Kubernetes"],  # Terraform in experience desc
+        )
+
+        strong, partial = scorer._categorize_matches(cv_data, job_requirements)
+
+        # Terraform is a preferred skill mentioned in experience text
+        assert any("Terraform" in m and "preferred" in m and "experience" in m for m in partial)
+        # Kubernetes is not mentioned at all, so should not appear
+        assert not any("Kubernetes" in m for m in strong + partial)
+
+
 class TestFullHybridScoringWorkflow:
     """Integration tests for the full hybrid scoring workflow."""
 
