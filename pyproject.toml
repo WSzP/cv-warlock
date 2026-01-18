@@ -6,7 +6,7 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 authors = [{ name = "Peter W. Szabo", email = "peter@kaizen-ux.com" }]
-keywords = ["cv", "resume", "ai", "langchain", "langgraph", "tailoring"]
+keywords = ["cv", "resume", "ai", "langchain", "langgraph", "rlm"]
 
 dependencies = [
     # LangChain core
