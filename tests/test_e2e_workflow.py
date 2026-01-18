@@ -37,9 +37,11 @@ class MockLLMProvider(LLMProvider):
             mock.invoke.return_value = self._mock_cv_data()
         elif schema == JobRequirements:
             mock.invoke.return_value = self._mock_job_requirements()
-        elif schema == MatchAnalysis or (hasattr(schema, '__name__') and 'Match' in schema.__name__):
+        elif schema == MatchAnalysis or (
+            hasattr(schema, "__name__") and "Match" in schema.__name__
+        ):
             mock.invoke.return_value = self._mock_match_analysis()
-        elif schema == TailoringPlan or (hasattr(schema, '__name__') and 'Plan' in schema.__name__):
+        elif schema == TailoringPlan or (hasattr(schema, "__name__") and "Plan" in schema.__name__):
             mock.invoke.return_value = self._mock_tailoring_plan()
         else:
             # Generic mock for other schemas
@@ -177,7 +179,9 @@ class TestE2EWorkflowWithMocks:
                 "**Senior Software Engineer** - Led cloud development"
             ]
             mock_tailor_instance.tailor_skills.return_value = "Python, AWS, Docker, Kubernetes"
-            mock_tailor_instance.assemble_cv.return_value = "# Test User\n\n## Summary\n\nTailored CV content"
+            mock_tailor_instance.assemble_cv.return_value = (
+                "# Test User\n\n## Summary\n\nTailored CV content"
+            )
             mock_tailor.return_value = mock_tailor_instance
 
             # Run workflow with CoT disabled for faster execution
