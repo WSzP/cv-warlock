@@ -1,86 +1,80 @@
 # Peter W. Szabo
 
-Head of AI ★ Hands-on coder ★ UX-first Agentic AI (LangChain & LangGraph) ★ Autonomous agents, swarms + orchestrators ★ GenAI founder (Tengrai) ★ Author: User Experience Mapping
+UX-first Agentic AI developer, mentor, and leader.
 
-[peter@kaizen-ux.com](mailto:peter@kaizen-ux.com) | [+40 754 94 74 74](tel:+40754947474) | [www.linkedin.com/in/wszabopeter](https://www.linkedin.com/in/wszabopeter)
+[peter@kaizen-ux.com](mailto:peter@kaizen-ux.com) | [+40 123 74 74 74](tel:+40123747474) | [www.linkedin.com/in/wszabopeter](https://www.linkedin.com/in/wszabopeter)
 
 ## Summary
 
-Hands-on AI and product leader with 21 years across UX, engineering, and machine learning, known for shipping end-to-end outcomes while staying close to the code (I still code daily). Over the last 2 years, I’ve built production Agentic AI using LangChain, then LangGraph and LangSmith, delivering autonomous agents, agentic swarms, and orchestrators that drive measurable business impact through reliable tool use, observability, and iteration loops.
-Previously, as Founder and CEO of Tengr.ai, I led end-to-end delivery of a generative image AI product from research roadmap to iterative releases, including HPC-based experimentation and privacy-by-design and safety systems. Earlier, I scaled AceTech Development from 0 to 40+ people in under two years and completed a successful exit. I’m also the author of User Experience Mapping and a long-time TEDx curator, bringing strong storytelling and stakeholder alignment to every build.
+Hands-on AI & product leader with 21 years across UX, engineering, and machine learning. Still coding daily and shipping end-to-end outcomes.
+
+Over the last 2 years, I’ve built production agentic AI (LangChain → LangGraph/LangSmith), delivering autonomous agents, swarms, and orchestrators with reliable tool use, observability, and tight iteration loops that drive measurable business impact.
+
+As Founder of Tengr.ai, I led a generative image AI product from research roadmap to iterative releases, including HPC experimentation plus privacy-by-design and safety systems.
+
+I scaled AceTech Development from 0 to 40+ people in under two years and completed a successful exit.
+
+I’m also the author of User Experience Mapping and a long-time TEDx curator, bringing sharp storytelling and stakeholder alignment to every build.
 
 ## Top Skills
 
-Machine Learning, Agentic AI Development, User Experience (UX), Artificial Intelligence (AI), Leadership
+- Technical: Python, TypeScript, Nextjs, SQL, MongoDB, Kafka, NATS, LangChain, LangGraph, LangSmith, PyTorch, Vector DBs, Prompt Engineering, HPC, Agentic AI, Autonomous Agents
+- Leadership: Strategic planning, Team scaling, Stakeholder alignment, Cross-functional collaboration
 
 ## Experience
 
 ### Head of Artificial Intelligence at Magic Solutions
 
-September 2025 - Present | Târgu Mureș, Romania
+September 2025 - Present | Târgu Mureș, Romania (remote)
 
-- Led organisation-wide AI readiness transformation using the KUA method
-(Kaizen, UX, AI - with QA focus) by defining an actionable operating model (people, process, tooling), aligning adoption with business goals and delivery constraints, and translating strategy into measurable execution.
-- Built internal capability and accelerated upskilling by mentoring colleagues,
-introducing new technologies, and establishing practical learning routines that increased delivery confidence and reduced reliance on single experts.
-- Strengthened delivery governance through repeatable processes by
-designing, documenting, and transferring workflows, standards, and escalation paths, supporting consistent execution and audit-friendly traceability across projects.
-- Provided technical and architectural leadership for new initiatives by shaping
-project architecture, selecting tooling, and supporting implementation decisions to reduce delivery risk and improve maintainability.
-- Enabled cross-functional execution via hands-on problem resolution by
-unblocking teams through structured technical support and escalation handling, ensuring continuity and predictable progress under real delivery pressure.
+- Led organisation-wide AI readiness transformation using the KUA method (30+ person software development company) by defining an actionable operating model (people, process, tooling), aligning adoption with business goals and delivery constraints, and translating strategy into measurable execution.
+- Delivered a high-profile B2G AI project from start to UAT in 2 weeks.
+- Built internal capability and accelerated upskilling by mentoring colleagues, introducing new technologies, and establishing practical learning routines that increased delivery confidence and reduced reliance on single experts.
+- Strengthened delivery governance through repeatable processes by designing, documenting, and transferring workflows, standards, and escalation paths, supporting consistent execution and audit-friendly traceability across projects.
+- Provided technical and architectural leadership for new initiatives by shaping project architecture, selecting tooling, and supporting implementation decisions to reduce delivery risk and improve maintainability.
+- Enabled cross-functional execution via hands-on problem resolution by unblocking teams through structured technical support and escalation handling, ensuring continuity and predictable progress under real delivery pressure.
 
-### Conference Curator - TEDxTârguMureș at TED Conferences
-
-March 2017 - Present | Târgu Mureș, Romania
-
-Curator and lead organiser of TEDxTarguMures since 2017, responsible for end-to-end event delivery (theme curation, speaker selection and coaching, partner management, logistics, production planning, and quality control). Strong public communication and storytelling skills, with a proven ability to translate complex ideas into accessible narratives for broad audiences. Experienced in community building and stakeholder engagement, growing long-term partnerships and volunteer teams. Demonstrated dissemination impact through TEDx talks, achieving cumulative YouTube reach in the millions, reflecting consistent execution standards and strong editorial judgment across multiple editions.
 
 ### Founder, CEO at Tengrai Artificial Intelligence
 
-October 2022 - August 2025 | Târgu Mureș, Romania
+October 2022 - August 2025 | Târgu Mureș, Romania (remote)
 
-- Led end-to-end delivery of a generative image AI product in Europe from
-research roadmap through implementation and iterative releases, coordinating technical workstreams, priorities, and delivery cycles in a high-accountability environment with operational, monitoring, and execution focus. We released many unique features before competing solutions, such as transparent background generation and very high resolution upscaling.
-- Executed continuous model refinement on HPC infrastructure (NCC Hungary
-- Komondor HPC), planning compute-intensive experimentation cycles,
-tracking outcomes across versions, and converting results into actionable release decisions. Leveraged the AI partition of 32 Nvidia A100 GPUs across 4 HPE Apollo Blades to rapidly iterate generative AI art models for photorealistic rendering, illustration, and more.
-- This HPC success story was featured in EuroCC 2/EuroCC4SEE Success
-Stories 2nd Edition, September 2024 (p20-21)
-- Designed and implemented a privacy-by-design architecture for generative
-AI, embedding data protection and governance into system design and operational workflows, reflecting the kind of structured, control-oriented approach. Created the model card in alignment with the EU AI Act, way before being required by the law.
-- Created and operationalised the Hyperalign safety system to ensure high-
-quality generation with robust safeguards, translating risk thinking into repeatable procedures, review steps, and quality controls.
-- Established documentation and standardisation practices (templates, release
-notes, internal guidelines, decision logs) to keep work reproducible and transparent across iterations
-- Produced structured reporting for stakeholders by summarising model
-progress, safety posture, and delivery status into clear written materials and presentation-ready outputs.
+- Founded and led Tengrai, delivering a Europe-based generative image AI product end-to-end, from research roadmap through production implementation and iterative releases.
+- We reached 400,000 registered unique users in March 2025.
+- Users from 150+ countries with paying subscribers in 60+ countries.
+- Shipped differentiated capabilities (including transparent background generation and very high-resolution upscaling), expanding creative workflows across photorealistic rendering, illustration, and more.
+- Ran continuous model iteration on HPC infrastructure (NCC Hungary, Komondor HPC), planning compute-intensive experimentation cycles, tracking outcomes across versioned releases, and converting results into clear ship or hold decisions.
+- Leveraged the AI partition of NVIDIA A100 GPUs across multiple HPE Apollo blades to accelerate training and evaluation loops, enabling rapid iteration on quality, fidelity, and style coverage.
+- Recognized externally as an HPC success story, featured in EuroCC 2 / EuroCC4SEE Success Stories, 2nd Edition (September 2024, pp. 20–21).
+- Designed and implemented a privacy-by-design architecture for generative AI, embedding data protection, governance, and operational controls into system design and workflows, and authored a model card aligned with the EU AI Act ahead of regulatory deadlines.
+- Created and operationalised the Hyperalign safety system, translating risk thinking into repeatable procedures, review gates, and quality controls to keep outputs high quality with robust safeguards.
+- Established reproducibility and transparency practices (templates, release notes, internal guidelines, decision logs), plus structured stakeholder reporting on model progress, safety posture, and delivery status.
 
 ### Founder and Executive Director at AceTech Development
 
-October 2018 - October 2022 | Târgu Mureș, Romania
+October 2018 - October 2022 | Târgu Mureș, Romania (hybrid)
 
-- Scaled a high-performing and innovative technology organisation from 0 to
-40+ employees in under two years, demonstrating structured growth planning, prioritisation, and operational discipline consistent with the company's need for reliable coordination across multiple stakeholders and workstreams.
-- Built a sustainable talent acquisition and onboarding system with zero
-advertising spend and no recruitment agencies, creating repeatable processes and clear role expectations
-- Achieved exceptional retention and employee satisfaction by establishing
-a strong organisational culture, transparent communication routines, and practical people management, reflecting the collaboration, service orientation, and team effectiveness required in an international public-sector environment.
-- Implemented delivery and quality governance early (cadences,
-responsibilities, escalation paths, and documentation standards), improving predictability and accountability
-- Executed a successful exit with positive outcomes for all parties,
-demonstrating integrity, negotiation capability, and risk-aware decision-making
+- Scaled a high-performing and innovative technology organisation from 0 to 40+ employees in under two years, demonstrating structured growth planning, prioritisation, and operational discipline consistent with the company's need for reliable coordination across multiple stakeholders and workstreams.
+- Sustained 100% retention during my tenure by strengthening organisational culture and management routines that improved clarity, accountability, and cross-team collaboration in a high-trust environment.
+- Built a sustainable talent acquisition and onboarding system with 0 advertising spend and no recruitment agencies, creating repeatable processes and clear role expectations
+- Implemented delivery and quality governance early (cadences, responsibilities, escalation paths, and documentation standards), improving predictability and accountability
+- Executed a successful exit with positive outcomes for all parties, demonstrating integrity, negotiation capability, and risk-aware decision-making
 
 ### Blockchain UX Consultant at CasinoCoin
 
-September 2017 - October 2018 | Isle of Man
+September 2017 - October 2018 | Isle of Man (remote)
+
+- Designed and built the first versions of the CasinoCoin crypto wallet across mobile and desktop (UX + implementation), translating product vision into a usable, shippable experience.
+- The solution was stable with 1,000 transactions per second with 3–5 second confirmations.
+- Early team member helping define the core wallet concept: one wallet usable across multiple gambling games and providers, enabling crypto payments with a focus on trust, safety, and speed of payouts.
+- Researched predictive AI concepts to improve wallet experience and decisioning (e.g., personalization, risk signals, smarter flows), exploring how ML could strengthen usability and user confidence. (CSC had a market capitalization ≈$40 million USD at that time.)
 
 ### Senior Manager UX/UI at Flutter Entertainment
 
 September 2015 - May 2017 | London, United Kingdom
 
 - Contributed to an award-winning free-to-play title (Duel, recognised in 2016)
-by supporting UX/UI execution quality, iteration speed, and player-focused design decisions under tight delivery cycles.
+by supporting UX/UI execution quality, iteration speed, and player-focused design decisions under tight delivery cycles (we reached beta in 6 months after day 0).
 - Drove measurable UX and conversion improvements across key landing
 pages by establishing a structured optimisation practice (hypothesis- driven testing, analytics-based decision making, and release discipline), strengthening operational rigor and performance monitoring.
 - Improved core game user experience and usability through close
@@ -112,9 +106,14 @@ and communication, improving clarity for clients and internal teams via proposal
 
 ### User Experience Manager at Cylex
 
-April 2013 - August 2014 | Oradea, Romania
+April 2013 - August 2014 | Oradea, Romania (hybrid)
 
-Cylex is best known for its Business Directories, like cylex.de or cylex-usa.com. There are more than 50 business directories, sharing common features, while matching the specific requirements of a given country.  Moreover, Cylex has many side projects including job portals like jobs.cylex-uk.co.uk or the WYSIWYG website builder app: mycylex.co.uk.  As a UX manager I helped shape the user experience of those projects, leading talented teams of designers, and conducting usability researches.
+- Owned UX direction across a portfolio of 50+ country-specific business directories (e.g., cylex.de, cylex-usa.com), balancing a shared core experience with local market requirements.
+- Led and mentored a team of designers, setting a clear quality bar, review cadence, and delivery rhythm across multiple parallel products.
+- Drove a research-to-shipping loop: planned and ran usability studies (moderated testing, feedback loops, analytics-informed reviews) and translated findings into concrete product changes.
+- Standardised UX patterns and interaction conventions across markets to reduce inconsistency, speed up iteration, and keep experiences coherent as the portfolio scaled.
+- Partnered closely with engineering and product stakeholders to align on requirements, user flows, information architecture, and release scope for incremental improvements.
+- Supported adjacent products beyond directories, including job portals (e.g., jobs.cylex-uk.co.uk) and a WYSIWYG website builder (mycylex.co.uk), improving onboarding and core task flows to help users get to value faster.
 
 ## Education
 
@@ -122,7 +121,7 @@ Cylex is best known for its Business Directories, like cylex.de or cylex-usa.com
 
 Research Doctorate - Artificial Intelligence
 October 2018 - Present
-(All exams passed, thesis not written yet.)
+All But Dissertation
 
 ### Universitatea "Petru Maior" din Târgu-Mureș
 
@@ -140,13 +139,9 @@ English (Full Professional), Hungarian (Native or Bilingual), Romanian (Full Pro
 
 ## Certifications
 
-- Tavily Web Search API
-- Deep Learning: GANs and Variational Autoencoders
-- Deep Learning: Convolutional Neural Networks in Python
-- Data Science: Deep Learning in Python
+- Tavily Web Search API (2016)
 - Data Science: Natural Language Processing (NLP) in Python
-- The Data Science Course 2020: Complete Data Science Bootcamp
-- Data Analysis with Pandas and Python
+- Complete Data Science Bootcamp
 - Reinforcement Learning with Pytorch
 - Recommender Systems and Deep Learning in Python
 - Mathematical Foundation For Machine Learning and AI
@@ -155,3 +150,15 @@ English (Full Professional), Hungarian (Native or Bilingual), Romanian (Full Pro
 
 - User Experience Mapping (Packt, 2017): <https://www.amazon.com/User-Experience-Mapping-Enhance-Diagrams-ebook/dp/B072L22JCB>
 - The Better Business Book: Volume 3 (Authors Unite, 2017): <https://www.amazon.com/Better-Business-Book-Stories-Lessons-ebook/dp/B077S1MXZZ>
+
+## Volunteer Work
+
+### Conference Curator - TEDxTârguMureș at TED Conferences
+
+March 2017 - Present (yearly event) | Târgu Mureș, Romania
+
+- Curate the annual theme and editorial direction; lead end-to-end event delivery from concept to stage, consistently running at full venue capacity (recent editions 300+ attendees after securing an unlimited TEDx license in 2020).
+- Source, select, and coach speakers (≈12/event), translating complex ideas into clear, stage-ready talks without losing technical accuracy; maintain NPS 50+ across recent editions.
+- Own partner and stakeholder relationships, building long-term collaborations and a strong local ecosystem around the event.
+- Lead and retain volunteer teams across logistics, production planning, and on-the-day execution; maintain consistently high quality standards across multiple editions.
+- Extend impact beyond the room: TEDxTârguMureș talks have reached 20M+ views on YouTube, reflecting strong editorial judgment and consistent execution.
