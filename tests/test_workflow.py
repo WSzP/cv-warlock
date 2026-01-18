@@ -4,7 +4,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cv_warlock.graph.workflow import create_cv_warlock_graph, run_cv_tailoring
+from cv_warlock.graph.workflow import (
+    _get_default_model_for_provider,
+    _get_fast_model_for_provider,
+    _get_strong_model_for_provider,
+    create_cv_warlock_graph,
+    run_cv_tailoring,
+)
 from cv_warlock.models.cv import ContactInfo, CVData, Education, Experience
 from cv_warlock.models.job_spec import JobRequirements
 from cv_warlock.models.state import MatchAnalysis, TailoringPlan
@@ -586,3 +592,263 @@ class TestWorkflowInitialState:
         assert initial_state["step_timings"] == []
         assert initial_state["errors"] == []
         assert initial_state["current_step"] == "start"
+
+
+class TestModelSelectionHelpers:
+    """Tests for model selection helper functions."""
+
+    def test_get_default_model_for_anthropic(self) -> None:
+        """Test default model selection for Anthropic provider."""
+        model = _get_default_model_for_provider("anthropic")
+        assert model == "claude-sonnet-4-5-20250929"
+
+    def test_get_default_model_for_openai(self) -> None:
+        """Test default model selection for OpenAI provider."""
+        model = _get_default_model_for_provider("openai")
+        assert model == "gpt-5.2"
+
+    def test_get_default_model_for_google(self) -> None:
+        """Test default model selection for Google provider."""
+        model = _get_default_model_for_provider("google")
+        assert model == "gemini-3-flash-preview"
+
+    def test_get_default_model_for_unknown_provider(self) -> None:
+        """Test default model selection for unknown provider falls back to Anthropic."""
+        model = _get_default_model_for_provider("unknown")
+        assert model == "claude-sonnet-4-5-20250929"
+
+    def test_get_strong_model_for_anthropic(self) -> None:
+        """Test strong model selection for Anthropic provider."""
+        model = _get_strong_model_for_provider("anthropic")
+        assert model == "claude-opus-4-5-20251101"
+
+    def test_get_strong_model_for_openai(self) -> None:
+        """Test strong model selection for OpenAI provider."""
+        model = _get_strong_model_for_provider("openai")
+        assert model == "gpt-5.2"
+
+    def test_get_strong_model_for_google(self) -> None:
+        """Test strong model selection for Google provider."""
+        model = _get_strong_model_for_provider("google")
+        assert model == "gemini-3-pro-preview"
+
+    def test_get_strong_model_for_unknown_provider(self) -> None:
+        """Test strong model selection for unknown provider falls back to Anthropic."""
+        model = _get_strong_model_for_provider("unknown")
+        assert model == "claude-opus-4-5-20251101"
+
+    def test_get_fast_model_for_anthropic(self) -> None:
+        """Test fast model selection for Anthropic provider."""
+        model = _get_fast_model_for_provider("anthropic")
+        assert model == "claude-haiku-4-5-20251001"
+
+    def test_get_fast_model_for_openai(self) -> None:
+        """Test fast model selection for OpenAI provider."""
+        model = _get_fast_model_for_provider("openai")
+        assert model == "gpt-5-mini"
+
+    def test_get_fast_model_for_google(self) -> None:
+        """Test fast model selection for Google provider."""
+        model = _get_fast_model_for_provider("google")
+        assert model == "gemini-3-flash-preview"
+
+    def test_get_fast_model_for_unknown_provider(self) -> None:
+        """Test fast model selection for unknown provider falls back to Anthropic."""
+        model = _get_fast_model_for_provider("unknown")
+        assert model == "claude-haiku-4-5-20251001"
+
+
+class TestRLMWorkflowCreation:
+    """Tests for RLM workflow creation."""
+
+    @patch("cv_warlock.graph.workflow.get_settings")
+    @patch("cv_warlock.graph.workflow.get_llm_provider")
+    @patch("cv_warlock.graph.rlm_nodes.create_rlm_nodes")
+    def test_create_graph_with_rlm_enabled(
+        self,
+        mock_create_rlm_nodes: MagicMock,
+        mock_get_provider: MagicMock,
+        mock_get_settings: MagicMock,
+    ) -> None:
+        """Test creating graph with RLM mode enabled."""
+        mock_settings = MagicMock()
+        mock_settings.provider = "anthropic"
+        mock_settings.anthropic_api_key = "test-key"
+        mock_settings.rlm_max_iterations = 5
+        mock_settings.rlm_max_sub_calls = 10
+        mock_settings.rlm_timeout_seconds = 60
+        mock_settings.rlm_size_threshold = 5000
+        mock_settings.rlm_sandbox_mode = "local"
+        mock_get_settings.return_value = mock_settings
+
+        mock_provider = MagicMock()
+        mock_get_provider.return_value = mock_provider
+
+        # Mock RLM nodes
+        mock_create_rlm_nodes.return_value = {
+            "validate_inputs": MagicMock(),
+            "extract_cv": MagicMock(),
+            "extract_job": MagicMock(),
+            "analyze_match": MagicMock(),
+            "create_plan": MagicMock(),
+            "tailor_summary": MagicMock(),
+            "tailor_experiences": MagicMock(),
+            "tailor_skills": MagicMock(),
+            "assemble_cv": MagicMock(),
+        }
+
+        graph = create_cv_warlock_graph(use_rlm=True)
+
+        # Verify RLM nodes were created
+        mock_create_rlm_nodes.assert_called_once()
+        assert graph is not None
+        assert hasattr(graph, "invoke")
+
+    @patch("cv_warlock.graph.workflow.get_settings")
+    @patch("cv_warlock.graph.workflow.get_llm_provider")
+    @patch("cv_warlock.graph.rlm_nodes.create_rlm_nodes")
+    def test_create_graph_rlm_uses_dual_model_strategy(
+        self,
+        mock_create_rlm_nodes: MagicMock,
+        mock_get_provider: MagicMock,
+        mock_get_settings: MagicMock,
+    ) -> None:
+        """Test that RLM mode uses dual-model strategy (strong + fast models)."""
+        mock_settings = MagicMock()
+        mock_settings.provider = "anthropic"
+        mock_settings.anthropic_api_key = "test-key"
+        mock_settings.rlm_max_iterations = 5
+        mock_settings.rlm_max_sub_calls = 10
+        mock_settings.rlm_timeout_seconds = 60
+        mock_settings.rlm_size_threshold = 5000
+        mock_settings.rlm_sandbox_mode = "local"
+        mock_get_settings.return_value = mock_settings
+
+        mock_provider = MagicMock()
+        mock_get_provider.return_value = mock_provider
+
+        mock_create_rlm_nodes.return_value = {
+            "validate_inputs": MagicMock(),
+            "extract_cv": MagicMock(),
+            "extract_job": MagicMock(),
+            "analyze_match": MagicMock(),
+            "create_plan": MagicMock(),
+            "tailor_summary": MagicMock(),
+            "tailor_experiences": MagicMock(),
+            "tailor_skills": MagicMock(),
+            "assemble_cv": MagicMock(),
+        }
+
+        create_cv_warlock_graph(provider="anthropic", use_rlm=True)
+
+        # Should call get_llm_provider twice: once for root (Opus), once for sub (Haiku)
+        assert mock_get_provider.call_count == 2
+        calls = mock_get_provider.call_args_list
+
+        # First call should be for root (strongest model: Opus)
+        assert calls[0][0][0] == "anthropic"
+        assert calls[0][0][1] == "claude-opus-4-5-20251101"
+
+        # Second call should be for sub (fastest model: Haiku)
+        assert calls[1][0][0] == "anthropic"
+        assert calls[1][0][1] == "claude-haiku-4-5-20251001"
+
+    @patch("cv_warlock.graph.workflow.get_settings")
+    @patch("cv_warlock.graph.workflow.get_llm_provider")
+    @patch("cv_warlock.graph.rlm_nodes.create_rlm_nodes")
+    def test_create_graph_rlm_with_openai(
+        self,
+        mock_create_rlm_nodes: MagicMock,
+        mock_get_provider: MagicMock,
+        mock_get_settings: MagicMock,
+    ) -> None:
+        """Test RLM mode with OpenAI provider uses correct models."""
+        mock_settings = MagicMock()
+        mock_settings.openai_api_key = "test-key"
+        mock_settings.rlm_max_iterations = 5
+        mock_settings.rlm_max_sub_calls = 10
+        mock_settings.rlm_timeout_seconds = 60
+        mock_settings.rlm_size_threshold = 5000
+        mock_settings.rlm_sandbox_mode = "local"
+        mock_get_settings.return_value = mock_settings
+
+        mock_provider = MagicMock()
+        mock_get_provider.return_value = mock_provider
+
+        mock_create_rlm_nodes.return_value = {
+            "validate_inputs": MagicMock(),
+            "extract_cv": MagicMock(),
+            "extract_job": MagicMock(),
+            "analyze_match": MagicMock(),
+            "create_plan": MagicMock(),
+            "tailor_summary": MagicMock(),
+            "tailor_experiences": MagicMock(),
+            "tailor_skills": MagicMock(),
+            "assemble_cv": MagicMock(),
+        }
+
+        create_cv_warlock_graph(provider="openai", use_rlm=True)
+
+        calls = mock_get_provider.call_args_list
+        # Root: gpt-5.2, Sub: gpt-5-mini
+        assert calls[0][0][1] == "gpt-5.2"
+        assert calls[1][0][1] == "gpt-5-mini"
+
+    @patch("cv_warlock.graph.workflow.get_settings")
+    @patch("cv_warlock.graph.workflow.get_llm_provider")
+    @patch("cv_warlock.graph.rlm_nodes.create_rlm_nodes")
+    def test_create_graph_rlm_with_google(
+        self,
+        mock_create_rlm_nodes: MagicMock,
+        mock_get_provider: MagicMock,
+        mock_get_settings: MagicMock,
+    ) -> None:
+        """Test RLM mode with Google provider uses correct models."""
+        mock_settings = MagicMock()
+        mock_settings.google_api_key = "test-key"
+        mock_settings.rlm_max_iterations = 5
+        mock_settings.rlm_max_sub_calls = 10
+        mock_settings.rlm_timeout_seconds = 60
+        mock_settings.rlm_size_threshold = 5000
+        mock_settings.rlm_sandbox_mode = "local"
+        mock_get_settings.return_value = mock_settings
+
+        mock_provider = MagicMock()
+        mock_get_provider.return_value = mock_provider
+
+        mock_create_rlm_nodes.return_value = {
+            "validate_inputs": MagicMock(),
+            "extract_cv": MagicMock(),
+            "extract_job": MagicMock(),
+            "analyze_match": MagicMock(),
+            "create_plan": MagicMock(),
+            "tailor_summary": MagicMock(),
+            "tailor_experiences": MagicMock(),
+            "tailor_skills": MagicMock(),
+            "assemble_cv": MagicMock(),
+        }
+
+        create_cv_warlock_graph(provider="google", use_rlm=True)
+
+        calls = mock_get_provider.call_args_list
+        # Root: gemini-3-pro-preview, Sub: gemini-3-flash-preview
+        assert calls[0][0][1] == "gemini-3-pro-preview"
+        assert calls[1][0][1] == "gemini-3-flash-preview"
+
+    @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
+    def test_run_cv_tailoring_with_rlm_enabled(
+        self,
+        mock_create_graph: MagicMock,
+        sample_cv_text: str,
+        sample_job_text: str,
+    ) -> None:
+        """Test running workflow with RLM enabled."""
+        mock_graph = MagicMock()
+        mock_create_graph.return_value = mock_graph
+        mock_graph.invoke.return_value = {"tailored_cv": "CV", "errors": []}
+
+        run_cv_tailoring(sample_cv_text, sample_job_text, use_rlm=True)
+
+        mock_create_graph.assert_called_once_with(None, None, use_cot=True, use_rlm=True)
+        initial_state = mock_graph.invoke.call_args[0][0]
+        assert initial_state["use_rlm"] is True
