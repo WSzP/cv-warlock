@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -504,10 +503,10 @@ class HybridScorer:
 
     @staticmethod
     def _serialize_cv(cv_data: CVData) -> str:
-        """Serialize CV data for prompt."""
-        return json.dumps(cv_data, indent=2, default=str)
+        """Serialize CV data for prompt using proper Pydantic JSON serialization."""
+        return cv_data.model_dump_json(indent=2)
 
     @staticmethod
     def _serialize_job(job_requirements: JobRequirements) -> str:
-        """Serialize job requirements for prompt."""
-        return json.dumps(job_requirements, indent=2, default=str)
+        """Serialize job requirements for prompt using proper Pydantic JSON serialization."""
+        return job_requirements.model_dump_json(indent=2)

@@ -43,15 +43,16 @@ def _get_strong_model_for_provider(provider: str) -> str:
     """Get the strongest/most capable model for a given provider.
 
     Used for RLM root orchestration where maximum capability is needed.
+    Note: For Anthropic, uses Sonnet (not Opus) per project policy.
     """
     if provider == "anthropic":
-        return "claude-opus-4-5-20251101"
+        return "claude-sonnet-4-5-20250929"
     elif provider == "openai":
         return "gpt-5.2"
     elif provider == "google":
         return "gemini-3-pro-preview"
     else:
-        return "claude-opus-4-5-20251101"
+        return "claude-sonnet-4-5-20250929"
 
 
 def _get_fast_model_for_provider(provider: str) -> str:

@@ -618,9 +618,9 @@ class TestModelSelectionHelpers:
         assert model == "claude-sonnet-4-5-20250929"
 
     def test_get_strong_model_for_anthropic(self) -> None:
-        """Test strong model selection for Anthropic provider."""
+        """Test strong model selection for Anthropic provider (uses Sonnet per policy)."""
         model = _get_strong_model_for_provider("anthropic")
-        assert model == "claude-opus-4-5-20251101"
+        assert model == "claude-sonnet-4-5-20250929"
 
     def test_get_strong_model_for_openai(self) -> None:
         """Test strong model selection for OpenAI provider."""
@@ -633,9 +633,9 @@ class TestModelSelectionHelpers:
         assert model == "gemini-3-pro-preview"
 
     def test_get_strong_model_for_unknown_provider(self) -> None:
-        """Test strong model selection for unknown provider falls back to Anthropic."""
+        """Test strong model selection for unknown provider falls back to Anthropic Sonnet."""
         model = _get_strong_model_for_provider("unknown")
-        assert model == "claude-opus-4-5-20251101"
+        assert model == "claude-sonnet-4-5-20250929"
 
     def test_get_fast_model_for_anthropic(self) -> None:
         """Test fast model selection for Anthropic provider."""
@@ -741,13 +741,13 @@ class TestRLMWorkflowCreation:
 
         create_cv_warlock_graph(provider="anthropic", use_rlm=True)
 
-        # Should call get_llm_provider twice: once for root (Opus), once for sub (Haiku)
+        # Should call get_llm_provider twice: once for root (Sonnet), once for sub (Haiku)
         assert mock_get_provider.call_count == 2
         calls = mock_get_provider.call_args_list
 
-        # First call should be for root (strongest model: Opus)
+        # First call should be for root (strong model: Sonnet, per project policy)
         assert calls[0][0][0] == "anthropic"
-        assert calls[0][0][1] == "claude-opus-4-5-20251101"
+        assert calls[0][0][1] == "claude-sonnet-4-5-20250929"
 
         # Second call should be for sub (fastest model: Haiku)
         assert calls[1][0][0] == "anthropic"
