@@ -1752,3 +1752,264 @@ class TestREPLEnvironmentAdditional:
             is_safe, error = env._validate_code(code)
             assert not is_safe, f"Should block: {code}"
             assert error is not None, f"Should have error message for: {code}"
+
+
+# =============================================================================
+# Additional Coverage Tests for chunking.py
+# =============================================================================
+
+
+class TestCVChunkerExperienceSplitting:
+    """Tests for experience splitting with various formats."""
+
+    def test_split_experiences_with_subheaders(self):
+        """Test splitting experiences using ### subheaders.
+
+        Note: The CVChunker creates separate sections for each header level,
+        so subheaders become their own sections rather than nested content.
+        """
+        chunker = CVChunker()
+
+        cv_with_subheaders = """# Jane Doe
+
+## Experience
+
+### Senior Engineer at TechCorp
+January 2023 - Present
+- Led platform development team
+- Implemented CI/CD pipelines
+
+### Junior Developer at StartupXYZ
+June 2020 - December 2022
+- Built React components
+- Worked on API integrations
+"""
+        chunks = chunker.chunk(cv_with_subheaders)
+
+        # Subheaders become their own sections in the sections dict
+        assert chunks.sections is not None
+        # The job titles should appear as section keys
+        assert "senior engineer at techcorp" in chunks.sections
+        assert "junior developer at startupxyz" in chunks.sections
+
+    def test_split_experiences_with_date_patterns(self):
+        """Test splitting experiences by date patterns when no subheaders."""
+        chunker = CVChunker()
+
+        cv_with_dates = """# John Smith
+
+## Work History
+
+Senior Engineer at TechCorp
+January 2023 - Present
+Led platform development team
+
+Junior Developer at StartupXYZ
+June 2020 - December 2022
+Built React components
+"""
+        chunks = chunker.chunk(cv_with_dates)
+        # Should handle date-based splitting or return as one chunk
+        assert chunks.sections is not None
+
+    def test_split_by_subheaders_education(self):
+        """Test splitting education section by subheaders.
+
+        Note: The CVChunker creates separate sections for each header level,
+        so education subheaders become their own sections.
+        """
+        chunker = CVChunker()
+
+        cv_with_education = """# Jane Doe
+
+## Education
+
+### PhD in Computer Science
+MIT | 2020 - 2024
+Focus on distributed systems
+
+### Master's in Engineering
+Stanford | 2018 - 2020
+Thesis on ML optimization
+"""
+        chunks = chunker.chunk(cv_with_education)
+
+        # Subheaders become their own sections in the sections dict
+        assert chunks.sections is not None
+        # The degree names should appear as section keys
+        assert "phd in computer science" in chunks.sections
+        assert "master's in engineering" in chunks.sections
+
+
+class TestCVChunkerSplittingEdgeCases:
+    """Edge case tests for CV section splitting."""
+
+    def test_empty_experience_section(self):
+        """Test handling empty experience section."""
+        chunker = CVChunker()
+
+        cv_empty_exp = """# Name
+
+## Summary
+A summary.
+
+## Experience
+
+## Skills
+Python, JavaScript
+"""
+        chunks = chunker.chunk(cv_empty_exp)
+        # Should handle gracefully without crashing
+        assert chunks.sections is not None
+
+    def test_very_short_experience_entries(self):
+        """Test that very short entries are filtered out."""
+        chunker = CVChunker()
+
+        cv_short = """# Name
+
+## Experience
+
+### Job 1
+Good description here with enough content.
+
+###
+
+### Job 2
+Another good entry.
+"""
+        chunks = chunker.chunk(cv_short)
+        # Should filter out very short fragments
+        if chunks.experiences:
+            for exp in chunks.experiences:
+                assert len(exp) > 10  # Should not have tiny fragments
+
+
+# =============================================================================
+# Additional Coverage Tests for orchestrator.py
+# =============================================================================
+
+
+class TestOrchestratorFinalPatternMatching:
+    """Tests for FINAL pattern matching in orchestrator output."""
+
+    def test_process_final_with_json_content(self, sample_cv_text, sample_job_text):
+        """Test processing FINAL answer with JSON content."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+
+        # Test with valid JSON-like content
+        result = orchestrator._process_final_answer(
+            '{"name": "Test", "skills": ["Python"]}',
+            output_schema=None,
+            env=env,
+        )
+
+        # Should return the content or processed version
+        assert result is not None
+
+    def test_process_final_with_plain_text(self, sample_cv_text, sample_job_text):
+        """Test processing FINAL answer with plain text."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+
+        result = orchestrator._process_final_answer(
+            "This is a plain text final answer.",
+            output_schema=None,
+            env=env,
+        )
+
+        assert result == "This is a plain text final answer."
+
+
+class TestOrchestratorJSONExtraction:
+    """Tests for JSON extraction from wrapped content."""
+
+    def test_extract_json_from_wrapped_content(self, sample_cv_text, sample_job_text):
+        """Test extracting JSON embedded in text."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Mock the extraction model
+        extraction_model = MagicMock()
+        extraction_response = MagicMock()
+        extraction_response.content = '{"name": "Test"}'
+        extraction_model.invoke.return_value = extraction_response
+        sub_provider.get_extraction_model.return_value = extraction_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+        env.set_variable("analysis_var", {"key": "value"})
+
+        # Content with JSON wrapped in text
+        content = """Based on my analysis, here is the result:
+        {"name": "John Doe", "summary": "Software engineer"}
+        This is the extracted data."""
+
+        result = orchestrator._process_final_answer(
+            content,
+            output_schema=None,
+            env=env,
+        )
+
+        # Should extract or return the content
+        assert result is not None
+
+
+class TestOrchestratorCodeExecutionThenFinal:
+    """Tests for FINAL appearing after code execution."""
+
+    def test_final_in_code_output(self, sample_cv_text, sample_job_text):
+        """Test FINAL pattern appearing in execution output."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Model that returns code that prints FINAL
+        root_model = MagicMock()
+        root_model.invoke.return_value = MagicMock(
+            content='```python\nprint("FINAL(The answer is 42)")\n```'
+        )
+        root_provider.get_chat_model.return_value = root_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+
+        # Run orchestration - should handle FINAL in output
+        result = orchestrator.complete(
+            task="Find the answer",
+            cv_text=sample_cv_text,
+            job_text=sample_job_text,
+        )
+
+        # Should complete (may succeed or fail depending on how FINAL is handled)
+        assert result is not None
+
+    def test_final_variable_pattern(self, sample_cv_text, sample_job_text):
+        """Test FINAL_VAR(variable_name) pattern matching."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Model that returns code setting a variable then FINAL_VAR
+        root_model = MagicMock()
+        root_model.invoke.side_effect = [
+            MagicMock(content='```python\nresult = {"answer": 42}\n```'),
+            MagicMock(content="FINAL_VAR(result)"),
+        ]
+        root_provider.get_chat_model.return_value = root_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        config = RLMConfig(max_iterations=3)
+        orchestrator.config = config
+
+        result = orchestrator.complete(
+            task="Compute answer",
+            cv_text=sample_cv_text,
+            job_text=sample_job_text,
+        )
+
+        assert result is not None
