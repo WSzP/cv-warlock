@@ -1,12 +1,14 @@
-[![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
 [![Type Check](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml)
 [![Unit Tests](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/WSzP/cv-warlock/graph/badge.svg?token=VWQVK7DE9K)](https://codecov.io/gh/WSzP/cv-warlock)
-
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates)
+
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C.svg?logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-E92063.svg?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
 
 <p align="center">
   <img src="assets/cv-warlock-logo.webp" alt="CV Warlock Logo" width="200">
@@ -14,7 +16,7 @@
 
 # CV Warlock
 
-Experiment: **AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). This system is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview. 
+**AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). This system is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview.
 
 This is an opinionated, model-agnostic, quality-assured CV improver. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. In even simpler words: Waaagh!
 
@@ -22,11 +24,11 @@ This is an opinionated, model-agnostic, quality-assured CV improver. If you have
 
 *tl;dr* NO
 
-CV Warlock is a mischievous experiment in resume sorcery, brewed purely for research and giggles. Think of it as a toy wand from a wizard’s gift shop, fun to wave around, but definitely not something to bring to a real duel (read: do NOT use this tool to apply for real jobs). It’s like a science-fair project that looks like a cheat code, but hey, we’re all just playing in the sandbox here.
+CV Warlock is an experiment in resume sorcery, brewed purely for research and giggles. Think of it as a toy wand from a wizard’s gift shop, fun to wave around, but definitely not something to bring to a real duel (read: do NOT use this tool to apply for real jobs). It’s like a science-fair project that looks like a cheat code, but hey, we’re all just playing in the sandbox here.
 
-In true over-the-top disclaimer fashion (imagine this in a fast-talking auctioneer voice): “For research purposes only! Do not taunt real ATS dragons in the wild!” Yes, the whole idea of charming those keyword-crunching HR bots is a bit absurd – and that’s exactly the joke. CV Warlock exists to poke fun at the absurdity of trying to game résumé algorithms, not to help you hoodwink your next recruiter. So enjoy the enchanted shenanigans, have a laugh at the madness of modern hiring, but leave the spellbook at home when you venture into the actual job hunt. The real humans behind the curtain (a.k.a. hiring managers) will thank you, and we’ll sleep better knowing we didn’t unleash any resume-related chaos on the world. No actual warlocks or ATS bots were harmed in the making of this experiment. 
+In true over-the-top disclaimer fashion (imagine this in a fast-talking auctioneer voice): “For research purposes only! Do not taunt real ATS systems in the wild!” Yes, the whole idea of charming those keyword-crunching HR bots is a bit absurd – and that’s exactly the joke. CV Warlock exists to poke fun at the absurdity of trying to game résumé algorithms, not to help you hoodwink your next recruiter. So enjoy the enchanted shenanigans, have a laugh at the madness of modern hiring, but leave the spellbook at home when you venture into the actual job hunt. The real humans behind the curtain (a.k.a. hiring managers) will thank you, and we’ll sleep better knowing we didn’t unleash any resume-related chaos on the world. No actual warlocks or ATS bots were harmed in the making of this experiment.
 
-But please share the results of your experiments with me and the world on LinkedIn.
+But please share the results of your experiments with me and the world on LinkedIn and other social media.
 
 ## Features
 
