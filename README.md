@@ -109,6 +109,14 @@ You can also test API keys directly in the Web UI by clicking the **Test API Key
 
 ## Usage
 
+### Web UI (Streamlit)
+
+```bash
+uv run warlock-streamlit
+```
+
+Then open http://localhost:8501 in your browser.
+
 ### CLI
 
 ```bash
@@ -124,14 +132,6 @@ uv run cv-warlock tailor my_cv.md job.txt --provider anthropic --model claude-op
 # Show version
 uv run cv-warlock version
 ```
-
-### Web UI (Streamlit)
-
-```bash
-uv run warlock-streamlit
-```
-
-Then open http://localhost:8501 in your browser.
 
 ## How It Works
 
@@ -207,7 +207,6 @@ Turn off CoT reasoning only if:
 - You're testing or debugging the workflow
 - Cost is a concern, and you want minimal API usage
 
-
 ## Supported Models
 
 ### Anthropic (Recommended)
@@ -243,6 +242,7 @@ cv-warlock/
 │   ├── llm/                 # LLM provider abstraction
 │   ├── extractors/          # CV and job extraction
 │   ├── processors/          # Matching and tailoring logic
+│   ├── scoring/             # Hybrid ATS scoring system
 │   ├── graph/               # LangGraph workflow
 │   ├── prompts/             # Prompt templates
 │   └── output/              # Output formatters

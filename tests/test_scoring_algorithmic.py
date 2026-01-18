@@ -1,7 +1,6 @@
 """Tests for the AlgorithmicScorer."""
 
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -844,7 +843,6 @@ class TestComputeRecency:
         scorer: AlgorithmicScorer,
     ) -> None:
         """Test that old experience scores lower due to decay."""
-        current_year = datetime.now().year
         cv_data = CVData(
             contact=ContactInfo(name="John Doe"),
             experiences=[

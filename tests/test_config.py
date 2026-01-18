@@ -17,7 +17,7 @@ class TestSettings:
             # Note: Settings reads from .env.local file, so we mock the file loading
             settings = Settings(_env_file=None)  # Disable env file loading
             assert settings.provider == "anthropic"
-            assert settings.model == "gpt-4o"
+            assert settings.model == "claude-sonnet-4-5-20250929"
             assert settings.lookback_years == 4
             assert settings.log_level == "INFO"
             assert settings.openai_api_key is None

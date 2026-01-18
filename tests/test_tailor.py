@@ -684,9 +684,7 @@ class TestCVTailorDirectMethods:
         """Test that _tailor_summary_direct returns a string."""
         expected_summary = "Tailored professional summary."
 
-        with patch.object(
-            CVTailor, "_tailor_summary_direct", return_value=expected_summary
-        ):
+        with patch.object(CVTailor, "_tailor_summary_direct", return_value=expected_summary):
             tailor = CVTailor(mock_provider, use_cot=False)
             result = tailor._tailor_summary_direct(
                 sample_cv_data,
@@ -1096,7 +1094,9 @@ class TestCVTailorCoTInternalMethods:
             preferred_skills_matched=[],
         )
 
-        with patch.object(CVTailor, "_generate_skills_from_reasoning", return_value=expected_skills):
+        with patch.object(
+            CVTailor, "_generate_skills_from_reasoning", return_value=expected_skills
+        ):
             tailor = CVTailor(mock_provider, use_cot=True)
             result = tailor._generate_skills_from_reasoning(reasoning)
 
@@ -1137,9 +1137,7 @@ class TestCVTailorCritiqueAndRefine:
 
         with patch.object(CVTailor, "_critique_summary", return_value=expected_critique):
             tailor = CVTailor(mock_provider, use_cot=True)
-            result = tailor._critique_summary(
-                "Test summary", sample_job_requirements, reasoning
-            )
+            result = tailor._critique_summary("Test summary", sample_job_requirements, reasoning)
 
         assert isinstance(result, SummaryCritique)
         assert result.should_refine is True

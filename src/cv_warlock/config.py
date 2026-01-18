@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Provider configuration
     provider: Literal["openai", "anthropic", "google"] = "anthropic"
-    model: str = "gpt-4o"
+    model: str = "claude-sonnet-4-5-20250929"
 
     # Tailoring configuration
     lookback_years: int = Field(
