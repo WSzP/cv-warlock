@@ -1,8 +1,10 @@
-[![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates) 
-[![CI](https://github.com/WSzP/cv-warlock/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/ci.yml)
+[![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
+[![Type Check](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml)
+[![Unit Tests](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml)
+[![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates)
 
 <p align="center">
-  <img src="cv-warlock-logo.webp" alt="CV Warlock Logo" width="200">
+  <img src="assets/cv-warlock-logo.webp" alt="CV Warlock Logo" width="200">
 </p>
 
 # CV Warlock

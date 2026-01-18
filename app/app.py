@@ -252,7 +252,7 @@ st.set_page_config(
 )
 
 # Sidebar logo
-logo_for_sidebar = project_root / "cv-warlock-logo-small.webp"
+logo_for_sidebar = project_root / "assets/cv-warlock-logo-small.webp"
 if logo_for_sidebar.exists():
     st.logo(image=str(logo_for_sidebar))
 
@@ -472,7 +472,7 @@ def main():
         )
 
     # Main content - Header with logo and title
-    logo_path = project_root / "cv-warlock-logo-small.webp"
+    logo_path = project_root / "assets/cv-warlock-logo-small.webp"
 
     # Logo on left, title + tagline on right
     if logo_path.exists():
