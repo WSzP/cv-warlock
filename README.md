@@ -10,7 +10,13 @@ This is an opinionated, model-agnostic, quality-assured CV improver. If you have
 
 # Is this cheating?
 
+*tl;dr* NO
 
+CV Warlock is a mischievous experiment in resume sorcery, brewed purely for research and giggles. Think of it as a toy wand from a wizard’s gift shop, fun to wave around, but definitely not something to bring to a real duel (read: do NOT use this tool to apply for real jobs). It’s like a science-fair project that looks like a cheat code, but hey, we’re all just playing in the sandbox here.
+
+In true over-the-top disclaimer fashion (imagine this in a fast-talking auctioneer voice): “For research purposes only! Do not taunt real ATS dragons in the wild!” Yes, the whole idea of charming those keyword-crunching HR bots is a bit absurd – and that’s exactly the joke. CV Warlock exists to poke fun at the absurdity of trying to game résumé algorithms, not to help you hoodwink your next recruiter. So enjoy the enchanted shenanigans, have a laugh at the madness of modern hiring, but leave the spellbook at home when you venture into the actual job hunt. The real humans behind the curtain (a.k.a. hiring managers) will thank you, and we’ll sleep better knowing we didn’t unleash any resume-related chaos on the world. No actual warlocks or ATS bots were harmed in the making of this experiment. 
+
+But please share the results of your experiments with me and the world on LinkedIn.
 
 ## Features
 
