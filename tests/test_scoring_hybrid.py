@@ -10,9 +10,7 @@ from cv_warlock.scoring.algorithmic import AlgorithmicScorer
 from cv_warlock.scoring.hybrid import HybridScorer, _LLMAssessmentOutput
 from cv_warlock.scoring.models import (
     AlgorithmicScores,
-    HybridMatchResult,
     LLMAssessmentOutput,
-    ScoreBreakdown,
 )
 
 

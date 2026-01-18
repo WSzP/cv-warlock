@@ -124,8 +124,9 @@ When `use_cot=True` (default), each tailoring step follows REASON â†’ GENERATE â
 **OpenAI:**
 
 - `gpt-5.2` - GPT-5.2 (flagship, best for coding/agentic)
+- `gpt-5.2-instant` - GPT-5.2 Instant (fast version)
 - `gpt-5-mini` - GPT-5 Mini (faster, cost-efficient)
-- `gpt-5-nano` - GPT-5 Nano (fastest, cheapest)
+- `gpt-4o` - GPT-4o (previous generation)
 
 **Google:**
 
