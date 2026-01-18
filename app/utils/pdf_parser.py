@@ -1,7 +1,11 @@
 """PDF text extraction utility with LinkedIn-specific cleaning."""
 
+import os
 import re
 from typing import BinaryIO
+
+# Default cutoff year for experience - experiences ending before this year are excluded
+DEFAULT_EXPERIENCE_CUTOFF_YEAR = int(os.getenv("CV_WARLOCK_EXPERIENCE_CUTOFF_YEAR", "2012"))
 
 # Romanian diacritic fixes: LinkedIn uses cedilla (ş ţ) instead of comma below (ș ț)
 ROMANIAN_DIACRITIC_MAP = {
@@ -24,13 +28,17 @@ def fix_romanian_diacritics(text: str) -> str:
 
 
 def extract_text_from_pdf(
-    file: BinaryIO, fix_romanian: bool = True
+    file: BinaryIO,
+    fix_romanian: bool = True,
+    experience_cutoff_year: int | None = None,
 ) -> tuple[str | None, str | None]:
     """Extract text content from a PDF file.
 
     Args:
         file: File-like object containing PDF data.
         fix_romanian: Whether to fix Romanian diacritics (LinkedIn uses wrong characters).
+        experience_cutoff_year: Exclude experiences ending before this year.
+            If None, uses CV_WARLOCK_EXPERIENCE_CUTOFF_YEAR env var or 2012 default.
 
     Returns:
         Tuple of (extracted_text, error_message). One will be None.
@@ -39,6 +47,10 @@ def extract_text_from_pdf(
         import fitz  # PyMuPDF
     except ImportError:
         return None, "PDF parsing library not installed. Run: uv add pymupdf"
+
+    # Resolve cutoff year
+    if experience_cutoff_year is None:
+        experience_cutoff_year = DEFAULT_EXPERIENCE_CUTOFF_YEAR
 
     try:
         # Read PDF content
@@ -67,7 +79,7 @@ def extract_text_from_pdf(
 
         # Detect if this is a LinkedIn PDF and apply appropriate cleaning
         if _is_linkedin_pdf(full_text):
-            full_text = clean_linkedin_pdf(full_text)
+            full_text = clean_linkedin_pdf(full_text, experience_cutoff_year)
         else:
             full_text = clean_extracted_text(full_text)
 
@@ -94,7 +106,7 @@ def _is_linkedin_pdf(text: str) -> bool:
     return matches >= 2
 
 
-def clean_linkedin_pdf(text: str) -> str:
+def clean_linkedin_pdf(text: str, experience_cutoff_year: int = 2012) -> str:
     """Clean LinkedIn PDF export into a proper CV format.
 
     LinkedIn PDFs have specific formatting issues:
@@ -102,6 +114,10 @@ def clean_linkedin_pdf(text: str) -> str:
     - Sidebar content (Contact, Skills, Languages) mixed with main content
     - Awkward line breaks from PDF layout
     - Section headers that need restructuring
+
+    Args:
+        text: Raw PDF text content.
+        experience_cutoff_year: Exclude experiences ending before this year.
     """
     # Remove page markers (Page 1 of 6, etc.)
     text = re.sub(r"Page \d+ of \d+\n?", "", text)
@@ -109,8 +125,47 @@ def clean_linkedin_pdf(text: str) -> str:
     # Extract and restructure sections
     sections = _parse_linkedin_sections(text)
 
+    # Filter experiences by cutoff year
+    if sections["experience"]:
+        sections["experience"] = _filter_experiences_by_cutoff(
+            sections["experience"], experience_cutoff_year
+        )
+
     # Build clean CV format
     return _build_cv_from_sections(sections)
+
+
+def _filter_experiences_by_cutoff(experiences: list, cutoff_year: int) -> list:
+    """Filter out experiences that ended before the cutoff year.
+
+    Args:
+        experiences: List of experience dictionaries with 'dates' field.
+        cutoff_year: Exclude experiences ending before this year.
+
+    Returns:
+        Filtered list of experiences.
+    """
+    filtered = []
+    for exp in experiences:
+        dates = exp.get("dates", "")
+
+        # If still present, always include
+        if "Present" in dates or "present" in dates:
+            filtered.append(exp)
+            continue
+
+        # Extract end year from date range
+        # Patterns: "October 2022 - August 2025", "2007 - 2008", "September 2015 - May 2017"
+        end_year_match = re.search(r"[-–]\s*(?:\w+\s+)?(\d{4})", dates)
+        if end_year_match:
+            end_year = int(end_year_match.group(1))
+            if end_year >= cutoff_year:
+                filtered.append(exp)
+        else:
+            # If we can't parse, include it to be safe
+            filtered.append(exp)
+
+    return filtered
 
 
 def _parse_linkedin_sections(text: str) -> dict:
@@ -162,43 +217,101 @@ def _parse_linkedin_sections(text: str) -> dict:
 
     # The name is usually the first line after publication titles that looks like a person name
     # Person names: 2-4 words, mostly letters, no special keywords
-    publication_keywords = [
+    # Note: We check if line STARTS with these keywords (not just contains) to avoid false positives
+    publication_title_starts = [
+        "the ",
+        "a ",
+    ]
+    # These keywords indicate publication titles when they appear anywhere
+    publication_keywords_anywhere = [
         "book",
         "article",
         "paper",
         "journal",
         "volume",
         "edition",
-        "mapping",
-        "guide",
-        "the ",
-        "a ",
     ]
 
-    for idx, (i, line) in enumerate(publication_lines):
+    def is_publication_title(text: str) -> bool:
+        """Check if this line looks like a publication title."""
+        text_lower = text.lower()
+        # Check for keywords that indicate publication when at start
+        if any(text_lower.startswith(kw) for kw in publication_title_starts):
+            return True
+        # Check for keywords that indicate publication anywhere
+        if any(kw in text_lower for kw in publication_keywords_anywhere):
+            return True
+        return False
+
+    def looks_like_name(text: str) -> bool:
+        """Check if text looks like a person's name."""
+        words = text.split()
+        if not (2 <= len(words) <= 4):
+            return False
+        # All words should start with uppercase and be mostly letters
+        if not all(w[0].isupper() for w in words if w):
+            return False
+        if not all(c.isalpha() or c in ". -" for c in text):
+            return False
+        # Exclude lines that contain publication/title-like words
+        title_words = [
+            "experience",
+            "mapping",
+            "book",
+            "guide",
+            "learning",
+            "science",
+            "design",
+            "development",
+            "business",
+        ]
+        text_lower = text.lower()
+        if any(tw in text_lower for tw in title_words):
+            return False
+        return True
+
+    headline_lines = []
+    for _, (i, line) in enumerate(publication_lines):
         if not line:
             continue
-        # Skip obvious publication titles
-        if any(kw in line.lower() for kw in publication_keywords):
-            continue
 
-        words = line.split()
-        # Person names typically: 2-4 words, all start with uppercase, mostly letters
-        is_name_like = (
-            2 <= len(words) <= 4
-            and all(w[0].isupper() for w in words if w)
-            and all(c.isalpha() or c in ". -" for c in line)
-        )
-
-        if is_name_like and not sections["name"]:
+        # First check if this looks like a person's name (before checking publications)
+        if looks_like_name(line) and not sections["name"]:
             sections["name"] = line
             continue
 
-        if sections["name"] and not sections["headline"]:
+        # Skip obvious publication titles (but only if we haven't found the name yet)
+        # After finding the name, we're in headline territory
+        if not sections["name"] and is_publication_title(line):
+            continue
+
+        # Check if this looks like a location line (ends headline collection)
+        is_location = (
+            "," in line
+            and len(line) < 60
+            and "★" not in line
+            and not line.startswith("&")
+            and not any(
+                kw in line.lower()
+                for kw in ["head", "founder", "manager", "director", "ceo", "author"]
+            )
+        )
+
+        if sections["name"] and is_location and not sections["location"]:
+            # This is the location - finalize headline first
+            if headline_lines:
+                sections["headline"] = " ".join(headline_lines)
+            sections["location"] = line
+            break
+
+        if sections["name"] and not sections["location"]:
             # Headline often has stars, dashes, job titles, or company names
+            # Or continues from previous headline line (starts with & or lowercase)
             if (
                 "★" in line
                 or " - " in line
+                or line.startswith("&")
+                or (headline_lines and line[0].islower())
                 or any(
                     kw in line.lower()
                     for kw in [
@@ -212,17 +325,19 @@ def _parse_linkedin_sections(text: str) -> dict:
                         "author",
                         "curator",
                         "past:",
+                        "genai",
+                        "autonomous",
+                        "swarms",
+                        "orchestrators",
                     ]
                 )
             ):
-                sections["headline"] = line
+                headline_lines.append(line)
                 continue
 
-        if sections["name"] and sections["headline"] and not sections["location"]:
-            # Location is typically "City, Region, Country"
-            if "," in line and len(line) < 60 and " - " not in line:
-                sections["location"] = line
-                break
+    # Finalize headline if we haven't yet (no location found)
+    if headline_lines and not sections["headline"]:
+        sections["headline"] = " ".join(headline_lines)
 
     # Second pass: parse sections
     i = 0
@@ -391,10 +506,36 @@ def _parse_experience(lines: list) -> list:
     current_description = []
 
     # Title keywords for detecting job titles (must appear near start of line)
-    title_keywords = r"^(Director|Manager|Head of|Head,|Founder|CEO|CTO|CFO|COO|Engineer|Developer|Designer|Consultant|Lead\b|Senior|Junior|Curator|Expert|Specialist|Analyst|Architect|Administrator|Coordinator|VP\b|President|Chief|Officer|User Experience|UX |UI |Conference Curator|Blockchain)"
+    title_keywords = r"^(Director|Manager|Head of|Head,|Founder|CEO|CTO|CFO|COO|Engineer|Developer|Designer|Consultant|Lead\b|Senior|Junior|Curator|Expert|Specialist|Analyst|Architect|Administrator|Coordinator|VP\b|President|Chief|Officer|User Experience|UX |UI |Conference Curator|Blockchain|Webdesigner)"
+
+    # Words that indicate a line is description, not a title
+    description_indicators = [
+        "responsible for",
+        "since",
+        " by ",
+        " of the ",
+        " I ",
+        " we ",
+        "helped",
+        "including",
+        "such as",
+        "delivering",
+        "working",
+        "supporting",
+        "leading",
+        "managing",
+        "developing",
+    ]
 
     def is_job_title(text: str) -> bool:
         """Check if text looks like a job title."""
+        # Job titles are usually short (< 60 chars) and don't contain description words
+        if len(text) > 60:
+            return False
+        # Must not contain description indicators
+        text_lower = text.lower()
+        if any(indicator in text_lower for indicator in description_indicators):
+            return False
         return bool(re.search(title_keywords, text, re.I))
 
     def is_date_line(text: str) -> bool:
@@ -545,42 +686,170 @@ def _parse_education(lines: list) -> list:
     """Parse education section."""
     education = []
     current_edu = None
-    current_details = []
+    institution_lines = []
 
+    # Institution markers - lines containing these start a new education entry
+    institution_markers = ["University", "College", "Liceul", "Universitatea", "Institut"]
+
+    def is_institution_start(text: str) -> bool:
+        """Check if line starts a new institution."""
+        return any(marker in text for marker in institution_markers)
+
+    def is_degree_line(text: str) -> bool:
+        """Check if line contains degree information."""
+        degree_keywords = [
+            "Bachelor",
+            "Master",
+            "PhD",
+            "Doctorate",
+            "degree",
+            "High School",
+            "Research",
+        ]
+        return any(kw in text for kw in degree_keywords)
+
+    def finalize_education(edu: dict, inst_lines: list) -> dict:
+        """Finalize an education entry by joining institution lines."""
+        if inst_lines:
+            edu["institution"] = " ".join(inst_lines)
+        # Clean up dates - remove incomplete dates that are just month names
+        if edu["dates"]:
+            # If date is just a month or incomplete, try to find the full date
+            dates = edu["dates"]
+            # Remove leading/trailing parentheses and whitespace
+            dates = dates.strip("() ")
+            # Check if it's just a month name without year
+            if dates in [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ]:
+                # Incomplete date, clear it
+                edu["dates"] = ""
+            else:
+                edu["dates"] = dates
+        return edu
+
+    # First pass: join lines that are continuations of previous lines
+    # This handles dates split across lines like "October\n2018 - 2021"
+    joined_lines = []
     for line in lines:
         line = line.strip()
         if not line:
             continue
+        # Check if this line looks like a date continuation (starts with year)
+        if joined_lines and re.match(r"^\d{4}\s*[-–]", line):
+            # This is likely a continuation of the previous date
+            joined_lines[-1] = joined_lines[-1] + " " + line
+        # Check if previous line ended with month name and this is a date
+        elif joined_lines and re.search(
+            r"\((January|February|March|April|May|June|July|August|September|October|November|December)$",
+            joined_lines[-1],
+        ):
+            joined_lines[-1] = joined_lines[-1] + " " + line
+        # Check if this line is just a closing parenthesis and year
+        elif joined_lines and re.match(r"^\d{4}\)?$", line):
+            joined_lines[-1] = joined_lines[-1] + " " + line
+        # Check if previous line ends with open parenthesis or mid-word
+        # (handles cases like "Design\nIndustrial)" where text is split)
+        elif joined_lines and (
+            joined_lines[-1].endswith("(")
+            or (
+                re.search(r"[a-zA-Z]$", joined_lines[-1])
+                and re.match(r"^[a-zA-Z)]", line)
+                and not is_institution_start(line)
+                and not is_degree_line(line)  # Don't join if this is a new degree line
+            )
+        ):
+            # Add space if not ending with ( and line doesn't start with )
+            separator = "" if joined_lines[-1].endswith("(") or line.startswith(")") else " "
+            joined_lines[-1] = joined_lines[-1] + separator + line
+        else:
+            joined_lines.append(line)
 
-        # Education entries typically start with university name
-        if "University" in line or "College" in line or "Liceul" in line or "School" in line:
+    i = 0
+    while i < len(joined_lines):
+        line = joined_lines[i]
+        if not line:
+            i += 1
+            continue
+
+        # Check if this starts a new institution
+        if is_institution_start(line):
+            # Save previous education entry
             if current_edu:
-                current_edu["details"] = " ".join(current_details)
-                education.append(current_edu)
+                education.append(finalize_education(current_edu, institution_lines))
 
             current_edu = {
-                "institution": line,
+                "institution": "",
                 "degree": "",
                 "dates": "",
                 "details": "",
             }
-            current_details = []
-        elif current_edu:
-            # Check for degree line
-            if any(
-                deg in line
-                for deg in ["Bachelor", "Master", "PhD", "Doctorate", "degree", "High School"]
-            ):
-                current_edu["degree"] = line
-            # Check for date range
-            elif re.search(r"\d{4}\s*[-–]\s*\d{4}|\d{4}\s*[-–]\s*Present|\(\w+\s+\d{4}", line):
-                current_edu["dates"] = line
-            else:
-                current_details.append(line)
+            institution_lines = [line]
+            i += 1
+            continue
 
+        if current_edu:
+            # Check if this is a degree line (contains degree info and often dates)
+            if is_degree_line(line):
+                # Degree lines often have format: "Master's degree, Field · (dates)"
+                # Split on · if present
+                if "·" in line:
+                    parts = line.split("·", 1)
+                    current_edu["degree"] = parts[0].strip()
+                    if len(parts) > 1:
+                        # Extract dates from the second part
+                        date_part = parts[1].strip()
+                        # Remove parentheses
+                        date_part = date_part.strip("() ")
+                        current_edu["dates"] = date_part
+                else:
+                    current_edu["degree"] = line
+                i += 1
+                continue
+
+            # Check if this looks like a continuation of the institution name
+            # (lines that don't start with degree keywords and aren't dates)
+            if (
+                not is_degree_line(line)
+                and not re.search(r"^\(\d{4}", line)
+                and not current_edu["degree"]
+            ):
+                # This might be a continuation of the institution name
+                # or additional details after degree
+                if not current_edu["degree"]:
+                    institution_lines.append(line)
+                else:
+                    # It's additional details
+                    if current_edu["details"]:
+                        current_edu["details"] += " " + line
+                    else:
+                        current_edu["details"] = line
+                i += 1
+                continue
+
+            # Check for standalone date line
+            if re.search(r"\d{4}\s*[-–]\s*\d{4}|\d{4}\s*[-–]\s*Present|\(\w+\s+\d{4}", line):
+                if not current_edu["dates"]:
+                    current_edu["dates"] = line.strip("() ")
+                i += 1
+                continue
+
+        i += 1
+
+    # Save last education entry
     if current_edu:
-        current_edu["details"] = " ".join(current_details)
-        education.append(current_edu)
+        education.append(finalize_education(current_edu, institution_lines))
 
     return education
 
@@ -678,11 +947,12 @@ def _build_cv_from_sections(sections: dict) -> str:
     if sections["education"]:
         parts.append("\n## Education")
         for edu in sections["education"]:
-            edu_text = f"\n### {edu['institution']}"
+            edu_text = f"\n### {edu['institution']}\n"
+            # Degree and dates on separate lines
             if edu["degree"]:
                 edu_text += f"\n{edu['degree']}"
             if edu["dates"]:
-                edu_text += f" {edu['dates']}"
+                edu_text += f"\n{edu['dates']}"
             if edu["details"]:
                 edu_text += f"\n{edu['details']}"
             parts.append(edu_text)

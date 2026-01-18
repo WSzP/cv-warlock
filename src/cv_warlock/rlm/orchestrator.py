@@ -10,7 +10,7 @@ import json
 import logging
 import re
 import time
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -143,7 +143,9 @@ class RLMOrchestrator:
                 # Get response from root model
                 model = self.root_provider.get_chat_model()
                 response = model.invoke(messages)
-                model_output = response.content
+                # Ensure model_output is a string (LangChain can return list for multimodal)
+                raw_content = response.content
+                model_output = raw_content if isinstance(raw_content, str) else str(raw_content)
 
                 # Parse the model output
                 action = self._parse_model_output(model_output)
@@ -381,7 +383,8 @@ class RLMOrchestrator:
         try:
             model = self.sub_provider.get_chat_model()
             response = model.invoke(prompt)
-            answer = response.content
+            raw_answer = response.content
+            answer = raw_answer if isinstance(raw_answer, str) else str(raw_answer)
         except Exception as e:
             logger.error(f"Sub-call error: {e}")
             answer = f"Error querying sub-model: {e}"
@@ -465,10 +468,13 @@ class RLMOrchestrator:
         return None
 
 
+ProviderType = Literal["openai", "anthropic", "google"]
+
+
 def create_rlm_orchestrator(
-    root_provider: str = "anthropic",
+    root_provider: ProviderType = "anthropic",
     root_model: str = "claude-opus-4-5-20251101",
-    sub_provider: str | None = None,
+    sub_provider: ProviderType | None = None,
     sub_model: str | None = None,
     config: RLMConfig | None = None,
 ) -> RLMOrchestrator:
@@ -498,7 +504,8 @@ def create_rlm_orchestrator(
             sub_model = root_model
 
     root = get_llm_provider(root_provider, root_model)
-    sub = get_llm_provider(sub_provider or root_provider, sub_model)
+    effective_sub_provider: ProviderType = sub_provider if sub_provider else root_provider
+    sub = get_llm_provider(effective_sub_provider, sub_model)
 
     return RLMOrchestrator(
         root_provider=root,

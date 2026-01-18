@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import streamlit as st
-from utils.pdf_parser import extract_text_from_pdf
+from utils.pdf_parser import DEFAULT_EXPERIENCE_CUTOFF_YEAR, extract_text_from_pdf
 
 # Directory for saved CVs
 CV_SAVE_DIR = Path(__file__).parent.parent / "data" / "cvs"
@@ -190,6 +190,17 @@ def render_cv_input() -> str:
             help="LinkedIn uses incorrect cedilla characters (ş, ţ) instead of proper Romanian comma-below (ș, ț)",
         )
 
+        # Experience cutoff year option
+        experience_cutoff_year = st.number_input(
+            "Exclude experiences ending before year",
+            min_value=1980,
+            max_value=2030,
+            value=DEFAULT_EXPERIENCE_CUTOFF_YEAR,
+            step=1,
+            key="experience_cutoff_year",
+            help="Work experiences that ended before this year will be excluded from the imported CV. Set to 1980 to include all experiences.",
+        )
+
         uploaded_file = st.file_uploader(
             "Upload your CV (PDF)",
             type=["pdf"],
@@ -198,10 +209,14 @@ def render_cv_input() -> str:
 
         if uploaded_file is not None:
             # Track which file we've processed to avoid re-processing on every rerun
-            file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+            file_id = f"{uploaded_file.name}_{uploaded_file.size}_{experience_cutoff_year}"
             if st.session_state.get("last_pdf_id") != file_id:
                 with st.spinner("Extracting text from PDF..."):
-                    cv_text, error = extract_text_from_pdf(uploaded_file, fix_romanian=fix_romanian)
+                    cv_text, error = extract_text_from_pdf(
+                        uploaded_file,
+                        fix_romanian=fix_romanian,
+                        experience_cutoff_year=int(experience_cutoff_year),
+                    )
 
                     if error:
                         st.error(f"Error reading PDF: {error}")

@@ -117,19 +117,26 @@ Cylex is best known for its Business Directories, like cylex.de or cylex-usa.com
 
 ## Education
 
-### University of Medicine, Pharmacy, Science and Technology "G.E.
+### University of Medicine, Pharmacy, Science and Technology "G.E. Palade" of Târgu Mureș
 
-Master's degree, Graphics and Industrial Design (Grafică și Design Industrial) · (October 2007 - June 2008)
-Palade" of Târgu Mureș Universitatea „Petru Maior” din Târgu-Mureș
+Research Doctorate - Artificial Intelligence
+October 2018 - Present
+(All exams passed, thesis not written yet.)
+
+### Universitatea "Petru Maior" din Târgu-Mureș
+
+Master's degree, Graphics and Industrial Design (Grafică și Design Industrial)
+October 2007 - June 2008
 
 ### Babes-Bolyai University
 
-Bachelor's Degree, Communication and Public Relations · (September
-2003 - July 2007)
+Bachelor's Degree, Communication and Public Relations
+September 2003 - July 2007
 
 ### Liceul Teoretic "Bolyai Farkas"
 
-High School, Computer Science · (1999 - 2003)
+High School, Computer Science
+September 1999 - July 2003
 
 ## Languages
 
