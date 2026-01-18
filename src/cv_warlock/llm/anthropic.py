@@ -40,7 +40,7 @@ class AnthropicProvider(LLMProvider):
             api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
-            extra_headers=PROMPT_CACHING_HEADER,
+            default_headers=PROMPT_CACHING_HEADER,
         )
 
     def _create_extraction_model(self) -> BaseChatModel:
@@ -50,5 +50,5 @@ class AnthropicProvider(LLMProvider):
             api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
-            extra_headers=PROMPT_CACHING_HEADER,
+            default_headers=PROMPT_CACHING_HEADER,
         )

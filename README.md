@@ -219,6 +219,8 @@ CV Warlock uses a [LangGraph](https://langchain-ai.github.io/langgraph/) workflo
 
 **+** For best results, ensure your base CV follows modern best practices. See our [CV Best Practices Guide](docs/CV_BEST_PRACTICE.md) for 2026 tech-focused recommendations on layout, ATS compatibility, and content structure.
 
+**+** Writing a cover letter? Check our [Cover Letter Best Practices Guide](docs/COVER_LETTER_BEST_PRACTICE.md) for 2026 tech leadership tips on structure, key qualities to highlight, and a full example. Or have the AI generate one for you based on those best practices.
+
 ## Assume All Tech Skills
 
 The **"Assume all requested tech skills"** checkbox (enabled by default) is a key feature designed for software developers and technical professionals.

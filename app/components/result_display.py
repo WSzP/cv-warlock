@@ -363,6 +363,9 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
 def _generate_cover_letter(result: dict[str, Any], char_limit: int) -> CoverLetterGenerationResult:
     """Generate cover letter using the CoverLetterGenerator.
 
+    Uses same high-quality model for both reasoning and generation to ensure
+    professional wording quality (fast models produce lower quality text).
+
     Args:
         result: The workflow result containing tailored CV, job requirements, etc.
         char_limit: Target character limit for the cover letter.
@@ -378,14 +381,17 @@ def _generate_cover_letter(result: dict[str, Any], char_limit: int) -> CoverLett
     if not params:
         raise ValueError("Missing processing parameters. Please generate a CV first.")
 
-    # Create LLM provider
+    provider = params.get("provider", "anthropic")
+
+    # Use high-quality model for both reasoning AND generation
+    # (Fast models like Haiku produce lower quality wording)
     llm_provider = get_llm_provider(
-        provider=params.get("provider", "anthropic"),
+        provider=provider,
         model=params.get("model", "claude-sonnet-4-5-20250929"),
         api_key=params.get("api_key"),
     )
 
-    # Create generator
+    # Create generator (uses same provider for both reasoning and generation)
     generator = CoverLetterGenerator(llm_provider)
 
     # Use edited CV if available (from Create Cover Letter button), otherwise use result

@@ -628,6 +628,35 @@ Remember, focus on content that strengthens your fit for the specific role. Omit
             """
         )
 
+    # Cover Letter Best Practices - collapsible
+    with st.expander("Cover Letter Best Practices for 2026 (tech leadership focused)"):
+        st.markdown(
+            """
+Cover letters have re-emerged as a critical tool for landing leadership roles. By 2025, 83% of hiring managers read cover letters (and nearly half read them before the resume). A personalized, results-driven cover letter distinguishes you from generic AI-generated text.
+
+### Recommended Cover Letter Structure
+
+**Header and Salutation:** Include your name, contact info, date, and address the letter to the hiring manager by name if possible. A personalized salutation creates a positive first impression.
+
+**Opening Paragraph (Introduction):** Grab attention with a compelling hook—a top achievement or summary that directly relates to the job. State the role you're applying for and convey enthusiasm. For example: *"With 15+ years in IT leadership, I have driven 40% revenue growth through digital transformation…"*
+
+**Body Paragraphs – Achievements and Value Alignment:** Showcase your most relevant accomplishments with metrics (e.g., "increased system uptime 30%" or "saved $1M in costs"). Mirror the job requirements and tie your expertise to their mission. Customization is crucial—72% of hiring managers prioritize tailored letters.
+
+**Closing Paragraph:** Summarize your value proposition, express excitement, and include a call to action: *"I welcome the opportunity to discuss how my experience can help {Company} achieve Y."*
+
+### Key Qualities to Highlight as a Tech Leader in 2026
+
+- **Visionary Leadership:** Strategic foresight and technology roadmap experience
+- **Adaptability & Agile Mindset:** Leading through change and uncertainty
+- **AI Fluency & Innovation:** Comfort with AI, ML, and emerging technologies
+- **Data-Driven Decision Making:** Analytical approach with measurable impact
+- **Collaboration & Communication:** Bridging technology and business stakeholders
+- **People Development:** Building high-performing teams and positive culture
+
+By weaving these qualities with concrete examples, you paint a picture of a 2026-ready tech leader: someone with vision, adaptable, AI-fluent, data-driven, and capable of leading people through change.
+            """
+        )
+
     # Input columns
     col1, col2 = st.columns(2)
 

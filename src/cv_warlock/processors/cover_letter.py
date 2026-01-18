@@ -6,7 +6,10 @@ text areas.
 
 Performance:
 - Uses REASON -> GENERATE pattern (2 LLM calls)
+- Uses same high-quality model for both steps (Sonnet/GPT-5.2) for
+  professional wording quality (fast models produce lower quality text)
 - Compressed context passing for token efficiency
+- Optional fast_provider parameter for environments where speed is prioritized
 """
 
 import re
@@ -16,10 +19,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from cv_warlock.llm.base import LLMProvider
 from cv_warlock.models.job_spec import JobRequirements
 from cv_warlock.models.reasoning import (
-    CoverLetterCritique,
     CoverLetterGenerationResult,
     CoverLetterReasoning,
-    QualityLevel,
 )
 from cv_warlock.models.state import MatchAnalysis
 from cv_warlock.prompts.cover_letter import (
@@ -29,23 +30,27 @@ from cv_warlock.prompts.cover_letter import (
 
 
 def _compress_cover_letter_reasoning(reasoning: CoverLetterReasoning) -> str:
-    """Extract essential fields from reasoning for generation prompt.
+    """Compress reasoning to minimal tokens needed for generation.
 
-    Instead of passing full JSON, pass only what's needed for generation.
+    Only includes actionable guidance, not analysis.
     """
-    return f"""Opening: {reasoning.opening_hook}
-Key points: {", ".join(reasoning.key_selling_points[:3])}
-Strongest alignment: {reasoning.strongest_alignment}
-Company connection: {reasoning.company_connection}
-Structure: {" | ".join(reasoning.paragraph_structure)}
-Call to action: {reasoning.call_to_action}
-Tone: {reasoning.tone_guidance}"""
+    return f"""Hook: {reasoning.opening_hook}
+Points: {", ".join(reasoning.key_selling_points[:3])}
+Match: {reasoning.strongest_alignment}
+Company: {reasoning.company_connection}
+Qualities: {", ".join(reasoning.leadership_qualities[:3])}
+Problem-solution: {reasoning.problem_solution_framing}
+Structure: {" > ".join(reasoning.paragraph_structure[:4])}
+CTA: {reasoning.call_to_action}"""
 
 
 class CoverLetterGenerator:
     """Generate cover letters with chain-of-thought reasoning.
 
-    Uses REASON -> GENERATE pattern for quality output.
+    Uses REASON -> GENERATE pattern for quality output:
+    - REASON: Uses extraction model (stronger, for structured output)
+    - GENERATE: Uses fast model if provided (faster, plain text output)
+
     Produces plain text suitable for job application paste areas.
     """
 
@@ -54,13 +59,16 @@ class CoverLetterGenerator:
     MIN_CHARACTER_LIMIT = 500
     MAX_CHARACTER_LIMIT = 5000
 
-    def __init__(self, llm_provider: LLMProvider):
-        """Initialize generator with LLM provider.
+    def __init__(self, llm_provider: LLMProvider, fast_provider: LLMProvider | None = None):
+        """Initialize generator with LLM providers.
 
         Args:
-            llm_provider: LLM provider instance for model access.
+            llm_provider: LLM provider for reasoning (structured extraction).
+            fast_provider: Optional fast provider for generation (plain text).
+                          If not provided, uses llm_provider for both steps.
         """
         self.llm_provider = llm_provider
+        self.fast_provider = fast_provider or llm_provider
 
         # Prompts
         self.reasoning_prompt = ChatPromptTemplate.from_template(COVER_LETTER_REASONING_PROMPT)
@@ -92,32 +100,16 @@ class CoverLetterGenerator:
             min(character_limit, self.MAX_CHARACTER_LIMIT),
         )
 
-        # Step 1: REASON
+        # Step 1: REASON (uses extraction model for structured output)
         reasoning = self._reason(tailored_cv, job_requirements, match_analysis)
 
-        # Step 2: GENERATE
-        generated = self._generate_from_reasoning(reasoning, job_requirements, character_limit)
-
-        # Create placeholder critique (balanced mode - skip full critique/refine)
-        critique = CoverLetterCritique(
-            has_compelling_opening=True,
-            demonstrates_company_research=True,
-            includes_quantified_achievement=True,
-            mirrors_job_keywords=True,
-            appropriate_length=len(generated) <= character_limit,
-            professional_tone=True,
-            has_clear_call_to_action=True,
-            is_plain_text=True,
-            quality_level=QualityLevel.GOOD,
-            issues_found=[],
-            improvement_suggestions=[],
-            should_refine=False,
-        )
+        # Step 2: GENERATE (uses fast model for plain text output)
+        generated = self._generate_from_reasoning(reasoning, character_limit)
 
         return CoverLetterGenerationResult(
             reasoning=reasoning,
             generated_cover_letter=generated,
-            critique=critique,
+            critique=None,
             refinement_count=0,
             final_cover_letter=generated,
             character_count=len(generated),
@@ -161,20 +153,22 @@ class CoverLetterGenerator:
     def _generate_from_reasoning(
         self,
         reasoning: CoverLetterReasoning,
-        job_requirements: JobRequirements,
         character_limit: int,
     ) -> str:
         """Generate cover letter from reasoning (Step 2).
 
+        Uses the fast provider for generation since this is plain text output
+        and doesn't require structured extraction.
+
         Args:
             reasoning: Strategic reasoning from step 1.
-            job_requirements: Structured job requirements.
             character_limit: Target character limit.
 
         Returns:
             Plain text cover letter.
         """
-        model = self.llm_provider.get_chat_model()
+        # Use fast provider for generation (plain text, no structured output needed)
+        model = self.fast_provider.get_chat_model()
 
         chain = self.generation_prompt | model
         result = chain.invoke(
@@ -183,6 +177,7 @@ class CoverLetterGenerator:
                 "character_limit": character_limit,
                 "metric_to_feature": reasoning.metric_to_feature,
                 "keywords": ", ".join(reasoning.keywords_to_incorporate[:5]),
+                "leadership_qualities": ", ".join(reasoning.leadership_qualities[:3]),
             }
         )
 

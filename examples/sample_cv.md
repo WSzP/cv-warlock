@@ -6,11 +6,11 @@ UX-first Agentic AI developer, mentor, and leader.
 
 ## Summary
 
-Hands-on AI & product leader with 21 years across UX, engineering, and machine learning. Still coding daily and shipping end-to-end outcomes.
+Hands-on AI & product leader with 21 years across UX, engineering, and machine learning. Still coding daily.
 
 Over the last 2 years, I’ve built production agentic AI (LangChain → LangGraph/LangSmith), delivering autonomous agents, swarms, and orchestrators with reliable tool use, observability, and tight iteration loops that drive measurable business impact.
 
-As Founder of Tengr.ai, I led a generative image AI product from research roadmap to iterative releases, including HPC experimentation plus privacy-by-design and safety systems.
+As founder of Tengr.ai, I led a generative image AI product from research roadmap to iterative releases, including HPC experimentation plus privacy-by-design and safety systems.
 
 I scaled AceTech Development from 0 to 40+ people in under two years and completed a successful exit.
 

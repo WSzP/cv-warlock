@@ -420,6 +420,18 @@ class CoverLetterReasoning(BaseModel):
         description="Specific reason for interest in THIS company (not generic)"
     )
 
+    # 2026 Tech Leadership qualities to highlight
+    leadership_qualities: list[str] = Field(
+        description=(
+            "Which 2026 tech leader qualities to emphasize (pick 2-3): "
+            "visionary leadership, adaptability, AI fluency, data-driven, "
+            "collaboration, people development"
+        )
+    )
+    problem_solution_framing: str = Field(
+        description="How candidate's experience solves a specific company challenge/need"
+    )
+
     # Strategy phase
     paragraph_structure: list[str] = Field(
         description="Planned content for each paragraph (3-4 paragraphs)"
@@ -444,6 +456,7 @@ class CoverLetterReasoning(BaseModel):
 
     @field_validator(
         "key_selling_points",
+        "leadership_qualities",
         "paragraph_structure",
         "keywords_to_incorporate",
         "aspects_to_avoid",
@@ -466,6 +479,14 @@ class CoverLetterCritique(BaseModel):
     )
     includes_quantified_achievement: bool = Field(
         description="Contains at least one hard metric from CV?"
+    )
+    demonstrates_problem_solution: bool = Field(
+        default=True,
+        description="Frames candidate's experience as solving a company challenge?",
+    )
+    shows_leadership_qualities: bool = Field(
+        default=True,
+        description="Conveys executive-level qualities (strategic vision, team building)?",
     )
     mirrors_job_keywords: bool = Field(
         description="Natural incorporation of 2-3 job posting terms?"
@@ -498,7 +519,9 @@ class CoverLetterGenerationResult(BaseModel):
 
     reasoning: CoverLetterReasoning
     generated_cover_letter: str = Field(description="Initial generated cover letter")
-    critique: CoverLetterCritique
+    critique: CoverLetterCritique | None = Field(
+        default=None, description="Optional critique (skipped for speed in balanced mode)"
+    )
     refinement_count: int = Field(default=0, description="Number of refinement iterations")
     final_cover_letter: str = Field(description="Final cover letter after any refinements")
     character_count: int = Field(description="Character count of final output")
