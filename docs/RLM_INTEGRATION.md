@@ -4,7 +4,7 @@
 
 **Objective:** Enable CV Warlock to handle arbitrarily long CVs and detailed job specs by using **Recursive Language Model (RLM)** techniques. The plan below maps RLM components onto CV Warlock’s architecture and provides a step-by-step implementation strategy focused on production readiness, speed, and accuracy.
 
-![image](img\rlm.png)
+![image](img/rlm.png)
 
 ## **Mapping RLM Components to CV Warlock’s Architecture**
 
