@@ -1,6 +1,11 @@
 [![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
 [![Type Check](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml)
 [![Unit Tests](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/WSzP/cv-warlock/branch/main/graph/badge.svg)](https://codecov.io/gh/WSzP/cv-warlock)
+
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates)
 
 <p align="center">
