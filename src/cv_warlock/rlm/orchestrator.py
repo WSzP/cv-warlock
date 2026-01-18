@@ -10,7 +10,7 @@ import json
 import logging
 import re
 import time
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -187,11 +187,11 @@ class RLMOrchestrator:
 
                     if final_in_output or final_var_in_output:
                         # FINAL was present - process it now that code has been executed
-                        final_content = (
-                            final_in_output.group(1).strip()
-                            if final_in_output
-                            else final_var_in_output.group(1)
-                        )
+                        if final_in_output:
+                            final_content = final_in_output.group(1).strip()
+                        else:
+                            assert final_var_in_output is not None  # for type narrowing
+                            final_content = final_var_in_output.group(1)
                         final_answer = self._process_final_answer(final_content, output_schema, env)
                         step.execution_result = (
                             f"Code executed, then FINAL: {step.execution_result}"
@@ -559,7 +559,7 @@ Be thorough and extract all relevant information from the CV."""
             structured_model = model.with_structured_output(output_schema)
             result = structured_model.invoke(extraction_prompt)
             logger.info(f"LLM extraction successful for {schema_name}")
-            return result
+            return cast(T, result)
         except Exception as e:
             logger.warning(f"LLM extraction failed for {schema_name}: {e}")
             return content

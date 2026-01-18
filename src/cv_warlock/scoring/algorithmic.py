@@ -284,7 +284,15 @@ class AlgorithmicScorer:
         cv_data: CVData,
         job_requirements: JobRequirements,
     ) -> float:
-        """Compute recency-weighted experience relevance."""
+        """Compute recency-weighted experience relevance.
+
+        Enterprise-standard recency scoring that considers:
+        1. Per-experience skills and text mentions
+        2. Overall CV skills applied to recent experiences (within 2 years)
+           - Rationale: If someone lists Python as a skill and is currently employed,
+             they're likely using it in their current role even if not explicitly stated
+        3. Exponential decay weighting for older experiences
+        """
         if not cv_data.experiences:
             return 0.0
 
@@ -298,6 +306,9 @@ class AlgorithmicScorer:
         if not target_skills:
             return 1.0  # No target skills to check
 
+        # Overall CV skills (used for recent experience boost)
+        overall_cv_skills = {s.lower() for s in cv_data.skills}
+
         weighted_scores: list[float] = []
 
         for exp in cv_data.experiences:
@@ -309,6 +320,13 @@ class AlgorithmicScorer:
 
             # Calculate relevance of this experience
             exp_skills = {s.lower() for s in exp.skills_used}
+
+            # For RECENT experiences (within 2 years), also consider overall CV skills
+            # Rationale: If someone lists Python as a top skill and is currently employed,
+            # they're almost certainly using it in their current role
+            if years_ago <= 2:
+                exp_skills = exp_skills | overall_cv_skills
+
             exp_text = f"{exp.title} {exp.description} {' '.join(exp.achievements)}".lower()
 
             # Check skill overlap
