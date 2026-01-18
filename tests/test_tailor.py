@@ -669,3 +669,519 @@ class TestCVTailorMaxRefinement:
 
         assert hasattr(tailor, "MAX_REFINEMENT_ITERATIONS")
         assert tailor.MAX_REFINEMENT_ITERATIONS == 2
+
+
+class TestCVTailorDirectMethods:
+    """Tests for direct (non-CoT) generation methods."""
+
+    def test_tailor_summary_direct_returns_string(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that _tailor_summary_direct returns a string."""
+        expected_summary = "Tailored professional summary."
+
+        with patch.object(
+            CVTailor, "_tailor_summary_direct", return_value=expected_summary
+        ):
+            tailor = CVTailor(mock_provider, use_cot=False)
+            result = tailor._tailor_summary_direct(
+                sample_cv_data,
+                sample_job_requirements,
+                sample_tailoring_plan,
+            )
+
+        assert result == expected_summary
+
+    def test_tailor_skills_direct_returns_string(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that _tailor_skills_direct returns a string."""
+        expected_skills = "**Languages:** Python\n**Cloud:** AWS, Docker"
+
+        with patch.object(CVTailor, "_tailor_skills_direct", return_value=expected_skills):
+            tailor = CVTailor(mock_provider, use_cot=False)
+            result = tailor._tailor_skills_direct(sample_cv_data, sample_job_requirements)
+
+        assert result == expected_skills
+
+    def test_tailor_experience_direct_returns_string(
+        self,
+        mock_provider: MagicMock,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that _tailor_experience_direct returns a string."""
+        exp = Experience(
+            title="Engineer",
+            company="Tech Corp",
+            start_date="Jan 2020",
+            end_date="Present",
+            description="Built applications",
+            achievements=["Led team", "Improved performance"],
+        )
+
+        expected_bullets = "- Led engineering team\n- Improved performance by 50%"
+
+        with patch.object(CVTailor, "_tailor_experience_direct", return_value=expected_bullets):
+            tailor = CVTailor(mock_provider, use_cot=False)
+            result = tailor._tailor_experience_direct(
+                exp, sample_job_requirements, sample_tailoring_plan
+            )
+
+        assert result == expected_bullets
+
+
+class TestCVTailorRoutingMethods:
+    """Tests for methods that route between CoT and direct modes."""
+
+    def test_tailor_summary_routes_to_cot(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that tailor_summary routes to CoT when enabled."""
+        tailor = CVTailor(mock_provider, use_cot=True)
+
+        cot_result = SummaryGenerationResult(
+            reasoning=SummaryReasoning(
+                target_title_match="Match",
+                key_keywords_to_include=["Python"],
+                strongest_metric="50%",
+                unique_differentiator="Expert",
+                hook_strategy="Hook",
+                value_proposition="Value",
+                fit_statement="Fit",
+                confidence_score=0.9,
+            ),
+            generated_summary="CoT summary",
+            critique=SummaryCritique(
+                has_strong_opening_hook=True,
+                includes_quantified_achievement=True,
+                mirrors_job_keywords=True,
+                appropriate_length=True,
+                avoids_fluff=True,
+                quality_level=QualityLevel.GOOD,
+                issues_found=[],
+                improvement_suggestions=[],
+                should_refine=False,
+            ),
+            refinement_count=0,
+            final_summary="CoT summary",
+        )
+
+        with patch.object(tailor, "tailor_summary_with_cot", return_value=cot_result):
+            result = tailor.tailor_summary(
+                sample_cv_data,
+                sample_job_requirements,
+                sample_tailoring_plan,
+            )
+
+        assert result == "CoT summary"
+
+    def test_tailor_summary_routes_to_direct(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that tailor_summary routes to direct when CoT disabled."""
+        tailor = CVTailor(mock_provider, use_cot=False)
+
+        with patch.object(tailor, "_tailor_summary_direct", return_value="Direct summary"):
+            result = tailor.tailor_summary(
+                sample_cv_data,
+                sample_job_requirements,
+                sample_tailoring_plan,
+            )
+
+        assert result == "Direct summary"
+
+    def test_tailor_skills_routes_to_cot(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that tailor_skills routes to CoT when enabled."""
+        tailor = CVTailor(mock_provider, use_cot=True)
+
+        cot_result = SkillsGenerationResult(
+            reasoning=SkillsReasoning(
+                required_skills_matched=["Python"],
+                required_skills_missing=[],
+                preferred_skills_matched=[],
+            ),
+            generated_skills="CoT skills",
+            critique=SkillsCritique(
+                all_required_skills_present=True,
+                uses_exact_job_terminology=True,
+                appropriate_categorization=True,
+                no_irrelevant_skills=True,
+                no_fabricated_skills=True,
+                quality_level=QualityLevel.GOOD,
+                missing_critical_terms=[],
+                improvement_suggestions=[],
+                should_refine=False,
+            ),
+            refinement_count=0,
+            final_skills="CoT skills",
+        )
+
+        with patch.object(tailor, "tailor_skills_with_cot", return_value=cot_result):
+            result = tailor.tailor_skills(sample_cv_data, sample_job_requirements)
+
+        assert result == "CoT skills"
+
+    def test_tailor_skills_routes_to_direct(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that tailor_skills routes to direct when CoT disabled."""
+        tailor = CVTailor(mock_provider, use_cot=False)
+
+        with patch.object(tailor, "_tailor_skills_direct", return_value="Direct skills"):
+            result = tailor.tailor_skills(sample_cv_data, sample_job_requirements)
+
+        assert result == "Direct skills"
+
+
+class TestCVTailorExperienceRouting:
+    """Tests for experience tailoring routing."""
+
+    def test_tailor_experience_routes_to_cot(
+        self,
+        mock_provider: MagicMock,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that tailor_experience routes to CoT when enabled."""
+        exp = Experience(
+            title="Engineer",
+            company="Corp",
+            start_date="2020",
+            end_date="Present",
+        )
+
+        from cv_warlock.models.reasoning import ExperienceCritique
+
+        cot_result = ExperienceGenerationResult(
+            experience_title="Engineer",
+            experience_company="Corp",
+            reasoning=ExperienceReasoning(
+                relevance_score=0.8,
+                emphasis_strategy="HIGH",
+                keywords_to_incorporate=["Python"],
+                achievements_to_prioritize=["Led team"],
+                transferable_skills_identified=[],
+                bullet_reasoning=[],
+            ),
+            generated_bullets=["Led team", "Built systems"],
+            critique=ExperienceCritique(
+                all_bullets_start_with_power_verb=True,
+                all_bullets_show_impact=True,
+                metrics_present_where_possible=True,
+                relevant_keywords_incorporated=True,
+                bullets_appropriately_ordered=True,
+                quality_level=QualityLevel.GOOD,
+                weak_bullets=[],
+                improvement_suggestions=[],
+                should_refine=False,
+            ),
+            refinement_count=0,
+            final_bullets=["Led team", "Built systems"],
+        )
+
+        tailor = CVTailor(mock_provider, use_cot=True)
+        with patch.object(tailor, "tailor_experience_with_cot", return_value=cot_result):
+            result = tailor.tailor_experience(exp, sample_job_requirements, sample_tailoring_plan)
+
+        assert "Engineer | Corp" in result
+        assert "Led team" in result
+
+    def test_tailor_experience_routes_to_direct(
+        self,
+        mock_provider: MagicMock,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that tailor_experience routes to direct when CoT disabled."""
+        exp = Experience(
+            title="Engineer",
+            company="Corp",
+            start_date="2020",
+            end_date="Present",
+        )
+
+        tailor = CVTailor(mock_provider, use_cot=False)
+        with patch.object(tailor, "_tailor_experience_direct", return_value="- Direct bullet"):
+            result = tailor.tailor_experience(exp, sample_job_requirements, sample_tailoring_plan)
+
+        assert "Engineer | Corp" in result
+
+
+class TestCVTailorAssemblyFormatting:
+    """Tests for CV assembly formatting helpers."""
+
+    def test_assemble_cv_returns_string(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test that assemble_cv returns a string."""
+        cv_data = CVData(
+            contact=ContactInfo(
+                name="Jane Smith",
+                email="jane@example.com",
+                phone="+1-555-1234",
+                location="New York, NY",
+                linkedin="linkedin.com/in/janesmith",
+                github="github.com/janesmith",
+            ),
+            summary="Summary",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        expected_cv = "# Jane Smith\n\nAssembled CV content"
+
+        with patch.object(CVTailor, "assemble_cv", return_value=expected_cv):
+            tailor = CVTailor(mock_provider)
+            result = tailor.assemble_cv(
+                cv_data,
+                tailored_summary="Summary",
+                tailored_experiences=["Experience"],
+                tailored_skills="Skills",
+            )
+
+        assert result == expected_cv
+
+    def test_assemble_cv_with_full_data_returns_string(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test that assemble_cv handles full CV data."""
+        cv_data = CVData(
+            contact=ContactInfo(name="Jane Smith"),
+            education=[
+                Education(
+                    degree="PhD Computer Science",
+                    institution="MIT",
+                    graduation_date="2020",
+                    gpa="4.0",
+                )
+            ],
+            projects=[
+                Project(
+                    name="Test Project",
+                    description="A test project",
+                    technologies=["Python"],
+                )
+            ],
+        )
+
+        expected_cv = "# Jane Smith\n\nAssembled CV"
+
+        with patch.object(CVTailor, "assemble_cv", return_value=expected_cv):
+            tailor = CVTailor(mock_provider)
+            result = tailor.assemble_cv(
+                cv_data,
+                tailored_summary="Summary",
+                tailored_experiences=[],
+                tailored_skills="Skills",
+            )
+
+        assert result == expected_cv
+
+
+class TestCVTailorCoTInternalMethods:
+    """Tests for CoT internal reasoning/generation methods."""
+
+    def test_reason_summary_returns_summary_reasoning(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test that _reason_summary returns SummaryReasoning."""
+        expected_reasoning = SummaryReasoning(
+            target_title_match="Direct match",
+            key_keywords_to_include=["Python", "AWS"],
+            strongest_metric="50% improvement",
+            unique_differentiator="Cloud expert",
+            hook_strategy="Senior Engineer with 10+ years",
+            value_proposition="Delivers results",
+            fit_statement="Perfect fit",
+            confidence_score=0.85,
+        )
+
+        with patch.object(CVTailor, "_reason_summary", return_value=expected_reasoning):
+            tailor = CVTailor(mock_provider, use_cot=True)
+            result = tailor._reason_summary(
+                sample_cv_data, sample_job_requirements, sample_tailoring_plan
+            )
+
+        assert isinstance(result, SummaryReasoning)
+        assert result.strongest_metric == "50% improvement"
+
+    def test_reason_skills_returns_skills_reasoning(
+        self,
+        mock_provider: MagicMock,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that _reason_skills returns SkillsReasoning."""
+        expected_reasoning = SkillsReasoning(
+            required_skills_matched=["Python", "AWS"],
+            required_skills_missing=["Terraform"],
+            preferred_skills_matched=["Kubernetes"],
+        )
+
+        with patch.object(CVTailor, "_reason_skills", return_value=expected_reasoning):
+            tailor = CVTailor(mock_provider, use_cot=True)
+            result = tailor._reason_skills(sample_cv_data, sample_job_requirements, context=None)
+
+        assert isinstance(result, SkillsReasoning)
+        assert "Python" in result.required_skills_matched
+
+    def test_generate_summary_from_reasoning_returns_string(
+        self,
+        mock_provider: MagicMock,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that _generate_summary_from_reasoning returns a string."""
+        expected_summary = "Generated summary from reasoning"
+
+        reasoning = SummaryReasoning(
+            target_title_match="Match",
+            key_keywords_to_include=["Python"],
+            strongest_metric="50%",
+            unique_differentiator="Expert",
+            hook_strategy="Hook",
+            value_proposition="Value",
+            fit_statement="Fit",
+            confidence_score=0.9,
+        )
+
+        with patch.object(
+            CVTailor, "_generate_summary_from_reasoning", return_value=expected_summary
+        ):
+            tailor = CVTailor(mock_provider, use_cot=True)
+            result = tailor._generate_summary_from_reasoning(reasoning, sample_job_requirements)
+
+        assert result == expected_summary
+
+    def test_generate_skills_from_reasoning_returns_string(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test that _generate_skills_from_reasoning returns a string."""
+        expected_skills = "**Languages:** Python\n**Cloud:** AWS"
+
+        reasoning = SkillsReasoning(
+            required_skills_matched=["Python", "AWS"],
+            required_skills_missing=[],
+            preferred_skills_matched=[],
+        )
+
+        with patch.object(CVTailor, "_generate_skills_from_reasoning", return_value=expected_skills):
+            tailor = CVTailor(mock_provider, use_cot=True)
+            result = tailor._generate_skills_from_reasoning(reasoning)
+
+        assert result == expected_skills
+
+
+class TestCVTailorCritiqueAndRefine:
+    """Tests for critique and refine methods."""
+
+    def test_critique_summary_returns_summary_critique(
+        self,
+        mock_provider: MagicMock,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that _critique_summary returns SummaryCritique."""
+        expected_critique = SummaryCritique(
+            has_strong_opening_hook=True,
+            includes_quantified_achievement=False,
+            mirrors_job_keywords=True,
+            appropriate_length=True,
+            avoids_fluff=True,
+            quality_level=QualityLevel.NEEDS_IMPROVEMENT,
+            issues_found=["Missing metrics"],
+            improvement_suggestions=["Add quantified achievement"],
+            should_refine=True,
+        )
+
+        reasoning = SummaryReasoning(
+            target_title_match="Match",
+            key_keywords_to_include=["Python"],
+            strongest_metric="50%",
+            unique_differentiator="Expert",
+            hook_strategy="Hook",
+            value_proposition="Value",
+            fit_statement="Fit",
+            confidence_score=0.9,
+        )
+
+        with patch.object(CVTailor, "_critique_summary", return_value=expected_critique):
+            tailor = CVTailor(mock_provider, use_cot=True)
+            result = tailor._critique_summary(
+                "Test summary", sample_job_requirements, reasoning
+            )
+
+        assert isinstance(result, SummaryCritique)
+        assert result.should_refine is True
+
+    def test_refine_summary_returns_improved_text(
+        self,
+        mock_provider: MagicMock,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that _refine_summary returns improved summary text."""
+        expected_improved = "Improved summary with metrics"
+
+        reasoning = SummaryReasoning(
+            target_title_match="Match",
+            key_keywords_to_include=["Python"],
+            strongest_metric="50%",
+            unique_differentiator="Expert",
+            hook_strategy="Hook",
+            value_proposition="Value",
+            fit_statement="Fit",
+            confidence_score=0.9,
+        )
+
+        critique = SummaryCritique(
+            has_strong_opening_hook=True,
+            includes_quantified_achievement=False,
+            mirrors_job_keywords=True,
+            appropriate_length=True,
+            avoids_fluff=True,
+            quality_level=QualityLevel.NEEDS_IMPROVEMENT,
+            issues_found=["Missing metrics"],
+            improvement_suggestions=["Add quantified achievement"],
+            should_refine=True,
+        )
+
+        with patch.object(CVTailor, "_refine_summary", return_value=expected_improved):
+            tailor = CVTailor(mock_provider, use_cot=True)
+            result = tailor._refine_summary(
+                "Original summary",
+                critique,
+                reasoning,
+                sample_job_requirements,
+            )
+
+        assert result == expected_improved

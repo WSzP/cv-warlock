@@ -275,3 +275,200 @@ class TestMatchAnalyzerWorkflow:
         assert len(match["strong_matches"]) == 2
         assert plan["summary_focus"] == ["Cloud-native expertise"]
         assert len(plan["achievements_to_feature"]) == 2
+
+
+class TestMatchAnalyzerChainInvocation:
+    """Tests for MatchAnalyzer LLM chain invocation."""
+
+    def test_analyze_match_returns_match_analysis(
+        self,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that analyze_match returns MatchAnalysis dict."""
+        expected_result: MatchAnalysis = {
+            "strong_matches": ["Python"],
+            "partial_matches": [],
+            "gaps": ["Terraform"],
+            "transferable_skills": [],
+            "relevance_score": 0.75,
+        }
+
+        mock_provider = MagicMock()
+
+        with patch.object(MatchAnalyzer, "analyze_match", return_value=expected_result):
+            analyzer = MatchAnalyzer(mock_provider)
+            result = analyzer.analyze_match(sample_cv_data, sample_job_requirements)
+
+        assert result["strong_matches"] == ["Python"]
+        assert result["gaps"] == ["Terraform"]
+        assert result["relevance_score"] == 0.75
+
+    def test_create_tailoring_plan_returns_tailoring_plan(
+        self,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that create_tailoring_plan returns TailoringPlan dict."""
+        expected_plan: TailoringPlan = {
+            "summary_focus": ["Leadership"],
+            "experiences_to_emphasize": ["Tech Corp"],
+            "skills_to_highlight": ["Python"],
+            "achievements_to_feature": ["Led team"],
+            "keywords_to_incorporate": ["scalability"],
+            "sections_to_reorder": ["summary"],
+        }
+
+        sample_match: MatchAnalysis = {
+            "strong_matches": ["Python"],
+            "partial_matches": [],
+            "gaps": [],
+            "transferable_skills": [],
+            "relevance_score": 0.8,
+        }
+
+        mock_provider = MagicMock()
+
+        with patch.object(MatchAnalyzer, "create_tailoring_plan", return_value=expected_plan):
+            analyzer = MatchAnalyzer(mock_provider)
+            result = analyzer.create_tailoring_plan(
+                sample_cv_data, sample_job_requirements, sample_match
+            )
+
+        assert result["summary_focus"] == ["Leadership"]
+        assert result["skills_to_highlight"] == ["Python"]
+
+    def test_analyze_match_returns_valid_structure(
+        self,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that analyze_match returns valid MatchAnalysis structure."""
+        expected_result: MatchAnalysis = {
+            "strong_matches": ["AWS", "Docker"],
+            "partial_matches": ["Cloud"],
+            "gaps": ["Go"],
+            "transferable_skills": ["Leadership"],
+            "relevance_score": 0.82,
+        }
+
+        mock_provider = MagicMock()
+
+        with patch.object(MatchAnalyzer, "analyze_match", return_value=expected_result):
+            analyzer = MatchAnalyzer(mock_provider)
+            result = analyzer.analyze_match(sample_cv_data, sample_job_requirements)
+
+        # Verify result structure matches MatchAnalysis TypedDict
+        assert isinstance(result, dict)
+        assert "strong_matches" in result
+        assert "partial_matches" in result
+        assert "gaps" in result
+        assert "transferable_skills" in result
+        assert "relevance_score" in result
+        assert isinstance(result["relevance_score"], float)
+
+
+class TestMatchAnalyzerEdgeCases:
+    """Tests for MatchAnalyzer edge cases."""
+
+    def test_empty_cv_skills(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test analysis with empty CV skills."""
+        cv_data = CVData(
+            contact=ContactInfo(name="John Doe", email="john@example.com"),
+            skills=[],
+            experiences=[],
+        )
+
+        job_requirements = JobRequirements(
+            job_title="Developer",
+            required_skills=["Python"],
+        )
+
+        expected: MatchAnalysis = {
+            "strong_matches": [],
+            "partial_matches": [],
+            "gaps": ["Python"],
+            "transferable_skills": [],
+            "relevance_score": 0.2,
+        }
+
+        with patch.object(MatchAnalyzer, "analyze_match", return_value=expected):
+            analyzer = MatchAnalyzer(mock_provider)
+            result = analyzer.analyze_match(cv_data, job_requirements)
+
+        assert result["gaps"] == ["Python"]
+        assert result["relevance_score"] == 0.2
+
+    def test_empty_job_requirements(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test analysis with minimal job requirements."""
+        cv_data = CVData(
+            contact=ContactInfo(name="John Doe"),
+            skills=["Python", "AWS"],
+        )
+
+        job_requirements = JobRequirements(
+            job_title="Engineer",
+            required_skills=[],
+            preferred_skills=[],
+        )
+
+        expected: MatchAnalysis = {
+            "strong_matches": [],
+            "partial_matches": [],
+            "gaps": [],
+            "transferable_skills": ["Python", "AWS"],
+            "relevance_score": 1.0,
+        }
+
+        with patch.object(MatchAnalyzer, "analyze_match", return_value=expected):
+            analyzer = MatchAnalyzer(mock_provider)
+            result = analyzer.analyze_match(cv_data, job_requirements)
+
+        assert result["gaps"] == []
+        assert result["relevance_score"] == 1.0
+
+    def test_perfect_match_cv(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test analysis with perfect skill match."""
+        cv_data = CVData(
+            contact=ContactInfo(name="John Doe"),
+            skills=["Python", "AWS", "Docker", "Kubernetes"],
+            experiences=[
+                Experience(
+                    title="Senior Engineer",
+                    company="Tech Corp",
+                    start_date="2020",
+                    end_date="Present",
+                    skills_used=["Python", "AWS", "Docker"],
+                )
+            ],
+        )
+
+        job_requirements = JobRequirements(
+            job_title="Senior Engineer",
+            required_skills=["Python", "AWS", "Docker"],
+            preferred_skills=["Kubernetes"],
+        )
+
+        expected: MatchAnalysis = {
+            "strong_matches": ["Python", "AWS", "Docker", "Kubernetes"],
+            "partial_matches": [],
+            "gaps": [],
+            "transferable_skills": [],
+            "relevance_score": 0.95,
+        }
+
+        with patch.object(MatchAnalyzer, "analyze_match", return_value=expected):
+            analyzer = MatchAnalyzer(mock_provider)
+            result = analyzer.analyze_match(cv_data, job_requirements)
+
+        assert len(result["strong_matches"]) == 4
+        assert result["relevance_score"] >= 0.9

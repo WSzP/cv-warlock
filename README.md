@@ -1,8 +1,3 @@
-[![Type Check](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml)
-[![Unit Tests](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/WSzP/cv-warlock/graph/badge.svg?token=VWQVK7DE9K)](https://codecov.io/gh/WSzP/cv-warlock)
-[![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates)
-
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C.svg?logo=langchain&logoColor=white)](https://www.langchain.com/)
@@ -10,13 +5,16 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Lint](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/lint.yml)
 
-<p align="center">
-  <img src="assets/cv-warlock-logo.webp" alt="CV Warlock Logo" width="200">
-</p>
+[![Type Check](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/typecheck.yml)
+[![Unit Tests](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WSzP/cv-warlock/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/WSzP/cv-warlock/graph/badge.svg?token=VWQVK7DE9K)](https://codecov.io/gh/WSzP/cv-warlock)
+[![Dependabot Updates](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/WSzP/cv-warlock/actions/workflows/dependabot/dependabot-updates)
+
+<p><img src="assets/cv-warlock-logo-md.webp" width="200" height="188" alt="CV Warlock Logo"></p>
 
 # CV Warlock
 
-**AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). This system is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview.
+**AI-powered CV tailoring for job applications.** Takes your generic CV and a job posting, then generates a tailored CV that emphasizes your most relevant experience and skills. The solution also emulates the CV scoring of an enterprise-grade Applicant Tracking System (ATS). The ATS is used by many companies and filters out CVs with a score below a certain threshold. Our aim is to maximize that ATS score and land you an interview.
 
 This is an opinionated, model-agnostic, quality-assured CV improver. If you have no idea what the last sentence means, that is perfectly fine. I just added it to make the solution fancier. In simpler words, you can use it with any AI, even OpenAI models, if you have an API key. If you have no idea what an API key is, you need to wait until this becomes a full product. In even simpler words: Waaagh!
 
