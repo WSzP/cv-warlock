@@ -167,11 +167,11 @@ Turn off this checkbox if:
 
 ## Chain-of-Thought Reasoning
 
-CV Warlock supports an optional Chain-of-Thought (CoT) reasoning mode that produces higher quality tailored CVs through explicit multi-step reasoning.
+CV Warlock supports an optional Chain-of-Thought (CoT) reasoning mode that produces higher-quality tailored CVs through explicit multi-step reasoning.
 
 ### How CoT Works
 
-When enabled (the default), each CV section goes through a 4-phase process:
+Each CV section goes through a 4-phase process:
 
 1. **REASON**: Analyze the job requirements and plan the approach
 2. **GENERATE**: Create content based on the reasoning
@@ -196,9 +196,9 @@ Turn off CoT reasoning if:
 
 - You need quick iterations and are willing to trade quality for speed
 - You're testing or debugging the workflow
-- Cost is a concern and you want minimal API usage
+- Cost is a concern, and you want minimal API usage
 
-Toggle CoT in the Web UI sidebar under "Generation Quality" or pass `use_cot=False` in CLI/code.
+Toggle CoT is not recommended and only possible by passing `use_cot=False` in CLI/code.
 
 ## Supported Models
 
