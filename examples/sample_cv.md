@@ -10,6 +10,7 @@ Hands-on AI and product leader with 21 years across UX, engineering, and machine
 Previously, as Founder and CEO of Tengr.ai, I led end-to-end delivery of a generative image AI product from research roadmap to iterative releases, including HPC-based experimentation and privacy-by-design and safety systems. Earlier, I scaled AceTech Development from 0 to 40+ people in under two years and completed a successful exit. I’m also the author of User Experience Mapping and a long-time TEDx curator, bringing strong storytelling and stakeholder alignment to every build.
 
 ## Top Skills
+
 Machine Learning, Agentic AI Development, User Experience (UX), Artificial Intelligence (AI), Leadership
 
 ## Experience
