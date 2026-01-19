@@ -197,3 +197,5 @@ Settings loaded via Pydantic Settings in `config.py`.
 - Uses Pydantic v2 for all data models
 
 **IMPORTANT**: Always run `uv run ruff format .` before committing to avoid CI failures.
+
+**For Claude**: When asked to commit, ALWAYS run `uv run ruff format .` first. This is implicit in any commit request.
