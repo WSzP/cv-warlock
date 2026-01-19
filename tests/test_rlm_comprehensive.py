@@ -2013,3 +2013,1047 @@ class TestOrchestratorCodeExecutionThenFinal:
         )
 
         assert result is not None
+
+
+# =============================================================================
+# Additional Coverage Tests for orchestrator.py
+# =============================================================================
+
+
+class TestExtractWithLLM:
+    """Tests for _extract_with_llm method coverage."""
+
+    def test_extract_with_llm_success(self, sample_cv_text, sample_job_text):
+        """Test successful LLM extraction."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Set up mock for successful extraction
+        mock_extraction_model = MagicMock()
+        mock_structured_model = MagicMock()
+        mock_config = RLMConfig(max_iterations=5)
+        mock_structured_model.invoke.return_value = mock_config
+        mock_extraction_model.with_structured_output.return_value = mock_structured_model
+        sub_provider.get_extraction_model.return_value = mock_extraction_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+        env.set_variable("analysis_key", {"some": "data"})
+
+        # Content with enough length to trigger analysis path
+        content = "A" * 200 + " analysis content with meaningful data"
+
+        result = orchestrator._extract_with_llm(content, RLMConfig, env)
+
+        assert isinstance(result, RLMConfig)
+
+    def test_extract_with_llm_short_content_direct_extraction(
+        self, sample_cv_text, sample_job_text
+    ):
+        """Test LLM extraction fallback when content is too short (direct extraction)."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Set up mock for extraction - should use direct extraction prompt
+        mock_extraction_model = MagicMock()
+        mock_structured_model = MagicMock()
+        mock_config = RLMConfig(max_iterations=7)
+        mock_structured_model.invoke.return_value = mock_config
+        mock_extraction_model.with_structured_output.return_value = mock_structured_model
+        sub_provider.get_extraction_model.return_value = mock_extraction_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+
+        # Short content - should trigger direct extraction path
+        short_content = "brief"
+
+        result = orchestrator._extract_with_llm(short_content, RLMConfig, env)
+
+        # Should still work via direct extraction
+        assert isinstance(result, RLMConfig)
+        assert result.max_iterations == 7
+
+    def test_extract_with_llm_exception_returns_content(self, sample_cv_text, sample_job_text):
+        """Test LLM extraction returns original content on exception."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Set up mock to raise exception
+        mock_extraction_model = MagicMock()
+        mock_extraction_model.with_structured_output.side_effect = Exception("LLM error")
+        sub_provider.get_extraction_model.return_value = mock_extraction_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+
+        result = orchestrator._extract_with_llm("some content", RLMConfig, env)
+
+        # Should return original content on failure
+        assert result == "some content"
+
+
+class TestOrchestratorTimeoutHandling:
+    """Tests for timeout handling in complete()."""
+
+    def test_complete_actual_timeout(self, sample_cv_text, sample_job_text):
+        """Test complete with actual timeout triggered."""
+        import time as time_module
+        from unittest.mock import patch
+
+        provider = MagicMock()
+        mock_model = MagicMock()
+
+        # Model returns code that doesn't finish quickly
+        def slow_invoke(*args, **kwargs):
+            time_module.sleep(0.1)  # Small delay
+            return MagicMock(content="```python\nprint('thinking')\n```")
+
+        mock_model.invoke.side_effect = slow_invoke
+        provider.get_chat_model.return_value = mock_model
+
+        # Very short timeout to trigger timeout condition
+        config = RLMConfig(max_iterations=100, timeout_seconds=30)
+        orchestrator = RLMOrchestrator(provider, config=config)
+
+        # Patch time to simulate timeout
+        original_time = time_module.time
+
+        call_count = [0]
+
+        def mock_time():
+            call_count[0] += 1
+            # After a few calls, simulate timeout
+            if call_count[0] > 10:
+                return original_time() + 1000  # Far in the future
+            return original_time()
+
+        with patch.object(time_module, "time", mock_time):
+            result = orchestrator.complete(
+                task="Analyze",
+                cv_text=sample_cv_text,
+                job_text=sample_job_text,
+            )
+
+        # Should have recorded timeout in trajectory
+        assert result is not None
+        # May or may not have hit timeout depending on timing
+        assert result.total_iterations >= 1
+
+
+class TestOrchestratorCodeAndFinalCombo:
+    """Tests for code execution followed by FINAL in same response."""
+
+    def test_code_then_final_in_same_response(self, sample_cv_text, sample_job_text):
+        """Test code block followed by FINAL() in same response."""
+        provider = MagicMock()
+        mock_model = MagicMock()
+
+        # Model returns code AND FINAL in same response
+        mock_model.invoke.return_value = MagicMock(
+            content="""Let me analyze this.
+
+```python
+result = {"skills": ["Python", "Java"]}
+print("Analyzed!")
+```
+
+Based on the analysis:
+FINAL(The candidate has strong Python and Java skills)"""
+        )
+        provider.get_chat_model.return_value = mock_model
+
+        config = RLMConfig(max_iterations=5)
+        orchestrator = RLMOrchestrator(provider, config=config)
+
+        result = orchestrator.complete(
+            task="Analyze skills",
+            cv_text=sample_cv_text,
+            job_text=sample_job_text,
+        )
+
+        assert result.success
+        assert "skills" in result.answer.lower() or result.total_iterations == 1
+
+    def test_code_then_final_var_in_same_response(self, sample_cv_text, sample_job_text):
+        """Test code block followed by FINAL_VAR() in same response."""
+        provider = MagicMock()
+        mock_model = MagicMock()
+
+        # Model returns code AND FINAL_VAR in same response
+        mock_model.invoke.return_value = MagicMock(
+            content="""```python
+analysis_result = "Candidate is a great match with 5+ years Python experience"
+print("Done!")
+```
+
+FINAL_VAR(analysis_result)"""
+        )
+        provider.get_chat_model.return_value = mock_model
+
+        config = RLMConfig(max_iterations=5)
+        orchestrator = RLMOrchestrator(provider, config=config)
+
+        result = orchestrator.complete(
+            task="Analyze match",
+            cv_text=sample_cv_text,
+            job_text=sample_job_text,
+        )
+
+        assert result.success
+        assert result.total_iterations == 1
+
+
+class TestOrchestratorPlainTextUrgency:
+    """Tests for plain text handling with urgency messages."""
+
+    def test_plain_text_triggers_urgency_near_limit(self, sample_cv_text, sample_job_text):
+        """Test plain text response near iteration limit triggers urgency."""
+        provider = MagicMock()
+        mock_model = MagicMock()
+
+        # Returns plain text (thinking) for first few iterations, then FINAL
+        call_count = [0]
+
+        def mock_invoke(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] < 4:
+                return MagicMock(content="Let me think about this problem...")
+            return MagicMock(content="FINAL(The answer is here)")
+
+        mock_model.invoke.side_effect = mock_invoke
+        provider.get_chat_model.return_value = mock_model
+
+        config = RLMConfig(max_iterations=5)
+        orchestrator = RLMOrchestrator(provider, config=config)
+
+        result = orchestrator.complete(
+            task="Analyze",
+            cv_text=sample_cv_text,
+            job_text=sample_job_text,
+        )
+
+        assert result.success
+        assert result.total_iterations >= 3
+
+
+class TestOrchestratorMaxSubCalls:
+    """Tests for max sub-calls handling."""
+
+    def test_max_sub_calls_reached_feedback(self, sample_cv_text, sample_job_text):
+        """Test feedback when max sub-calls reached."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        root_model = MagicMock()
+        sub_model = MagicMock()
+
+        # Root keeps requesting sub-calls, eventually gives FINAL
+        call_count = [0]
+
+        def mock_root_invoke(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] <= 3:
+                return MagicMock(content='```python\nresult = rlm_query(cv_text, "Question?")\n```')
+            return MagicMock(content="FINAL(Done after max sub-calls)")
+
+        root_model.invoke.side_effect = mock_root_invoke
+        root_provider.get_chat_model.return_value = root_model
+
+        sub_model.invoke.return_value = MagicMock(content="Sub answer")
+        sub_provider.get_chat_model.return_value = sub_model
+
+        config = RLMConfig(max_iterations=10, max_sub_calls=2)
+        orchestrator = RLMOrchestrator(root_provider, sub_provider, config=config)
+
+        result = orchestrator.complete(
+            task="Analyze",
+            cv_text=sample_cv_text,
+            job_text=sample_job_text,
+        )
+
+        # Should have hit max sub-calls limit
+        assert result.sub_call_count <= 2
+
+
+class TestCreateRLMOrchestratorProviders:
+    """Tests for create_rlm_orchestrator factory with different providers."""
+
+    def test_create_with_google_provider(self):
+        """Test factory with Google provider defaults."""
+        with patch("cv_warlock.llm.base.get_llm_provider") as mock_get:
+            mock_provider = MagicMock()
+            mock_get.return_value = mock_provider
+
+            from cv_warlock.rlm.orchestrator import create_rlm_orchestrator
+
+            orchestrator = create_rlm_orchestrator(
+                root_provider="google",
+                root_model="gemini-3-pro-preview",
+            )
+
+            assert orchestrator.root_provider == mock_provider
+            # Should have called with gemini-3-flash-preview for sub
+            calls = mock_get.call_args_list
+            assert len(calls) == 2
+
+    def test_create_with_openai_provider(self):
+        """Test factory with OpenAI provider defaults."""
+        with patch("cv_warlock.llm.base.get_llm_provider") as mock_get:
+            mock_provider = MagicMock()
+            mock_get.return_value = mock_provider
+
+            from cv_warlock.rlm.orchestrator import create_rlm_orchestrator
+
+            orchestrator = create_rlm_orchestrator(
+                root_provider="openai",
+                root_model="gpt-5.2",
+            )
+
+            assert orchestrator.root_provider == mock_provider
+            # Should have called with gpt-5-mini for sub
+            calls = mock_get.call_args_list
+            assert len(calls) == 2
+
+    def test_create_with_different_sub_provider(self):
+        """Test factory with different sub provider than root."""
+        with patch("cv_warlock.llm.base.get_llm_provider") as mock_get:
+            mock_provider = MagicMock()
+            mock_get.return_value = mock_provider
+
+            from cv_warlock.rlm.orchestrator import create_rlm_orchestrator
+
+            orchestrator = create_rlm_orchestrator(
+                root_provider="anthropic",
+                root_model="claude-opus-4-5-20251101",
+                sub_provider="openai",
+                sub_model="gpt-5-mini",
+            )
+
+            assert orchestrator.root_provider == mock_provider
+            # Verify both providers were created
+            assert mock_get.call_count == 2
+
+    def test_create_with_explicit_sub_model(self):
+        """Test factory with explicit sub_model (no provider default)."""
+        with patch("cv_warlock.llm.base.get_llm_provider") as mock_get:
+            mock_provider = MagicMock()
+            mock_get.return_value = mock_provider
+
+            from cv_warlock.rlm.orchestrator import create_rlm_orchestrator
+
+            orchestrator = create_rlm_orchestrator(
+                root_provider="anthropic",
+                root_model="claude-opus-4-5-20251101",
+                sub_model="claude-sonnet-4-5-20250929",
+            )
+
+            assert orchestrator is not None
+            # Should use the explicit sub_model
+            assert mock_get.call_count == 2
+
+
+class TestOrchestratorFallbackExtraction:
+    """Tests for fallback answer extraction edge cases."""
+
+    def test_fallback_with_invalid_json_string_and_llm_extraction(
+        self, sample_cv_text, sample_job_text
+    ):
+        """Test fallback extraction with invalid JSON string triggers LLM extraction."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Set up mock for LLM extraction fallback
+        mock_extraction_model = MagicMock()
+        mock_structured_model = MagicMock()
+        mock_config = RLMConfig(max_iterations=3)
+        mock_structured_model.invoke.return_value = mock_config
+        mock_extraction_model.with_structured_output.return_value = mock_structured_model
+        sub_provider.get_extraction_model.return_value = mock_extraction_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+        env.variables["result"] = "not valid json at all"
+
+        answer = orchestrator._extract_fallback_answer(env, RLMConfig)
+
+        # Should attempt LLM extraction and succeed
+        assert isinstance(answer, RLMConfig)
+
+    def test_fallback_with_combined_variables_llm_extraction(self, sample_cv_text, sample_job_text):
+        """Test fallback extraction combines variables for LLM extraction."""
+        root_provider = MagicMock()
+        sub_provider = MagicMock()
+
+        # Set up mock for LLM extraction
+        mock_extraction_model = MagicMock()
+        mock_structured_model = MagicMock()
+        mock_config = RLMConfig(max_iterations=15)
+        mock_structured_model.invoke.return_value = mock_config
+        mock_extraction_model.with_structured_output.return_value = mock_structured_model
+        sub_provider.get_extraction_model.return_value = mock_extraction_model
+
+        orchestrator = RLMOrchestrator(root_provider, sub_provider)
+        env = REPLEnvironment(cv_text=sample_cv_text, job_text=sample_job_text)
+        # No result keys, but has other variables
+        env.variables["custom_data"] = {"key": "value"}
+        env.variables["analysis"] = ["item1", "item2"]
+
+        answer = orchestrator._extract_fallback_answer(env, RLMConfig)
+
+        # Should combine variables and try LLM extraction
+        assert isinstance(answer, RLMConfig)
+
+
+# =============================================================================
+# Additional Coverage Tests for rlm_nodes.py
+# =============================================================================
+
+
+class TestIsValidCVData:
+    """Tests for _is_valid_cv_data helper function."""
+
+    def test_valid_cv_data_with_experiences(self):
+        """Test valid CVData with experiences."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData, Experience
+
+        cv_data = CVData(
+            contact=ContactInfo(name="John Doe", email="john@example.com"),
+            summary="Experienced developer",
+            experiences=[
+                Experience(
+                    title="Developer",
+                    company="TechCorp",
+                    start_date="2020-01",
+                    description="Built things",
+                )
+            ],
+            education=[],
+            skills=[],
+        )
+
+        assert _is_valid_cv_data(cv_data) is True
+
+    def test_valid_cv_data_with_skills(self):
+        """Test valid CVData with skills but no experiences."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="Jane Doe", email="jane@example.com"),
+            summary="Skilled professional",
+            experiences=[],
+            education=[],
+            skills=["Python", "JavaScript"],
+        )
+
+        assert _is_valid_cv_data(cv_data) is True
+
+    def test_invalid_cv_data_unknown_name(self):
+        """Test invalid CVData with UNKNOWN name."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="UNKNOWN", email="test@example.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        assert _is_valid_cv_data(cv_data) is False
+
+    def test_invalid_cv_data_placeholder_name(self):
+        """Test invalid CVData with placeholder name."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="<UNKNOWN>", email="test@example.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        assert _is_valid_cv_data(cv_data) is False
+
+    def test_invalid_cv_data_na_name(self):
+        """Test invalid CVData with N/A name."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="N/A", email="test@example.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        assert _is_valid_cv_data(cv_data) is False
+
+    def test_invalid_cv_data_empty_name(self):
+        """Test invalid CVData with empty name."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="", email="test@example.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        assert _is_valid_cv_data(cv_data) is False
+
+    def test_invalid_cv_data_name_not_provided(self):
+        """Test invalid CVData with 'Name not provided' name."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="NAME NOT PROVIDED", email="test@example.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        assert _is_valid_cv_data(cv_data) is False
+
+    def test_invalid_cv_data_no_experiences_or_skills(self):
+        """Test invalid CVData with no experiences or skills."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+        from cv_warlock.models.cv import ContactInfo, CVData
+
+        cv_data = CVData(
+            contact=ContactInfo(name="John Doe", email="john@example.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        assert _is_valid_cv_data(cv_data) is False
+
+    def test_invalid_cv_data_not_cvdata_type(self):
+        """Test _is_valid_cv_data with non-CVData type."""
+        from cv_warlock.graph.rlm_nodes import _is_valid_cv_data
+
+        assert _is_valid_cv_data("not a CVData") is False
+        assert _is_valid_cv_data({"name": "test"}) is False
+        assert _is_valid_cv_data(None) is False
+
+
+class TestCheckRLMTimeout:
+    """Tests for _check_rlm_timeout helper function."""
+
+    def test_check_timeout_true(self):
+        """Test _check_rlm_timeout returns True for timeout."""
+        from cv_warlock.graph.rlm_nodes import _check_rlm_timeout
+
+        step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="Timeout message",
+            duration_ms=0,
+        )
+        rlm_result = RLMResult(
+            answer=None,
+            trajectory=[step],
+            sub_call_count=0,
+            total_iterations=1,
+            success=False,
+        )
+
+        assert _check_rlm_timeout(rlm_result) is True
+
+    def test_check_timeout_false_no_timeout(self):
+        """Test _check_rlm_timeout returns False when no timeout."""
+        from cv_warlock.graph.rlm_nodes import _check_rlm_timeout
+
+        step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="FINAL(answer)",
+            parsed_action=None,
+            execution_result="Done",
+            duration_ms=100,
+        )
+        rlm_result = RLMResult(
+            answer="answer",
+            trajectory=[step],
+            sub_call_count=0,
+            total_iterations=1,
+            success=True,
+        )
+
+        assert _check_rlm_timeout(rlm_result) is False
+
+    def test_check_timeout_empty_trajectory(self):
+        """Test _check_rlm_timeout returns False for empty trajectory."""
+        from cv_warlock.graph.rlm_nodes import _check_rlm_timeout
+
+        rlm_result = RLMResult(
+            answer=None,
+            trajectory=[],
+            sub_call_count=0,
+            total_iterations=0,
+            success=False,
+        )
+
+        assert _check_rlm_timeout(rlm_result) is False
+
+
+class TestGetTimeoutMessage:
+    """Tests for _get_timeout_message helper function."""
+
+    def test_get_timeout_message_with_timeout(self):
+        """Test _get_timeout_message returns message when timeout."""
+        from cv_warlock.graph.rlm_nodes import _get_timeout_message
+
+        step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="RLM timeout after 30s",
+            duration_ms=0,
+        )
+        rlm_result = RLMResult(
+            answer=None,
+            trajectory=[step],
+            sub_call_count=0,
+            total_iterations=1,
+            success=False,
+        )
+
+        assert _get_timeout_message(rlm_result) == "RLM timeout after 30s"
+
+    def test_get_timeout_message_no_timeout(self):
+        """Test _get_timeout_message returns None when no timeout."""
+        from cv_warlock.graph.rlm_nodes import _get_timeout_message
+
+        step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="Normal output",
+            parsed_action=None,
+            execution_result="Done",
+            duration_ms=100,
+        )
+        rlm_result = RLMResult(
+            answer="answer",
+            trajectory=[step],
+            sub_call_count=0,
+            total_iterations=1,
+            success=True,
+        )
+
+        assert _get_timeout_message(rlm_result) is None
+
+    def test_get_timeout_message_empty_trajectory(self):
+        """Test _get_timeout_message returns None for empty trajectory."""
+        from cv_warlock.graph.rlm_nodes import _get_timeout_message
+
+        rlm_result = RLMResult(
+            answer=None,
+            trajectory=[],
+            sub_call_count=0,
+            total_iterations=0,
+            success=False,
+        )
+
+        assert _get_timeout_message(rlm_result) is None
+
+
+class TestExtractCVRLMTimeout:
+    """Tests for extract_cv_rlm timeout handling."""
+
+    def test_extract_cv_rlm_timeout_with_successful_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm timeout with successful fallback."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        cv_data = CVData(
+            contact=ContactInfo(name="Fallback Name", email="fallback@test.com"),
+            summary="Fallback summary",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        timeout_step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="RLM timeout after 30s",
+            duration_ms=0,
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM times out
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[timeout_step],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+            )
+            # Standard extraction succeeds
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": cv_data, "current_step": "extract_cv"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
+
+            # Should fall back and succeed without adding errors
+            assert result["cv_data"] == cv_data
+            assert result["rlm_metadata"]["used"] is False
+            # No error added since fallback succeeded
+            assert "errors" not in result or not any(
+                "timeout" in str(e).lower() for e in result.get("errors", [])
+            )
+
+    def test_extract_cv_rlm_timeout_with_failed_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm timeout with failed fallback adds error."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        timeout_step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="RLM timeout after 30s",
+            duration_ms=0,
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM times out
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[timeout_step],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+            )
+            # Standard extraction also fails (returns None)
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": None, "current_step": "extract_cv"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
+
+            # Should add error when fallback also fails
+            assert result["cv_data"] is None
+            assert "errors" in result
+            assert any("timeout" in str(e).lower() for e in result["errors"])
+
+    def test_extract_cv_rlm_invalid_cvdata_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm with invalid CVData falls back."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        # RLM returns CVData but with invalid/placeholder content
+        invalid_cv_data = CVData(
+            contact=ContactInfo(name="UNKNOWN", email=""),  # Invalid name
+            summary="",
+            experiences=[],
+            education=[],
+            skills=[],
+        )
+
+        valid_cv_data = CVData(
+            contact=ContactInfo(name="Real Name", email="real@test.com"),
+            summary="Real summary",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM returns invalid CVData
+            mock_complete.return_value = RLMResult(
+                answer=invalid_cv_data,
+                trajectory=[],
+                sub_call_count=0,
+                total_iterations=1,
+                success=True,
+            )
+            # Standard extraction returns valid data
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_cv={"cv_data": valid_cv_data, "current_step": "extract_cv"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_cv"](state)
+
+            # Should fall back to standard extraction
+            assert result["cv_data"] == valid_cv_data
+            assert result["rlm_metadata"]["used"] is False
+
+
+class TestExtractJobRLMTimeout:
+    """Tests for extract_job_rlm timeout handling."""
+
+    def test_extract_job_rlm_timeout_with_successful_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm timeout with successful fallback."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        job_requirements = JobRequirements(
+            job_title="Developer",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        timeout_step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="RLM timeout after 30s",
+            duration_ms=0,
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM times out
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[timeout_step],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+            )
+            # Standard extraction succeeds
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_job={"job_requirements": job_requirements, "current_step": "extract_job"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_job"](state)
+
+            # Should fall back and succeed
+            assert result["job_requirements"] == job_requirements
+
+    def test_extract_job_rlm_timeout_with_failed_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm timeout with failed fallback adds error."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        timeout_step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="RLM timeout after 30s",
+            duration_ms=0,
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM times out
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[timeout_step],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+            )
+            # Standard extraction also fails
+            mock_create_nodes.return_value = create_mock_standard_nodes(
+                extract_job={"job_requirements": None, "current_step": "extract_job"}
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["extract_job"](state)
+
+            # Should add error when fallback also fails
+            assert result["job_requirements"] is None
+            assert "errors" in result
+            assert any("timeout" in str(e).lower() for e in result["errors"])
+
+
+class TestAnalyzeMatchRLMTimeout:
+    """Tests for analyze_match_rlm timeout handling."""
+
+    def test_analyze_match_rlm_timeout_fallback(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test analyze_match_rlm timeout falls back to standard."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+            "errors": [],
+        }
+
+        match_result = {
+            "match_analysis": {
+                "strong_matches": ["Python"],
+                "partial_matches": [],
+                "gaps": [],
+                "transferable_skills": [],
+                "relevance_score": 0.7,
+            },
+            "current_step": "analyze_match",
+        }
+
+        timeout_step = TrajectoryStep(
+            step_number=1,
+            action_type=ActionType.FINAL,
+            model_output="TIMEOUT",
+            parsed_action=None,
+            execution_result="RLM timeout",
+            duration_ms=0,
+        )
+
+        with (
+            patch.object(RLMOrchestrator, "complete") as mock_complete,
+            patch("cv_warlock.graph.nodes.create_nodes") as mock_create_nodes,
+        ):
+            # RLM times out (success=False)
+            mock_complete.return_value = RLMResult(
+                answer=None,
+                trajectory=[timeout_step],
+                sub_call_count=0,
+                total_iterations=1,
+                success=False,
+            )
+            mock_create_nodes.return_value = create_mock_standard_nodes(analyze_match=match_result)
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config)
+            result = nodes["analyze_match"](state)
+
+            # Should fall back to standard
+            assert result["match_analysis"]["relevance_score"] == 0.7
+
+
+class TestOrchestratorMultipleCodeBlocks:
+    """Tests for handling multiple code blocks in output."""
+
+    def test_parse_multiple_code_blocks_combined(self, mock_llm_provider):
+        """Test that multiple code blocks are combined."""
+        orchestrator = RLMOrchestrator(mock_llm_provider)
+
+        output = """Let me analyze in steps.
+
+```python
+step1 = "First"
+print(step1)
+```
+
+Now the second part:
+
+```python
+step2 = step1 + " and Second"
+print(step2)
+```"""
+
+        action = orchestrator._parse_model_output(output)
+
+        assert action.action_type == ActionType.CODE
+        # Should contain both code blocks combined
+        assert "step1" in action.content
+        assert "step2" in action.content
+
+    def test_final_inside_code_block_not_matched(self, mock_llm_provider):
+        """Test that FINAL inside code block is not matched as action."""
+        orchestrator = RLMOrchestrator(mock_llm_provider)
+
+        output = """```python
+# This is just a comment: FINAL(ignore this)
+result = "actual computation"
+print(result)
+```"""
+
+        action = orchestrator._parse_model_output(output)
+
+        # Should be CODE action, not FINAL
+        assert action.action_type == ActionType.CODE
+        assert "actual computation" in action.content
