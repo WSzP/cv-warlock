@@ -1,7 +1,7 @@
 """Tests for PDF generator."""
 
 import pytest
-from fpdf import FPDF
+
 from app.utils.pdf_generator import CVPDFGenerator, _sanitize_markdown_bold
 
 
