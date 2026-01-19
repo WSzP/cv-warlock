@@ -75,22 +75,22 @@ class Settings(BaseSettings):
         description="Model for sub-calls (defaults to faster model)",
     )
     rlm_max_iterations: int = Field(
-        default=20,
+        default=8,
         ge=1,
         le=100,
-        description="Maximum orchestrator iterations per analysis",
+        description="Maximum orchestrator iterations per analysis (lower = faster)",
     )
     rlm_max_sub_calls: int = Field(
-        default=15,
+        default=8,
         ge=1,
         le=50,
-        description="Maximum sub-LLM calls per analysis",
+        description="Maximum sub-LLM calls per analysis (lower = faster)",
     )
     rlm_timeout_seconds: int = Field(
-        default=300,
+        default=480,
         ge=30,
         le=600,
-        description="Total timeout for RLM analysis in seconds",
+        description="Total timeout for RLM analysis in seconds (8 min default)",
     )
     rlm_sandbox_mode: Literal["local", "docker", "modal"] = Field(
         default="local",

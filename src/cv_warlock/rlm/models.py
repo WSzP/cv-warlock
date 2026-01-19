@@ -143,10 +143,10 @@ class RLMConfig(BaseModel):
     sub_provider: Literal["openai", "anthropic", "google"] | None = None
     sub_model: str | None = None  # Defaults to a faster model
 
-    # Execution limits
-    max_iterations: int = Field(default=20, ge=1, le=100)
-    max_sub_calls: int = Field(default=15, ge=1, le=50)
-    timeout_seconds: int = Field(default=300, ge=30, le=600)
+    # Execution limits (lower = faster, less thorough)
+    max_iterations: int = Field(default=8, ge=1, le=100)
+    max_sub_calls: int = Field(default=8, ge=1, le=50)
+    timeout_seconds: int = Field(default=480, ge=30, le=600)
 
     # Context thresholds
     size_threshold: int = Field(

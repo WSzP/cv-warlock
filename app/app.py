@@ -54,6 +54,22 @@ def parse_error_details(error_message: str, provider: str, model: str) -> dict:
     """
     error_lower = error_message.lower()
 
+    # RLM timeout errors (check first as they contain "timeout")
+    if "rlm timeout" in error_lower:
+        return {
+            "category": "rlm_timeout",
+            "title": "RLM Analysis Timeout",
+            "explanation": "The recursive analysis took too long and was stopped.",
+            "cause": "Large or complex documents require more processing time than the limit allows.",
+            "solution": [
+                "The system automatically fell back to standard extraction",
+                "Your CV should still be processed successfully",
+                "For very large documents, consider splitting them or simplifying formatting",
+                "Try again - API response times vary",
+            ],
+            "technical": error_message,
+        }
+
     # Connection errors
     if any(x in error_lower for x in ["connection", "connect", "network", "timeout", "timed out"]):
         return {
@@ -244,7 +260,8 @@ def render_error_details(error_info: dict, elapsed_time: float | None = None):
 
 # Ordered workflow steps for checklist display
 WORKFLOW_STEPS = [
-    ("validate_inputs", "Validate inputs"),
+    ("graph_init", "Initialize graph"),
+    ("validate_inputs", "Initialize workflow"),
     ("extract_cv", "Extract CV structure"),
     ("extract_job", "Analyze job requirements"),
     ("analyze_match", "Match profile to requirements"),
@@ -854,7 +871,7 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                         unsafe_allow_html=True,
                     )
 
-                update_progress("start", "Initializing...", 0)
+                update_progress("graph_init", "Initializing graph...", 0)
 
                 result = run_cv_tailoring(
                     raw_cv=params["raw_cv"],

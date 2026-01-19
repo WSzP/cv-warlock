@@ -231,9 +231,18 @@ class RLMOrchestrator:
                     messages.append({"role": "user", "content": feedback})
 
                 else:
-                    # Plain text - model is thinking, prompt to continue
+                    # Plain text - model is thinking, prompt to continue with urgency
                     state_summary = env.get_context_summary()
-                    continue_prompt = RLM_CONTINUE_PROMPT.format(state_summary=state_summary)
+                    remaining = self.config.max_iterations - iteration
+                    urgency = (
+                        f"\n\n⚠️ ITERATION {iteration}/{self.config.max_iterations} - "
+                        f"Only {remaining} iterations left! Provide FINAL(answer) now."
+                        if remaining <= 3
+                        else ""
+                    )
+                    continue_prompt = (
+                        RLM_CONTINUE_PROMPT.format(state_summary=state_summary) + urgency
+                    )
                     messages.append({"role": "assistant", "content": model_output})
                     messages.append({"role": "user", "content": continue_prompt})
 
@@ -241,7 +250,24 @@ class RLMOrchestrator:
 
                 # Check timeout
                 if time.time() - start_time > self.config.timeout_seconds:
-                    logger.warning("RLM timeout reached")
+                    elapsed = time.time() - start_time
+                    timeout_msg = (
+                        f"RLM timeout after {elapsed:.1f}s "
+                        f"(limit: {self.config.timeout_seconds}s, "
+                        f"iterations: {iteration}/{self.config.max_iterations})"
+                    )
+                    logger.warning(timeout_msg)
+                    # Store timeout info for caller to detect
+                    trajectory.append(
+                        TrajectoryStep(
+                            step_number=iteration + 1,
+                            action_type=ActionType.FINAL,
+                            model_output="TIMEOUT",
+                            parsed_action=None,
+                            execution_result=timeout_msg,
+                            duration_ms=0,
+                        )
+                    )
                     break
 
             # If no final answer, try to extract from stored variables

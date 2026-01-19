@@ -68,6 +68,24 @@ def _convert_trajectory(rlm_result: RLMResult) -> list[RLMTrajectoryStep]:
     return steps
 
 
+def _check_rlm_timeout(rlm_result: RLMResult) -> bool:
+    """Check if RLM result indicates a timeout occurred."""
+    if not rlm_result.trajectory:
+        return False
+    last_step = rlm_result.trajectory[-1]
+    return last_step.model_output == "TIMEOUT"
+
+
+def _get_timeout_message(rlm_result: RLMResult) -> str | None:
+    """Get timeout message from RLM result if timeout occurred."""
+    if not rlm_result.trajectory:
+        return None
+    last_step = rlm_result.trajectory[-1]
+    if last_step.model_output == "TIMEOUT":
+        return last_step.execution_result
+    return None
+
+
 def _create_rlm_metadata(
     enabled: bool,
     used: bool,
@@ -166,6 +184,25 @@ def create_rlm_nodes(
                 output_schema=CVData,
             )
 
+            # Check for timeout first
+            if _check_rlm_timeout(rlm_result):
+                timeout_msg = _get_timeout_message(rlm_result)
+                logger.warning(f"RLM CV extraction timed out: {timeout_msg}")
+                # Try fallback - if successful, log warning but don't add to errors
+                # (errors would abort the workflow)
+                result = standard_nodes["extract_cv"](state)
+                result["rlm_metadata"] = _create_rlm_metadata(True, False, rlm_result)
+                # Only add error if fallback also failed
+                if result.get("cv_data") is None:
+                    result["errors"] = state.get("errors", []) + [
+                        f"RLM timeout during CV extraction: {timeout_msg}. "
+                        "Fallback extraction also failed."
+                    ]
+                else:
+                    # Fallback succeeded - add info to metadata but not errors
+                    logger.info(f"RLM timeout, but standard extraction succeeded: {timeout_msg}")
+                return result
+
             if rlm_result.success and rlm_result.answer:
                 cv_data = rlm_result.answer if isinstance(rlm_result.answer, CVData) else None
 
@@ -213,6 +250,23 @@ def create_rlm_nodes(
                 job_text=state["raw_job_spec"],
                 output_schema=JobRequirements,
             )
+
+            # Check for timeout first
+            if _check_rlm_timeout(rlm_result):
+                timeout_msg = _get_timeout_message(rlm_result)
+                logger.warning(f"RLM job extraction timed out: {timeout_msg}")
+                result = standard_nodes["extract_job"](state)
+                # Only add error if fallback also failed
+                if result.get("job_requirements") is None:
+                    result["errors"] = state.get("errors", []) + [
+                        f"RLM timeout during job extraction: {timeout_msg}. "
+                        "Fallback extraction also failed."
+                    ]
+                else:
+                    logger.info(
+                        f"RLM timeout, but standard job extraction succeeded: {timeout_msg}"
+                    )
+                return result
 
             if rlm_result.success and rlm_result.answer:
                 job_requirements = (

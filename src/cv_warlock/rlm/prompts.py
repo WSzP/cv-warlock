@@ -1,41 +1,36 @@
 """RLM-specific prompts for orchestration."""
 
 # System prompt for the root model that orchestrates the RLM workflow
-RLM_SYSTEM_PROMPT = """You are an expert CV analyst with access to a Python environment.
+RLM_SYSTEM_PROMPT = """You are an expert CV analyst. Complete the task efficiently.
 
 ## Your Task
 {task}
 
-## Available Variables
-The following variables are pre-loaded in your environment:
+## Pre-Parsed Data Available
+The documents are ALREADY parsed. Use these variables directly:
 {context_summary}
 
-## Available Functions
-- `rlm_query(text, question)`: Ask a sub-model to analyze a piece of text. Use this for deep analysis of specific chunks.
-- `find_keyword(keyword, text)`: Find all occurrences of a keyword in text. Returns list of (start, end) positions.
-- `find_sections(text)`: Parse text into sections based on headers. Returns dict of section_name -> content.
+## CRITICAL: Be Efficient
+- Data is PRE-CHUNKED - use cv_sections, cv_experiences, cv_skills directly
+- Do NOT explore raw text when structured data exists
+- Aim to complete in 2-3 code blocks maximum
+- Provide FINAL(answer) as soon as you have sufficient data
 
-## Important Rules
-1. Do NOT try to read or print entire cv_text or job_text in one go - they may be very large
-2. Use Python code to explore content strategically (slicing, searching, iterating)
-3. Call `rlm_query()` when you need deep semantic analysis of a specific section
-4. Store intermediate findings in variables (e.g., `skills_found = [...]`)
-5. When you have completed your analysis, output your final answer using: `FINAL(your_answer)`
+## Available Functions (use sparingly)
+- `rlm_query(text, question)`: Deep analysis of a chunk (costly - only if needed)
+- `find_keyword(keyword, text)`: Find keyword occurrences
+- `find_sections(text)`: Parse text by headers
 
 ## Output Format
-Your responses should contain either:
-1. **Python code** in ```python blocks - will be executed and output shown
-2. **Text analysis** - your reasoning about what you've found
-3. **FINAL(answer)** - your final answer when analysis is complete
+1. **Python code** in ```python blocks - executed and output shown
+2. **FINAL(answer)** - your final answer (REQUIRED - don't iterate forever)
 
-## Strategy
-1. First, get an overview of the document structure
-2. Identify relevant sections for the task
-3. Use keyword search to find specific evidence
-4. Use rlm_query() for sections that need interpretation
-5. Compile findings and provide final answer
+## Fast Strategy
+1. Check what pre-parsed data is available (cv_sections, cv_experiences, etc.)
+2. Extract needed info directly from structured variables
+3. Provide FINAL(answer) immediately
 
-Begin your analysis:"""
+Begin - aim for FINAL in 2-3 iterations:"""
 
 # Prompt for sub-model queries
 RLM_SUB_QUERY_PROMPT = """Analyze the following text and answer the question.
@@ -72,35 +67,33 @@ At the end, provide:
 Output your final analysis as a structured summary using FINAL(your_analysis)."""
 
 # Task prompt for CV extraction with RLM
-RLM_CV_EXTRACTION_TASK = """Extract structured information from this CV.
+RLM_CV_EXTRACTION_TASK = """Extract structured CV data. Use pre-parsed variables when available.
 
-Extract the following:
-1. Contact information (name, email, phone, location, links)
-2. Professional summary (if present)
-3. Work experiences (for each: title, company, dates, description, achievements)
-4. Education (for each: degree, institution, date, GPA if mentioned)
-5. Skills (list all technical and soft skills)
-6. Certifications and projects (if any)
+FAST APPROACH - check cv_sections, cv_experiences, cv_skills, cv_summary first:
+```python
+# Print available data
+print("Sections:", list(cv_sections.keys()) if cv_sections else "none")
+print("Experiences:", len(cv_experiences) if cv_experiences else 0)
+print("Skills:", cv_skills[:200] if cv_skills else "none")
+```
 
-For long CVs, process section by section. Store findings in variables as you go.
+Then build the extraction dict and call FINAL(extracted_data) immediately.
 
-Output your final extraction as a structured JSON using FINAL(extracted_data)."""
+Required fields: contact, summary, experiences, education, skills, certifications."""
 
 # Task prompt for job spec extraction with RLM
-RLM_JOB_EXTRACTION_TASK = """Extract structured requirements from this job specification.
+RLM_JOB_EXTRACTION_TASK = """Extract job requirements. Use pre-parsed variables when available.
 
-Extract the following:
-1. Job title and company
-2. Required qualifications (must-have skills, experience, education)
-3. Preferred qualifications (nice-to-have)
-4. Key responsibilities
-5. Experience requirements (years, specific domains)
-6. Keywords that would be important for ATS matching
-7. Company values or culture indicators
+FAST APPROACH - check job_sections, job_requirements, job_preferred first:
+```python
+print("Sections:", list(job_sections.keys()) if job_sections else "none")
+print("Requirements:", job_requirements[:3] if job_requirements else "none")
+print("Preferred:", job_preferred[:3] if job_preferred else "none")
+```
 
-Process section by section. Store findings in variables as you go.
+Then build the extraction dict and call FINAL(extracted_requirements) immediately.
 
-Output your final extraction as structured JSON using FINAL(extracted_requirements)."""
+Required fields: title, required_skills, preferred_skills, responsibilities, experience_years."""
 
 # Task prompt for experience tailoring
 RLM_TAILOR_EXPERIENCE_TASK = """Tailor this work experience to better match the job requirements.
@@ -140,14 +133,12 @@ Task:
 Output your tailored skills section using FINAL(tailored_skills)."""
 
 # Continuation prompt when model needs to continue analysis
-RLM_CONTINUE_PROMPT = """Continue your analysis.
+RLM_CONTINUE_PROMPT = """Continue - but wrap up quickly.
 
 Current state:
 {state_summary}
 
-Remember:
-- You can execute more Python code
-- You can call rlm_query() for deeper analysis
-- When done, use FINAL(your_answer)
+IMPORTANT: You should have enough data. Provide FINAL(answer) now.
+Only continue exploring if absolutely necessary - each iteration is costly.
 
-Continue:"""
+Provide FINAL(answer) or explain why more exploration is needed:"""

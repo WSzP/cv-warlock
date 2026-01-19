@@ -240,7 +240,7 @@ def run_cv_tailoring(
     # Experience tailoring runs in parallel for significant time savings
     if use_cot:
         step_descriptions = {
-            "validate_inputs": "Validating inputs...",
+            "validate_inputs": "Initializing workflow...",
             "extract_cv": "Extracting CV structure...",
             "extract_job": "Analyzing job requirements...",
             "analyze_match": "Matching your profile to requirements...",
@@ -252,7 +252,7 @@ def run_cv_tailoring(
         }
     else:
         step_descriptions = {
-            "validate_inputs": "Validating inputs...",
+            "validate_inputs": "Initializing workflow...",
             "extract_cv": "Extracting CV structure...",
             "extract_job": "Analyzing job requirements...",
             "analyze_match": "Matching your profile to requirements...",

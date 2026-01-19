@@ -20,7 +20,7 @@ from cv_warlock.processors.tailor import CVTailor
 # Step descriptions for UI display
 # New order: skills → experiences → summary
 STEP_DESCRIPTIONS = {
-    "validate_inputs": "Validating inputs...",
+    "validate_inputs": "Initializing workflow...",
     "extract_cv": "Extracting CV data...",
     "extract_job": "Analyzing job requirements...",
     "analyze_match": "Analyzing CV-job match...",
@@ -32,7 +32,7 @@ STEP_DESCRIPTIONS = {
 }
 
 STEP_DESCRIPTIONS_FAST = {
-    "validate_inputs": "Validating inputs...",
+    "validate_inputs": "Initializing workflow...",
     "extract_cv": "Extracting CV data...",
     "extract_job": "Analyzing job requirements...",
     "analyze_match": "Analyzing CV-job match...",
