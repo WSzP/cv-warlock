@@ -260,16 +260,16 @@ def render_error_details(error_info: dict, elapsed_time: float | None = None):
 
 # Ordered workflow steps for checklist display
 WORKFLOW_STEPS = [
-    ("graph_init", "Initialize graph"),
-    ("validate_inputs", "Initialize workflow"),
-    ("extract_cv", "Extract CV structure"),
-    ("extract_job", "Analyze job requirements"),
-    ("analyze_match", "Match profile to requirements"),
-    ("create_plan", "Create tailoring strategy"),
-    ("tailor_skills", "Tailor skills section"),
-    ("tailor_experiences", "Tailor work experiences"),
-    ("tailor_summary", "Craft professional summary"),
-    ("assemble_cv", "Assemble final CV"),
+    ("graph_init", "Initializing graph"),
+    ("validate_inputs", "Initializing workflow"),
+    ("extract_cv", "Extracting CV structure"),
+    ("extract_job", "Analyzing job requirements"),
+    ("analyze_match", "Matching profile to requirements"),
+    ("create_plan", "Creating tailoring strategy"),
+    ("tailor_skills", "Tailoring skills section"),
+    ("tailor_experiences", "Tailoring work experiences"),
+    ("tailor_summary", "Crafting professional summary"),
+    ("assemble_cv", "Assembling final CV"),
 ]
 
 

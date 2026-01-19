@@ -1,8 +1,8 @@
 """Job specification data models."""
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class JobRequirements(BaseModel):
@@ -33,3 +33,26 @@ class JobRequirements(BaseModel):
     # Raw sections for context
     responsibilities: list[str] = Field(default_factory=list)
     benefits: list[str] = Field(default_factory=list)
+
+    @field_validator(
+        "required_skills",
+        "preferred_skills",
+        "keywords",
+        "industry_terms",
+        "soft_skills",
+        "company_values",
+        "responsibilities",
+        "benefits",
+        mode="before",
+    )
+    @classmethod
+    def ensure_list(cls, v: Any) -> list[str]:
+        """Convert non-list values (like 'Not specified') to empty list."""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            # LLM sometimes returns "Not specified" or similar strings
+            return []
+        if isinstance(v, list):
+            return v
+        return []
