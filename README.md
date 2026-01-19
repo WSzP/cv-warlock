@@ -50,12 +50,6 @@ CV Warlock includes an advanced **RLM mode** (enabled by default) for handling a
 
 RLMs are a novel inference strategy (published on the 31st of December, 2025 by [Zhang et al.](https://arxiv.org/abs/2512.24601v1)) that allows an LLM to handle essentially unbounded input sizes by recursively calling itself on portions of the input context. Instead of ingesting an entire lengthy prompt (like a multi-page CV or job spec) in one go, an RLM treats the prompt as an external environment (e.g. a scratchpad or REPL with the text stored as a variable) which the model can programmatically inspect and decompose. This gives the model a form of near-infinite context, enabling it to parse very long documents without hitting fixed context window limits or suffering the usual “context rot” (degradation on long inputs). In fact, RLMs have been shown to successfully process inputs far beyond standard context limits (on the order of millions of tokens) with minimal performance degradation, and to outperform base LLMs and other long-context methods by significant margins. All while keeping inference costs comparable to a normal model call. Adopting RLMs in CV Warlock is thus a technically innovative decision that brings cutting-edge long-context handling into production, allowing accurate and efficient analysis of full-length CVs and detailed job descriptions that would exceed traditional LLM limits.
 
-### Simulated ATS Test Results
-
-**Version:** 0.9.0
-
-- Non-RLM mode: 80% match score
-- RLM mode: 100% match score – **perfect** ✅
 ### Key Features of our Implementation
 
 | Feature | Description |
