@@ -111,7 +111,7 @@ class CVPDFGenerator(FPDF):
 
         # Ensure minimum width of 20 units (absolute safety fallback)
         safe_width = max(w, 20)
-        
+
         # If we're too close to right margin, start a new line
         if self.get_x() + safe_width > self.w - self.r_margin:
             self.ln()

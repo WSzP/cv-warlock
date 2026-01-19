@@ -414,7 +414,9 @@ class TestRunCVTailoring:
             api_key="test-key",
         )
 
-        mock_create_graph.assert_called_once_with("openai", "test-key", use_cot=True, use_rlm=False, on_step_start=None)
+        mock_create_graph.assert_called_once_with(
+            "openai", "test-key", use_cot=True, use_rlm=False, on_step_start=None
+        )
 
     @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
     def test_run_cv_tailoring_adds_total_generation_time(
@@ -509,7 +511,9 @@ class TestWorkflowStepDescriptions:
         )
 
         # Model is auto-selected, so only provider and api_key are passed
-        mock_create_graph.assert_called_with(None, None, use_cot=False, use_rlm=False, on_step_start=ANY)
+        mock_create_graph.assert_called_with(
+            None, None, use_cot=False, use_rlm=False, on_step_start=ANY
+        )
 
 
 class TestWorkflowInitialState:
@@ -850,6 +854,8 @@ class TestRLMWorkflowCreation:
 
         run_cv_tailoring(sample_cv_text, sample_job_text, use_rlm=True)
 
-        mock_create_graph.assert_called_once_with(None, None, use_cot=True, use_rlm=True, on_step_start=None)
+        mock_create_graph.assert_called_once_with(
+            None, None, use_cot=True, use_rlm=True, on_step_start=None
+        )
         initial_state = mock_graph.invoke.call_args[0][0]
         assert initial_state["use_rlm"] is True
