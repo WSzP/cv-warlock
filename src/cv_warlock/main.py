@@ -1,5 +1,6 @@
 """CLI entry point for CV Warlock."""
 
+import time
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -12,10 +13,19 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env.local")
 import typer  # noqa: E402
 from rich.console import Console  # noqa: E402
 from rich.panel import Panel  # noqa: E402
-from rich.progress import Progress, SpinnerColumn, TextColumn  # noqa: E402
 
 from cv_warlock.graph.workflow import run_cv_tailoring  # noqa: E402
 from cv_warlock.output.markdown import format_match_analysis, save_markdown  # noqa: E402
+
+
+def format_time(seconds: float) -> str:
+    """Format seconds into human-readable time."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes = int(seconds // 60)
+    secs = seconds % 60
+    return f"{minutes}m {secs:.0f}s"
+
 
 app = typer.Typer(
     name="cv-warlock",
@@ -83,28 +93,53 @@ def tailor(
         console.print(f"[dim]RLM Mode:[/dim] {'Disabled' if no_rlm else 'Enabled'}")
         console.print()
 
-    # Run the tailoring workflow
-    # Use ASCII spinner for Windows compatibility
-    with Progress(
-        SpinnerColumn(spinner_name="line"),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Processing...", total=None)
+    # Step descriptions for display
+    step_labels = {
+        "validate_inputs": "Initializing",
+        "extract_cv": "Extracting CV",
+        "extract_job": "Analyzing job",
+        "analyze_match": "Matching profile",
+        "create_plan": "Creating plan",
+        "tailor_skills": "Tailoring skills",
+        "tailor_experiences": "Tailoring experiences",
+        "tailor_summary": "Crafting summary",
+        "assemble_cv": "Assembling CV",
+    }
+    step_timings: dict[str, float] = {}
+    last_elapsed: float = 0.0
+    start_time = time.time()
 
-        try:
-            result = run_cv_tailoring(
-                raw_cv=raw_cv,
-                raw_job_spec=raw_job_spec,
-                provider=provider,
-                lookback_years=lookback_years,
-                use_rlm=not no_rlm,
-            )
-        except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from e
+    def progress_callback(step_name: str, _description: str, elapsed: float) -> None:
+        nonlocal last_elapsed
 
-        progress.update(task, completed=True)
+        # Calculate this step's duration from elapsed time
+        step_time = elapsed - last_elapsed
+        last_elapsed = elapsed
+
+        # Record and display
+        step_timings[step_name] = step_time
+        label = step_labels.get(step_name, step_name)
+        console.print(f"  [green]OK[/green] {label:<25} [dim][{format_time(step_time)}][/dim]")
+
+    # Run the tailoring workflow with progress callback
+    console.print()  # Blank line before progress
+    try:
+        result = run_cv_tailoring(
+            raw_cv=raw_cv,
+            raw_job_spec=raw_job_spec,
+            provider=provider,
+            lookback_years=lookback_years,
+            use_rlm=not no_rlm,
+            progress_callback=progress_callback,
+        )
+
+    except Exception as e:
+        console.print(f"\n[red]Error:[/red] {e}")
+        raise typer.Exit(1) from e
+
+    # Show total time
+    total_time = time.time() - start_time
+    console.print(f"\n[bold]Total time:[/bold] {format_time(total_time)}")
 
     # Show RLM metadata if used
     if not no_rlm and result.get("rlm_metadata"):
@@ -201,27 +236,52 @@ def analyze(
     raw_cv = read_file(cv)
     raw_job_spec = read_file(job)
 
-    # Run analysis (the full workflow, but we'll just show analysis)
-    # Use ASCII spinner for Windows compatibility
-    with Progress(
-        SpinnerColumn(spinner_name="line"),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Analyzing...", total=None)
+    # Step descriptions for display
+    step_labels = {
+        "validate_inputs": "Initializing",
+        "extract_cv": "Extracting CV",
+        "extract_job": "Analyzing job",
+        "analyze_match": "Matching profile",
+        "create_plan": "Creating plan",
+        "tailor_skills": "Tailoring skills",
+        "tailor_experiences": "Tailoring experiences",
+        "tailor_summary": "Crafting summary",
+        "assemble_cv": "Assembling CV",
+    }
+    step_timings: dict[str, float] = {}
+    last_elapsed: float = 0.0
+    start_time = time.time()
 
-        try:
-            result = run_cv_tailoring(
-                raw_cv=raw_cv,
-                raw_job_spec=raw_job_spec,
-                provider=provider,
-                use_rlm=not no_rlm,
-            )
-        except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from e
+    def progress_callback(step_name: str, _description: str, elapsed: float) -> None:
+        nonlocal last_elapsed
 
-        progress.update(task, completed=True)
+        # Calculate this step's duration from elapsed time
+        step_time = elapsed - last_elapsed
+        last_elapsed = elapsed
+
+        # Record and display
+        step_timings[step_name] = step_time
+        label = step_labels.get(step_name, step_name)
+        console.print(f"  [green]OK[/green] {label:<25} [dim][{format_time(step_time)}][/dim]")
+
+    # Run analysis with progress callback
+    console.print()  # Blank line before progress
+    try:
+        result = run_cv_tailoring(
+            raw_cv=raw_cv,
+            raw_job_spec=raw_job_spec,
+            provider=provider,
+            use_rlm=not no_rlm,
+            progress_callback=progress_callback,
+        )
+
+    except Exception as e:
+        console.print(f"\n[red]Error:[/red] {e}")
+        raise typer.Exit(1) from e
+
+    # Show total time
+    total_time = time.time() - start_time
+    console.print(f"\n[bold]Total time:[/bold] {format_time(total_time)}")
 
     # Show RLM metadata if used
     if not no_rlm and result.get("rlm_metadata"):

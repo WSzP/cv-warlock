@@ -546,8 +546,9 @@ def main():
 
         st.checkbox(
             "Enable RLM",
-            value=True,
-            help="Use Recursive Language Model for handling large CVs and job specs",
+            value=False,  # Disabled by default - RLM adds 2-4 min overhead
+            help="Use Recursive Language Model for handling large CVs and job specs. "
+            "Only enable for very long documents (10+ pages). Adds significant processing time.",
             key="use_rlm",
         )
 

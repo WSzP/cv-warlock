@@ -144,13 +144,13 @@ class RLMConfig(BaseModel):
     sub_model: str | None = None  # Defaults to a faster model
 
     # Execution limits (lower = faster, less thorough)
-    max_iterations: int = Field(default=8, ge=1, le=100)
-    max_sub_calls: int = Field(default=8, ge=1, le=50)
-    timeout_seconds: int = Field(default=480, ge=30, le=600)
+    max_iterations: int = Field(default=4, ge=1, le=100)  # Reduced from 8
+    max_sub_calls: int = Field(default=4, ge=1, le=50)  # Reduced from 8
+    timeout_seconds: int = Field(default=300, ge=30, le=600)  # Reduced from 480 (5 min)
 
     # Context thresholds
     size_threshold: int = Field(
-        default=8000,
+        default=25000,  # Increased from 8000 (~10 pages)
         description="Character count to trigger RLM mode",
     )
 

@@ -53,7 +53,7 @@ class Settings(BaseSettings):
         description="Enable RLM for handling large CVs and job specs",
     )
     rlm_size_threshold: int = Field(
-        default=8000,
+        default=25000,  # ~10 pages - only trigger for truly long documents
         ge=1000,
         le=100000,
         description="Character count threshold to automatically trigger RLM mode",
@@ -75,22 +75,22 @@ class Settings(BaseSettings):
         description="Model for sub-calls (defaults to faster model)",
     )
     rlm_max_iterations: int = Field(
-        default=8,
+        default=4,  # Reduced from 8 - faster with minimal quality loss
         ge=1,
         le=100,
         description="Maximum orchestrator iterations per analysis (lower = faster)",
     )
     rlm_max_sub_calls: int = Field(
-        default=8,
+        default=4,  # Reduced from 8 - faster with minimal quality loss
         ge=1,
         le=50,
         description="Maximum sub-LLM calls per analysis (lower = faster)",
     )
     rlm_timeout_seconds: int = Field(
-        default=480,
+        default=300,  # Reduced from 480 (5 min instead of 8 min)
         ge=30,
         le=600,
-        description="Total timeout for RLM analysis in seconds (8 min default)",
+        description="Total timeout for RLM analysis in seconds (5 min default)",
     )
     rlm_sandbox_mode: Literal["local", "docker", "modal"] = Field(
         default="local",
