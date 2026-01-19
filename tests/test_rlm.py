@@ -285,9 +285,9 @@ class TestRLMModels:
         """Test RLMConfig default values."""
         config = RLMConfig()
 
-        assert config.max_iterations == 20
-        assert config.max_sub_calls == 15
-        assert config.timeout_seconds == 300
+        assert config.max_iterations == 8
+        assert config.max_sub_calls == 8
+        assert config.timeout_seconds == 480
         assert config.size_threshold == 8000
         assert config.sandbox_mode == "local"
 
