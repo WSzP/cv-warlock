@@ -1,6 +1,6 @@
 """Tests for LangGraph workflow assembly and execution."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -342,6 +342,7 @@ class TestRunCVTailoring:
         mock_create_graph.assert_called_once()
         call_kwargs = mock_create_graph.call_args[1]
         assert call_kwargs.get("use_cot") is False
+        assert call_kwargs.get("on_step_start") is None
 
     @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
     def test_run_cv_tailoring_with_custom_lookback_years(
@@ -413,7 +414,7 @@ class TestRunCVTailoring:
             api_key="test-key",
         )
 
-        mock_create_graph.assert_called_once_with("openai", "test-key", use_cot=True, use_rlm=False)
+        mock_create_graph.assert_called_once_with("openai", "test-key", use_cot=True, use_rlm=False, on_step_start=None)
 
     @patch("cv_warlock.graph.workflow.create_cv_warlock_graph")
     def test_run_cv_tailoring_adds_total_generation_time(
@@ -508,7 +509,7 @@ class TestWorkflowStepDescriptions:
         )
 
         # Model is auto-selected, so only provider and api_key are passed
-        mock_create_graph.assert_called_with(None, None, use_cot=False, use_rlm=False)
+        mock_create_graph.assert_called_with(None, None, use_cot=False, use_rlm=False, on_step_start=ANY)
 
 
 class TestWorkflowInitialState:
@@ -849,6 +850,6 @@ class TestRLMWorkflowCreation:
 
         run_cv_tailoring(sample_cv_text, sample_job_text, use_rlm=True)
 
-        mock_create_graph.assert_called_once_with(None, None, use_cot=True, use_rlm=True)
+        mock_create_graph.assert_called_once_with(None, None, use_cot=True, use_rlm=True, on_step_start=None)
         initial_state = mock_graph.invoke.call_args[0][0]
         assert initial_state["use_rlm"] is True

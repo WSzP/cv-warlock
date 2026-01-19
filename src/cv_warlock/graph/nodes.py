@@ -7,6 +7,7 @@ significantly better tailored CVs.
 
 import copy
 import time
+from collections.abc import Callable
 
 from cv_warlock.config import get_settings
 from cv_warlock.extractors.cv_extractor import CVExtractor
@@ -44,12 +45,27 @@ STEP_DESCRIPTIONS_FAST = {
 }
 
 
-def _start_step(state: CVWarlockState, step_name: str, use_cot: bool = True) -> dict:
+def _start_step(
+    state: CVWarlockState,
+    step_name: str,
+    use_cot: bool = True,
+    on_step_start: Callable[[str, str], None] | None = None,
+) -> dict:
     """Record step start time and description."""
     descriptions = STEP_DESCRIPTIONS if use_cot else STEP_DESCRIPTIONS_FAST
+    description = descriptions.get(step_name, f"Running {step_name}...")
+
+    # Trigger callback if provided (for immediate UI updates)
+    if on_step_start:
+        try:
+            on_step_start(step_name, description)
+        except Exception:
+            # Don't let UI callback errors break the workflow
+            pass
+
     return {
         "current_step": step_name,
-        "current_step_description": descriptions.get(step_name, f"Running {step_name}..."),
+        "current_step_description": description,
         "current_step_start": time.time(),
     }
 
@@ -68,18 +84,24 @@ def _end_step(state: CVWarlockState, step_name: str, updates: dict) -> dict:
 
     existing_timings = state.get("step_timings", [])
     updates["step_timings"] = existing_timings + [timing]
-    updates["current_step_start"] = None
+    # We don't clear current_step_start here so it persists until next step starts
+    # updates["current_step_start"] = None
 
     return updates
 
 
-def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
+def create_nodes(
+    llm_provider: LLMProvider,
+    use_cot: bool = True,
+    on_step_start: Callable[[str, str], None] | None = None,
+) -> dict:
     """Create all workflow nodes with the given LLM provider.
 
     Args:
         llm_provider: The LLM provider to use.
         use_cot: Whether to use chain-of-thought reasoning for generation.
                  Default True for higher quality, False for faster generation.
+        on_step_start: Optional callback(step_name, description) fired when a step starts.
 
     Returns:
         dict: Dictionary of node functions.
@@ -92,7 +114,7 @@ def create_nodes(llm_provider: LLMProvider, use_cot: bool = True) -> dict:
     def validate_inputs(state: CVWarlockState) -> dict:
         """Validate input documents exist and are non-empty."""
         step_name = "validate_inputs"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
         errors = []
 
         if not state.get("raw_cv") or not state["raw_cv"].strip():

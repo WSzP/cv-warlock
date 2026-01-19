@@ -75,6 +75,7 @@ def create_cv_warlock_graph(
     api_key: str | None = None,
     use_cot: bool = True,
     use_rlm: bool = False,
+    on_step_start: Callable[[str, str], None] | None = None,
 ) -> StateGraph:
     """Create and compile the CV tailoring workflow graph.
 
@@ -86,6 +87,7 @@ def create_cv_warlock_graph(
         use_rlm: Whether to use RLM for large context handling.
                  Default False. When True, uses recursive orchestration
                  for documents exceeding the size threshold.
+        on_step_start: Optional callback(step_name, description) fired when a step starts.
 
     Returns:
         Compiled StateGraph.
@@ -145,11 +147,16 @@ def create_cv_warlock_graph(
             sub_provider=sub_provider_instance,
             config=rlm_config,
             use_cot=use_cot,
+            on_step_start=on_step_start,
         )
     else:
         # Non-RLM mode: use balanced model (Sonnet, GPT-5.2, Gemini Flash)
         llm_provider = get_llm_provider(provider, model, api_key)
-        nodes = create_nodes(llm_provider, use_cot=use_cot)
+        nodes = create_nodes(
+            llm_provider,
+            use_cot=use_cot,
+            on_step_start=on_step_start,
+        )
 
     # Build the graph
     workflow = StateGraph(CVWarlockState)
@@ -233,7 +240,25 @@ def run_cv_tailoring(
     Returns:
         Final workflow state with tailored CV.
     """
-    graph = create_cv_warlock_graph(provider, api_key, use_cot=use_cot, use_rlm=use_rlm)
+    # Create callback adapter for immediate step start notifications
+    on_step_start = None
+    if progress_callback:
+        start_tracking = {}
+
+        def _on_step_start(step_name: str, description: str):
+            start_tracking[step_name] = time.time()
+            # Pass 0.0 elapsed time for start event
+            progress_callback(step_name, description, 0.0)
+
+        on_step_start = _on_step_start
+
+    graph = create_cv_warlock_graph(
+        provider,
+        api_key,
+        use_cot=use_cot,
+        use_rlm=use_rlm,
+        on_step_start=on_step_start,
+    )
 
     # Step descriptions for progress updates
     # New order: skills → experiences → summary

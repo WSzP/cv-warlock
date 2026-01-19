@@ -85,13 +85,42 @@ class CVPDFGenerator(FPDF):
         if w == 0:
             self.multi_cell(w, h, text, **kwargs)  # type: ignore[arg-type]
             return
-        # Ensure minimum width of 20 units (enough for a few characters)
+
+        # Check if content can actually fit in the requested width
+        # 1. Check strict minimum (40mm - reasonable column width)
+        # 2. Check if any single word is wider than the column
+        words = text.split()
+        max_word_width = 0.0
+        if words:
+            try:
+                max_word_width = max(self.get_string_width(word) for word in words)
+            except Exception:
+                # Fallback if get_string_width fails (e.g. encoding issues)
+                max_word_width = 0.0
+
+        is_too_narrow = w < 40
+        has_wide_word = max_word_width > w
+
+        if is_too_narrow or has_wide_word:
+            # Column too narrow or word too wide - force new line and use full width
+            self.ln()
+            self.set_x(self.l_margin)
+            # Use remaining page width (which is now full width sans margins)
+            self.multi_cell(0, h, text, **kwargs)  # type: ignore[arg-type]
+            return
+
+        # Ensure minimum width of 20 units (absolute safety fallback)
         safe_width = max(w, 20)
+        
         # If we're too close to right margin, start a new line
         if self.get_x() + safe_width > self.w - self.r_margin:
             self.ln()
             self.set_x(self.l_margin)
-            safe_width = self.w - self.l_margin - self.r_margin
+            # Recalculate width for new line (full width)
+            # We call multi_cell(0) here to let FPDF handle the width
+            self.multi_cell(0, h, text, **kwargs)  # type: ignore[arg-type]
+            return
+
         self.multi_cell(safe_width, h, text, **kwargs)  # type: ignore[arg-type]
 
     def _setup_poppins_font(self) -> None:

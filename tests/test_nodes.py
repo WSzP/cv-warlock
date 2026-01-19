@@ -209,7 +209,7 @@ class TestEndStep:
         timing = result["step_timings"][0]
         assert timing["step_name"] == "extract_cv"
         assert timing["duration_seconds"] >= 1.0
-        assert result["current_step_start"] is None
+        assert "current_step_start" not in result
 
     def test_end_step_appends_to_existing_timings(self, base_state: CVWarlockState) -> None:
         """Test that _end_step appends to existing timings."""
