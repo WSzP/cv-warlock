@@ -41,6 +41,19 @@ def format_elapsed_time(seconds: float) -> str:
         return f"{minutes}m {secs:.0f}s"
 
 
+def format_step_elapsed(seconds: float) -> str:
+    """Format step elapsed time in compact bracket notation.
+
+    Examples: [1sec], [32sec], [2min 03sec]
+    """
+    if seconds < 60:
+        return f"[{int(round(seconds))}sec]"
+    else:
+        minutes = int(seconds // 60)
+        secs = int(round(seconds % 60))
+        return f"[{minutes}min {secs:02d}sec]"
+
+
 def parse_error_details(error_message: str, provider: str, model: str) -> dict:
     """Parse error message and return detailed diagnostic information.
 
@@ -278,6 +291,7 @@ def render_step_checklist(
     current_step: str | None,
     failed_step: str | None,
     current_description: str | None = None,
+    step_timings: dict[str, float] | None = None,
 ) -> str:
     """Render the step checklist as HTML with status icons.
 
@@ -286,20 +300,29 @@ def render_step_checklist(
         current_step: The step currently being processed (or None)
         failed_step: The step that failed (or None)
         current_description: Optional description for the current step
+        step_timings: Optional dict mapping step names to elapsed seconds
 
     Returns:
         HTML string for the checklist
     """
+    step_timings = step_timings or {}
     lines = []
     for step_name, step_label in WORKFLOW_STEPS:
+        timing_str = ""
         if step_name in completed_steps:
             # Completed - green checkmark
             icon = '<span style="color: #28a745;">✓</span>'
             style = "color: #28a745;"
+            # Add timing if available
+            if step_name in step_timings:
+                timing_str = f' <span style="opacity: 0.7;">{format_step_elapsed(step_timings[step_name])}</span>'
         elif step_name == failed_step:
             # Failed - red X
             icon = '<span style="color: #dc3545;">✗</span>'
             style = "color: #dc3545; font-weight: bold;"
+            # Add timing for failed step too
+            if step_name in step_timings:
+                timing_str = f' <span style="opacity: 0.7;">{format_step_elapsed(step_timings[step_name])}</span>'
         elif step_name == current_step:
             # In progress - spinning indicator
             icon = '<span class="step-spinner">◐</span>'
@@ -312,7 +335,7 @@ def render_step_checklist(
             icon = '<span style="color: #6c757d;">○</span>'
             style = "color: #6c757d;"
 
-        lines.append(f'<div style="margin: 4px 0; {style}">{icon} {step_label}</div>')
+        lines.append(f'<div style="margin: 4px 0; {style}">{icon} {step_label}{timing_str}</div>')
 
     return "\n".join(lines)
 
@@ -826,6 +849,8 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
         current_step_name: str | None = None
         current_step_desc: str | None = None
         failed_step_name: str | None = None
+        step_timings: dict[str, float] = {}
+        step_start_time: float | None = None
 
         try:
             # Import here to avoid loading dependencies until needed
@@ -848,16 +873,19 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
 
                 def update_progress(step_name: str, description: str, _elapsed: float):
                     nonlocal last_step, last_step_name, current_step_name, current_step_desc
-                    nonlocal completed_steps
+                    nonlocal completed_steps, step_timings, step_start_time
 
-                    # Mark previous step as completed (if it was a valid workflow step)
+                    # Mark previous step as completed and record timing
                     if current_step_name and current_step_name != step_name:
                         completed_steps.add(current_step_name)
+                        if step_start_time is not None:
+                            step_timings[current_step_name] = time.time() - step_start_time
 
                     last_step = description
                     last_step_name = step_name
                     current_step_name = step_name
                     current_step_desc = description
+                    step_start_time = time.time()
 
                     # Render the updated checklist
                     checklist_html = render_step_checklist(
@@ -865,6 +893,7 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                         current_step=current_step_name,
                         failed_step=None,
                         current_description=current_step_desc,
+                        step_timings=step_timings,
                     )
                     checklist_container.markdown(
                         f'<div class="step-checklist">{checklist_html}</div>',
@@ -895,12 +924,17 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                     elapsed = time.time() - wall_start_time
                     failed_step_name = last_step_name
 
+                    # Record timing for the failed step
+                    if failed_step_name and step_start_time is not None:
+                        step_timings[failed_step_name] = time.time() - step_start_time
+
                     # Render checklist with failed step
                     checklist_html = render_step_checklist(
                         completed_steps=completed_steps,
                         current_step=None,
                         failed_step=failed_step_name,
                         current_description=None,
+                        step_timings=step_timings,
                     )
                     checklist_container.markdown(
                         f'<div class="step-checklist">{checklist_html}</div>',
@@ -932,12 +966,17 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                     st.session_state["result"] = None
                 else:
                     # Success - mark all steps completed
+                    # Record timing for the final step
+                    if current_step_name and step_start_time is not None:
+                        step_timings[current_step_name] = time.time() - step_start_time
+
                     all_step_names = {step[0] for step in WORKFLOW_STEPS}
                     checklist_html = render_step_checklist(
                         completed_steps=all_step_names,
                         current_step=None,
                         failed_step=None,
                         current_description=None,
+                        step_timings=step_timings,
                     )
                     checklist_container.markdown(
                         f'<div class="step-checklist">{checklist_html}</div>',
