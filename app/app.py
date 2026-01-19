@@ -529,8 +529,8 @@ def main():
         )
 
         st.caption(
-            "**Dual-Model Strategy:** RLM uses a strong model (Opus/GPT-5) for "
-            "orchestration and a faster model (Haiku/GPT-5-mini) for sub-calls. "
+            "**Dual-Model Strategy:** RLM uses a stronger model for "
+            "orchestration and a faster model for sub-calls. "
             "This enables processing of arbitrarily long documents with interpretable reasoning."
         )
 
@@ -543,14 +543,14 @@ def main():
             "Character limit",
             min_value=500,
             max_value=5000,
-            value=2500,
+            value=2000,
             step=250,
             help="Target length for generated cover letter",
             key="cover_letter_char_limit",
         )
 
         # Show guidance based on character limit
-        char_limit = st.session_state.get("cover_letter_char_limit", 2500)
+        char_limit = st.session_state.get("cover_letter_char_limit", 2000)
         if char_limit < 1500:
             st.caption(
                 "**Short format:** Best for quick applications or character-limited forms. "

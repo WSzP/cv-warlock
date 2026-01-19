@@ -55,7 +55,7 @@ class CoverLetterGenerator:
     """
 
     # Character limit configuration
-    DEFAULT_CHARACTER_LIMIT = 2500
+    DEFAULT_CHARACTER_LIMIT = 2000
     MIN_CHARACTER_LIMIT = 500
     MAX_CHARACTER_LIMIT = 5000
 

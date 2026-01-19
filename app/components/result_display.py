@@ -425,7 +425,7 @@ def render_cover_letter(result: dict[str, Any]) -> None:
     )
 
     # Character limit from session state
-    char_limit = st.session_state.get("cover_letter_char_limit", 2500)
+    char_limit = st.session_state.get("cover_letter_char_limit", 2000)
     st.caption(f"Target length: **{char_limit:,}** characters (set in sidebar)")
 
     # Generate button
