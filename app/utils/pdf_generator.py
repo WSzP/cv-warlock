@@ -208,12 +208,31 @@ class CVPDFGenerator(FPDF):
     def add_experience_header(self, title: str, company: str, date_location: str) -> None:
         """Add experience entry header with title, company, and date/location.
 
-        Uses multi_cell for title to handle long titles that might overflow page width.
+        If title contains '|', renders part before '|' in bold, rest in regular.
         """
-        self.set_font(self.font_name, "B", 12)
         self.set_x(self.l_margin)  # Ensure we start at left margin
-        # Use multi_cell to wrap long titles instead of overflowing
-        self.multi_cell(0, 7, title.strip())
+        title_clean = title.strip()
+
+        # Check if title contains '|' - split into bold and regular parts
+        if "|" in title_clean:
+            parts = title_clean.split("|", 1)
+            bold_part = parts[0].strip()
+            regular_part = "| " + parts[1].strip() if len(parts) > 1 else ""
+
+            # Render bold part
+            self.set_font(self.font_name, "B", 12)
+            bold_width = self.get_string_width(bold_part + " ") + 2
+            self.cell(bold_width, 7, bold_part + " ")
+
+            # Render regular part (including '|') on same line
+            if regular_part:
+                self.set_font(self.font_name, "", 12)
+                self.write(7, regular_part)
+            self.ln(7)
+        else:
+            # No '|' - render entire title in bold
+            self.set_font(self.font_name, "B", 12)
+            self.multi_cell(0, 7, title_clean)
 
         # Company and date on same line (if both provided)
         if company or date_location:
