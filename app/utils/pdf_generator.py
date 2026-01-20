@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fpdf import FPDF  # type: ignore[import-untyped]
+from fpdf import FPDF, ViewerPreferences  # type: ignore[import-untyped]
 
 
 def _sanitize_markdown_bold(text: str) -> str:
@@ -437,6 +437,9 @@ def generate_cv_pdf(markdown: str) -> bytes:
     pdf.set_subject("Curriculum Vitae")
     pdf.set_keywords("CV, Resume, Professional Experience")
     pdf.set_creator("CV Warlock")
+
+    # Display document title in viewer (not filename)
+    pdf.viewer_preferences = ViewerPreferences(display_doc_title=True)
 
     pdf.add_page()
 
