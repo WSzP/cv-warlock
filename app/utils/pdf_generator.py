@@ -355,9 +355,9 @@ class CVPDFGenerator(FPDF):
         self.set_fill_color(*self.config.accent_dark)
         self.rect(x=0, y=band_height - 2, w=self.w, h=2, style="F")
 
-        # Position name vertically centered in the header band
-        # Font size 26pt ≈ 9mm, so center at (band_height - 9) / 2 ≈ 14.5mm
-        name_y = (band_height - 9) / 2
+        # Position name in lower portion of header band for better visual balance
+        # Font size 26pt ≈ 9mm, position so name sits ~8mm from bottom
+        name_y = band_height - 17
         self.set_xy(self.l_margin, name_y)
         self.set_font(self.font_name, "B", self.config.name_size)
         self.set_text_color(*self.config.text_on_accent)
