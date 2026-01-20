@@ -223,24 +223,21 @@ class CVPDFGenerator(FPDF):
             date_clean = date_location.strip() if date_location else ""
 
             if company_clean and date_clean:
-                # Both company and date - put on same line
-                company_width = self.get_string_width(company_clean) + 2
+                # Both company and date - combine with separator
+                combined = f"{company_clean} | {date_clean}"
+                combined_width = self.get_string_width(combined) + 2
                 available_width = self.w - self.l_margin - self.r_margin
-                date_width = self.get_string_width(date_clean) + 2
 
-                # Check if both fit on one line (with some margin)
-                if company_width + date_width < available_width - 5:
-                    self.cell(company_width, 5, company_clean)
-                    self.set_text_color(96, 96, 96)
-                    self.cell(0, 5, date_clean, ln=True, align="R")
-                    self.set_text_color(0, 0, 0)
+                self.set_text_color(96, 96, 96)
+                if combined_width < available_width:
+                    # Fits on one line
+                    self.multi_cell(0, 5, combined)
                 else:
                     # Put on separate lines if too long
                     self.multi_cell(0, 5, company_clean)
-                    self.set_text_color(96, 96, 96)
                     self.set_x(self.l_margin)
                     self.multi_cell(0, 5, date_clean)
-                    self.set_text_color(0, 0, 0)
+                self.set_text_color(0, 0, 0)
             elif company_clean:
                 # Only company
                 self.set_text_color(96, 96, 96)
@@ -284,6 +281,39 @@ class CVPDFGenerator(FPDF):
         self.set_x(self.l_margin)  # Reset to left margin
         self.multi_cell(0, 5, text.strip())
         self.ln(2)
+
+    def add_titled_paragraph(self, title: str, description: str) -> None:
+        """Add a paragraph with bold title followed by regular description.
+
+        Format: "**Title**: Description text" renders as bold title, regular text.
+        """
+        self.set_font(self.font_name, "B", 10)
+        self.set_x(self.l_margin)
+
+        title_text = f"{title}: "
+        title_width = self.get_string_width(title_text) + 2
+
+        # Measure description width
+        self.set_font(self.font_name, "", 10)
+        desc_clean = description.strip()
+        desc_width = self.get_string_width(desc_clean)
+
+        page_width = self.w - self.l_margin - self.r_margin
+
+        if (title_width + desc_width) <= page_width:
+            # Fits on one line
+            self.set_font(self.font_name, "B", 10)
+            self.cell(title_width, 5, title_text)
+            self.set_font(self.font_name, "", 10)
+            self.cell(0, 5, desc_clean, new_x="LMARGIN", new_y="NEXT")
+        else:
+            # Description wraps - put title then description on next line
+            self.set_font(self.font_name, "B", 10)
+            self.multi_cell(0, 5, title_text.rstrip())
+            self.set_font(self.font_name, "", 10)
+            self.set_x(self.l_margin)
+            self.multi_cell(0, 5, desc_clean)
+        self.ln(1)
 
     def add_skill_line(self, category: str, skills: str) -> None:
         """Add a skill category line (e.g., 'Languages: Python, TypeScript').
@@ -678,18 +708,30 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
 
 
 def _render_generic_section(pdf: CVPDFGenerator, content: list[str]) -> None:
-    """Render generic section (summary, certifications, etc.)."""
+    """Render generic section (summary, certifications, projects, etc.)."""
     for line in content:
         line = line.strip()
         if not line:
             continue
 
-        # Bullet points
+        # Bullet points (but not bold **)
         if line.startswith(("-", "*", "•")) and not line.startswith("**"):
             text = re.sub(r"^[-*•]\s*", "", line)
             text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
             text = re.sub(r"\*([^*]+)\*", r"\1", text)
             pdf.add_bullet_point(text)
+        # Bold title pattern: **Title**: Description
+        elif line.startswith("**"):
+            # Match **Title**: Description pattern
+            title_match = re.match(r"^\*\*([^*]+)\*\*:\s*(.*)$", line)
+            if title_match:
+                title = title_match.group(1).strip()
+                description = title_match.group(2).strip()
+                pdf.add_titled_paragraph(title, description)
+            else:
+                # Just bold text without colon - strip and render as paragraph
+                clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
+                pdf.add_paragraph(clean)
         # Regular text
         elif not line.startswith("#"):
             clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
