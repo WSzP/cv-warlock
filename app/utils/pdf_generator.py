@@ -318,35 +318,22 @@ class CVPDFGenerator(FPDF):
     def add_skill_line(self, category: str, skills: str) -> None:
         """Add a skill category line (e.g., 'Languages: Python, TypeScript').
 
-        If skills fit on one line with category, renders as: "Category: skill1, skill2"
-        If skills would wrap, renders category on its own line, then skills at left margin.
+        Category is bold, followed by skills on the same line. If skills wrap,
+        continuation lines start at left margin (not indented).
         """
         self.set_font(self.font_name, "B", 10)
         self.set_x(self.l_margin)
 
-        page_width = self.w - self.l_margin - self.r_margin
         cat_text = f"{category}: "
         cat_width = self.get_string_width(cat_text) + 2
-
-        # Measure skills width
-        self.set_font(self.font_name, "", 10)
         skills_clean = skills.strip()
-        skills_width = self.get_string_width(skills_clean)
 
-        # If category is too long OR skills would wrap, put skills on next line
-        # This prevents indented continuation lines
-        if cat_width > page_width * 0.4 or (cat_width + skills_width) > page_width:
-            self.set_font(self.font_name, "B", 10)
-            self.multi_cell(0, 5, cat_text.rstrip())  # Category without trailing space
-            self.set_font(self.font_name, "", 10)
-            self.set_x(self.l_margin)
-            self.multi_cell(0, 5, skills_clean)
-        else:
-            # Fits on one line
-            self.set_font(self.font_name, "B", 10)
-            self.cell(cat_width, 5, cat_text)
-            self.set_font(self.font_name, "", 10)
-            self.cell(0, 5, skills_clean, new_x="LMARGIN", new_y="NEXT")
+        # Print category (bold), stay on same line
+        self.cell(cat_width, 5, cat_text)
+
+        # Print skills (regular) - multi_cell wraps to left margin automatically
+        self.set_font(self.font_name, "", 10)
+        self.multi_cell(0, 5, skills_clean)
 
 
 def parse_markdown_cv(markdown: str) -> dict[str, Any]:
