@@ -16,10 +16,17 @@ I scaled AceTech Development from 0 to 40+ people in under two years and complet
 
 I’m also the author of User Experience Mapping and a long-time TEDx curator, bringing sharp storytelling and stakeholder alignment to every build.
 
-## Top Skills
+## Technical Skills
 
-- Technical: Python, TypeScript, Nextjs, SQL, MongoDB, Kafka, NATS, LangChain, LangGraph, LangSmith, PyTorch, Vector DBs, Prompt Engineering, HPC, Agentic AI, Autonomous Agents
-- Leadership: Strategic planning, Team scaling, Stakeholder alignment, Cross-functional collaboration
+**AI/ML Core:** Large Language Models (LLMs), OpenAI, Anthropic, Mistral, Hugging Face, Prompt Engineering, Agentic AI, Autonomous Agents
+
+**RAG & Production Systems:** Retrieval-Augmented Generation (RAG), LangChain, LlamaIndex, Ragas, Langfuse, Vector Databases, Multi-step Workflows, Tool-using Systems
+
+**Backend & Data Engineering:** Python, TypeScript, SQL, MongoDB, Kafka, APIs
+
+**AI Frameworks & Libraries:** PyTorch, LangChain, LangGraph, LangSmith
+
+**Production & DevOps:** Observability, Cost Optimization, Cloud Deployment, On-Premises Deployment, High-Performance Computing (HPC), Modern AI in Production, Reliability Engineering
 
 ## Experience
 

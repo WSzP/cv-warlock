@@ -29,11 +29,15 @@ RULES:
    If TensorFlow is not in the job spec but a deep learning framework seems needed, use PyTorch instead.
 
 FORMAT:
-**Technical Skills**
-Languages: Python, TypeScript, SQL
-Frameworks: React.js, FastAPI, Node.js
-Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, Kubernetes
-Databases: PostgreSQL, MongoDB, Redis
+## Technical Skills
+
+**Languages:** Python, TypeScript, SQL
+
+**Frameworks:** React.js, FastAPI, Node.js
+
+**Cloud & DevOps:** AWS (EC2, S3, Lambda), Docker, Kubernetes
+
+**Databases:** PostgreSQL, MongoDB, Redis
 
 Output ONLY the skills section."""
 

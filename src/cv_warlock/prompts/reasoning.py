@@ -402,18 +402,26 @@ SKILLS_GENERATION_PROMPT = """Generate the skills section based on your strategi
 
 === OUTPUT FORMAT ===
 
-**Technical Skills**
-[Category 1]: skill1, skill2, skill3
-[Category 2]: skill1, skill2, skill3
-[Category 3]: skill1, skill2, skill3
+## Technical Skills
+
+**[Category 1]:** skill1, skill2, skill3
+
+**[Category 2]:** skill1, skill2, skill3
+
+**[Category 3]:** skill1, skill2, skill3
 
 Example:
-**Technical Skills**
-Languages: Python, TypeScript, SQL, Go
-Frameworks: React.js, FastAPI, Django, Node.js
-Cloud & DevOps: Amazon Web Services (AWS), Docker, Kubernetes, CI/CD
-Databases: PostgreSQL, MongoDB, Redis, DynamoDB
-Tools: Git, JIRA, Terraform, Datadog
+## Technical Skills
+
+**Languages:** Python, TypeScript, SQL, Go
+
+**Frameworks:** React.js, FastAPI, Django, Node.js
+
+**Cloud & DevOps:** Amazon Web Services (AWS), Docker, Kubernetes, CI/CD
+
+**Databases:** PostgreSQL, MongoDB, Redis, DynamoDB
+
+**Tools:** Git, JIRA, Terraform, Datadog
 
 Write ONLY the formatted skills section. No explanations."""
 
