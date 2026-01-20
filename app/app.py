@@ -891,21 +891,30 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
                 checklist_container = st.empty()
                 timing_container = st.empty()
 
-                def update_progress(step_name: str, description: str, _elapsed: float):
+                def update_progress(step_name: str, description: str, elapsed: float):
                     nonlocal last_step, last_step_name, current_step_name, current_step_desc
                     nonlocal completed_steps, step_timings, step_start_time
 
-                    # Mark previous step as completed and record timing
-                    if current_step_name and current_step_name != step_name:
-                        completed_steps.add(current_step_name)
-                        if step_start_time is not None:
-                            step_timings[current_step_name] = time.time() - step_start_time
+                    # Distinguish START (elapsed=0) vs END (elapsed>0) events
+                    is_start_event = elapsed == 0.0
 
-                    last_step = description
-                    last_step_name = step_name
-                    current_step_name = step_name
-                    current_step_desc = description
-                    step_start_time = time.time()
+                    if is_start_event:
+                        # START event: Mark previous step complete, set new start time
+                        if current_step_name and current_step_name != step_name:
+                            completed_steps.add(current_step_name)
+                            if step_start_time is not None:
+                                step_timings[current_step_name] = time.time() - step_start_time
+
+                        last_step = description
+                        last_step_name = step_name
+                        current_step_name = step_name
+                        current_step_desc = description
+                        step_start_time = time.time()
+                    else:
+                        # END event: Record timing for this step (don't reset start time)
+                        if step_name == current_step_name and step_start_time is not None:
+                            step_timings[step_name] = time.time() - step_start_time
+                            completed_steps.add(step_name)
 
                     # Render the updated checklist
                     checklist_html = render_step_checklist(
