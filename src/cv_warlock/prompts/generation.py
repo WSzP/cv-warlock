@@ -130,11 +130,12 @@ SUMMARY: {tailored_summary}
 SKILLS: {tailored_skills}
 EXPERIENCE: {tailored_experiences}
 EDUCATION (IMMUTABLE - COPY EXACTLY): {education}
-PROJECTS: {projects}
 CERTIFICATIONS: {certifications}
 
-SECTION ORDER: Contact > Summary > Skills > Experience > Education > Projects > Certifications
-(Omit Projects/Certifications if "Not provided")
+SECTION ORDER: Contact > Summary > Skills > Experience > Education > Certifications (only if provided)
+If CERTIFICATIONS shows "Not provided", do NOT include a Certifications section.
+
+CRITICAL: Do NOT add a Projects section. Projects are NOT part of this CV format.
 
 === IMMUTABLE SECTIONS - COPY EXACTLY AS PROVIDED ===
 1. CONTACT: Copy EXACTLY as provided, including markdown links. Do NOT add/remove/modify any fields.
@@ -145,7 +146,7 @@ SECTION ORDER: Contact > Summary > Skills > Experience > Education > Projects > 
    - Do NOT change degree names, institution names, or dates
    - Education is SET IN STONE - not part of tailoring
 
-OUTPUT FORMAT:
+OUTPUT FORMAT (EXACTLY these sections, no others):
 
 ## Professional Summary
 [Summary paragraph]
@@ -163,11 +164,4 @@ OUTPUT FORMAT:
 ## Education
 [COPY EDUCATION SECTION EXACTLY AS PROVIDED - NO MODIFICATIONS]
 
-## Projects
-### [Project Name] | [Role]
-[Description of project and achievements]
-
-## Certifications
-- [Certification Name] ([Year])
-
-Output the complete CV in Markdown."""
+Output ONLY these sections. Do NOT add Projects, Publications, Awards, or any other sections."""

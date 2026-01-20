@@ -283,8 +283,7 @@ WORKFLOW_STEPS = [
     ("extract_all", "Extracting CV + job in parallel"),
     ("analyze_match", "Matching profile to requirements"),
     ("create_plan", "Creating tailoring strategy"),
-    ("tailor_skills", "Tailoring skills section"),
-    ("tailor_experiences", "Tailoring work experiences"),
+    ("tailor_skills_and_experiences", "Tailoring skills + experiences in parallel"),
     ("tailor_summary", "Crafting professional summary"),
     ("assemble_cv", "Assembling final CV"),
 ]

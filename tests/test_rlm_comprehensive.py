@@ -100,6 +100,7 @@ def create_mock_standard_nodes(**overrides):
         "create_plan": MagicMock(return_value={}),
         "tailor_skills": MagicMock(return_value={}),
         "tailor_experiences": MagicMock(return_value={}),
+        "tailor_skills_and_experiences": MagicMock(return_value={}),
         "tailor_summary": MagicMock(return_value={}),
         "assemble_cv": MagicMock(return_value={}),
     }

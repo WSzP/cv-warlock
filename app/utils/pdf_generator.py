@@ -711,6 +711,24 @@ class CVPDFGenerator(FPDF):
         self.set_text_color(*self.config.text_primary)
         self.set_font(self.font_name, "", self.config.body_size)
 
+    def add_inline_bold_text(self, bold_part: str, regular_part: str) -> None:
+        """Add text with bold part followed by regular part on the same line.
+
+        Format: "**Bold** Regular text" renders as bold title inline with regular text.
+        """
+        self.set_x(self.l_margin)
+
+        # Write bold part
+        self.set_font(self.font_name, "B", self.config.body_size)
+        self.set_text_color(*self.config.text_primary)
+        bold_width = self.get_string_width(bold_part + " ") + 1
+        self.cell(bold_width, 5, bold_part + " ")
+
+        # Write regular part
+        self.set_font(self.font_name, "", self.config.body_size)
+        self.write(5, regular_part.strip())
+        self.ln(6)
+
     def add_titled_paragraph(self, title: str, description: str) -> None:
         """Add a paragraph with bold title followed by regular description.
 
@@ -1211,7 +1229,7 @@ def _render_generic_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
             text = re.sub(r"\*([^*]+)\*", r"\1", text)
             pdf.add_bullet_point(text)
-        # Bold title pattern: **Title:** Description OR **Title**: Description
+        # Bold title pattern: **Title:** Description OR **Title**: Description OR **Title** Description
         elif line.startswith("**"):
             # Match **Title:** Description (colon inside) or **Title**: Description (colon outside)
             title_match = re.match(r"^\*\*([^*]+?)(?::\*\*|\*\*:)\s*(.*)$", line)
@@ -1220,9 +1238,16 @@ def _render_generic_section(pdf: CVPDFGenerator, content: list[str]) -> None:
                 description = title_match.group(2).strip()
                 pdf.add_titled_paragraph(title, description)
             else:
-                # Standalone bold text (no colon) - render as bold title
-                clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
-                pdf.add_bold_title(clean)
+                # Match **Title** Description (bold followed by regular text, no colon)
+                inline_match = re.match(r"^\*\*([^*]+)\*\*\s+(.+)$", line)
+                if inline_match:
+                    title = inline_match.group(1).strip()
+                    description = inline_match.group(2).strip()
+                    pdf.add_inline_bold_text(title, description)
+                else:
+                    # Standalone bold text (no colon) - render as bold title
+                    clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
+                    pdf.add_bold_title(clean)
         # Regular text
         elif not line.startswith("#"):
             clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)

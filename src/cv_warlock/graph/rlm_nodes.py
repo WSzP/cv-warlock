@@ -407,6 +407,7 @@ def create_rlm_nodes(
         "create_plan": standard_nodes["create_plan"],
         "tailor_skills": standard_nodes["tailor_skills"],
         "tailor_experiences": standard_nodes["tailor_experiences"],
+        "tailor_skills_and_experiences": standard_nodes["tailor_skills_and_experiences"],
         "tailor_summary": standard_nodes["tailor_summary"],
         "assemble_cv": standard_nodes["assemble_cv"],
     }

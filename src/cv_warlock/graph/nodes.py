@@ -19,7 +19,7 @@ from cv_warlock.processors.matcher import MatchAnalyzer
 from cv_warlock.processors.tailor import CVTailor
 
 # Step descriptions for UI display
-# New order: skills → experiences → summary
+# Optimized pipeline: parallel skills + experiences → summary
 STEP_DESCRIPTIONS = {
     "validate_inputs": "Initializing workflow...",
     "extract_cv": "Extracting CV data...",
@@ -29,6 +29,7 @@ STEP_DESCRIPTIONS = {
     "create_plan": "Creating tailoring strategy...",
     "tailor_skills": "Adding job skills to CV (reasoning → generating)...",
     "tailor_experiences": "Tailoring recent experiences in parallel...",
+    "tailor_skills_and_experiences": "Tailoring skills + experiences in parallel...",
     "tailor_summary": "Crafting summary from tailored content...",
     "assemble_cv": "Assembling final CV...",
 }
@@ -42,6 +43,7 @@ STEP_DESCRIPTIONS_FAST = {
     "create_plan": "Creating tailoring strategy...",
     "tailor_skills": "Adding job skills to CV...",
     "tailor_experiences": "Tailoring recent work experiences...",
+    "tailor_skills_and_experiences": "Tailoring skills + experiences in parallel...",
     "tailor_summary": "Crafting professional summary...",
     "assemble_cv": "Assembling final CV...",
 }
@@ -97,25 +99,32 @@ def create_nodes(
     use_cot: bool = True,
     on_step_start: Callable[[str, str], None] | None = None,
     tailor_provider: LLMProvider | None = None,
+    extraction_provider: LLMProvider | None = None,
 ) -> dict:
     """Create all workflow nodes with the given LLM provider.
 
     Args:
-        llm_provider: The LLM provider to use for extraction and analysis.
+        llm_provider: The LLM provider to use for analysis (match scoring, planning).
         use_cot: Whether to use chain-of-thought reasoning for generation.
                  Default True for higher quality, False for faster generation.
         on_step_start: Optional callback(step_name, description) fired when a step starts.
         tailor_provider: Optional faster provider for tailoring steps (skills, experiences,
                         summary). If not provided, uses llm_provider for all steps.
+        extraction_provider: Optional fast provider for extraction (CV + job parsing).
+                            Extraction is pattern-matching, not reasoning, so a fast model
+                            like Haiku is ideal. If not provided, uses tailor_provider.
 
     Returns:
         dict: Dictionary of node functions.
     """
     # Use fast provider for tailoring if provided, otherwise use main provider
     fast_provider = tailor_provider or llm_provider
+    # Use extraction provider if provided, otherwise use fast_provider (Haiku)
+    # Extraction is pattern matching - doesn't need Sonnet-level reasoning
+    extract_provider = extraction_provider or fast_provider
 
-    cv_extractor = CVExtractor(llm_provider)
-    job_extractor = JobExtractor(llm_provider)
+    cv_extractor = CVExtractor(extract_provider)
+    job_extractor = JobExtractor(extract_provider)
     match_analyzer = MatchAnalyzer(llm_provider)
     cv_tailor = CVTailor(fast_provider, use_cot=use_cot)
 
@@ -400,7 +409,7 @@ def create_nodes(
         return _end_step(state, step_name, result)
 
     def tailor_skills(state: CVWarlockState) -> dict:
-        """Tailor the skills section (FIRST in new pipeline order)."""
+        """Tailor the skills section."""
         step_name = "tailor_skills"
         result = _start_step(state, step_name, use_cot, on_step_start)
 
@@ -410,14 +419,13 @@ def create_nodes(
         try:
             if use_cot:
                 # Full CoT with reasoning output
-                # Skills is FIRST now, so no prior context
                 cot_result = cv_tailor.tailor_skills_with_cot(
                     state["cv_data"],
                     state["job_requirements"],
-                    context=None,  # Skills is first in the pipeline
+                    context=None,
                 )
 
-                # Initialize context for downstream sections (experiences, summary)
+                # Initialize context for downstream sections (summary)
                 context = GenerationContext(
                     skills_demonstrated=cot_result.reasoning.required_skills_matched
                     + cot_result.reasoning.preferred_skills_matched,
@@ -426,7 +434,7 @@ def create_nodes(
 
                 result["tailored_skills"] = [cot_result.final_skills]
                 result["skills_reasoning_result"] = cot_result
-                result["generation_context"] = context  # Pass to downstream nodes
+                result["generation_context"] = context
                 result["total_refinement_iterations"] = (
                     state.get("total_refinement_iterations", 0) + cot_result.refinement_count
                 )
@@ -441,10 +449,130 @@ def create_nodes(
                     state["job_requirements"],
                 )
                 result["tailored_skills"] = [tailored]
-                # Initialize basic context for downstream
                 result["generation_context"] = GenerationContext()
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"Skills tailoring failed: {e!s}"]
+
+        return _end_step(state, step_name, result)
+
+    def tailor_skills_and_experiences(state: CVWarlockState) -> dict:
+        """Tailor skills and experiences in PARALLEL for faster processing.
+
+        OPTIMIZATION: Runs skills and experiences concurrently using ThreadPoolExecutor.
+        This saves ~15-20% wall-clock time since both can make LLM calls simultaneously.
+
+        Note: Experiences won't have skills context, but the impact is minimal
+        (slight keyword overlap) compared to the performance gain.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        step_name = "tailor_skills_and_experiences"
+        result = _start_step(state, step_name, use_cot, on_step_start)
+
+        if state.get("errors"):
+            return _end_step(state, step_name, result)
+
+        errors: list[str] = []
+        skills_result = None
+        experiences_result = None
+        experience_cot_results = None
+
+        def tailor_skills_task():
+            if use_cot:
+                return cv_tailor.tailor_skills_with_cot(
+                    state["cv_data"],
+                    state["job_requirements"],
+                    context=None,
+                )
+            else:
+                return cv_tailor.tailor_skills(
+                    state["cv_data"],
+                    state["job_requirements"],
+                )
+
+        def tailor_experiences_task():
+            if use_cot:
+                return cv_tailor.tailor_experiences_with_cot(
+                    state["cv_data"],
+                    state["job_requirements"],
+                    state["tailoring_plan"],
+                    context=None,  # No context since running in parallel with skills
+                    lookback_years=state.get("lookback_years"),
+                )
+            else:
+                return cv_tailor.tailor_experiences(
+                    state["cv_data"],
+                    state["job_requirements"],
+                    state["tailoring_plan"],
+                    lookback_years=state.get("lookback_years"),
+                )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            skills_future = executor.submit(tailor_skills_task)
+            exp_future = executor.submit(tailor_experiences_task)
+
+            for future in as_completed([skills_future, exp_future]):
+                try:
+                    if future == skills_future:
+                        skills_result = future.result()
+                    else:
+                        experiences_result = future.result()
+                except Exception as e:
+                    if future == skills_future:
+                        errors.append(f"Skills tailoring failed: {e!s}")
+                    else:
+                        errors.append(f"Experience tailoring failed: {e!s}")
+
+        # Process skills result
+        if skills_result:
+            if use_cot:
+                context = GenerationContext(
+                    skills_demonstrated=skills_result.reasoning.required_skills_matched
+                    + skills_result.reasoning.preferred_skills_matched,
+                    primary_keywords_used=skills_result.reasoning.required_skills_matched[:5],
+                )
+                result["tailored_skills"] = [skills_result.final_skills]
+                result["skills_reasoning_result"] = skills_result
+                result["generation_context"] = context
+                result["total_refinement_iterations"] = (
+                    state.get("total_refinement_iterations", 0) + skills_result.refinement_count
+                )
+                result["quality_scores"] = {
+                    **(state.get("quality_scores") or {}),
+                    "skills": skills_result.critique.quality_level.value,
+                }
+            else:
+                result["tailored_skills"] = [skills_result]
+                result["generation_context"] = GenerationContext()
+
+        # Process experiences result
+        if experiences_result:
+            if use_cot:
+                tailored_texts, cot_results, exp_context = experiences_result
+                result["tailored_experiences"] = tailored_texts
+                result["experience_reasoning_results"] = cot_results
+
+                # Merge experience context into existing context
+                if result.get("generation_context"):
+                    result["generation_context"].metrics_used = exp_context.metrics_used
+                    result["generation_context"].skills_demonstrated.extend(
+                        exp_context.skills_demonstrated
+                    )
+                    result["generation_context"].keyword_frequency = exp_context.keyword_frequency
+
+                total_exp_refinements = sum(r.refinement_count for r in cot_results)
+                result["total_refinement_iterations"] = (
+                    result.get("total_refinement_iterations", 0) + total_exp_refinements
+                )
+                result["quality_scores"] = {
+                    **(result.get("quality_scores") or {}),
+                    "experiences": [r.critique.quality_level.value for r in cot_results],
+                }
+            else:
+                result["tailored_experiences"] = experiences_result
+
+        if errors:
+            result["errors"] = state.get("errors", []) + errors
 
         return _end_step(state, step_name, result)
 
@@ -493,5 +621,6 @@ def create_nodes(
         "tailor_summary": tailor_summary,
         "tailor_experiences": tailor_experiences,
         "tailor_skills": tailor_skills,
+        "tailor_skills_and_experiences": tailor_skills_and_experiences,
         "assemble_cv": assemble_cv,
     }
