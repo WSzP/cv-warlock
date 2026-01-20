@@ -288,14 +288,17 @@ class CVPDFGenerator(FPDF):
         Format: "**Title**: Description text" renders as bold title, regular text.
         Wraps to left margin if description is long.
         """
-        self.set_font(self.font_name, "B", 10)
         self.set_x(self.l_margin)
 
         title_text = f"{title}: "
         desc_clean = description.strip()
 
-        # Use write() which continues on same line and wraps to left margin
-        self.write(5, title_text)
+        # Write title in bold - use cell for short title to ensure bold renders
+        self.set_font(self.font_name, "B", 10)
+        title_width = self.get_string_width(title_text) + 2
+        self.cell(title_width, 5, title_text)
+
+        # Write description in regular - use write() for natural wrapping
         self.set_font(self.font_name, "", 10)
         self.write(5, desc_clean)
         self.ln(6)  # Move to next line with slight spacing
@@ -306,14 +309,17 @@ class CVPDFGenerator(FPDF):
         Category is bold, followed by skills on the same line. If skills wrap,
         continuation lines start at left margin (not indented).
         """
-        self.set_font(self.font_name, "B", 10)
         self.set_x(self.l_margin)
 
         cat_text = f"{category}: "
         skills_clean = skills.strip()
 
-        # Use write() which continues on same line and wraps to left margin
-        self.write(5, cat_text)
+        # Write category in bold - use cell to ensure bold renders
+        self.set_font(self.font_name, "B", 10)
+        cat_width = self.get_string_width(cat_text) + 2
+        self.cell(cat_width, 5, cat_text)
+
+        # Write skills in regular - use write() for natural wrapping to left margin
         self.set_font(self.font_name, "", 10)
         self.write(5, skills_clean)
         self.ln(5)  # Move to next line after skills
