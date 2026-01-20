@@ -137,7 +137,7 @@ def create_nodes(
     def extract_cv(state: CVWarlockState) -> dict:
         """Extract structured data from CV."""
         step_name = "extract_cv"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         try:
             cv_data = cv_extractor.extract(state["raw_cv"])
@@ -150,7 +150,7 @@ def create_nodes(
     def extract_job(state: CVWarlockState) -> dict:
         """Extract structured data from job specification."""
         step_name = "extract_job"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         try:
             job_requirements = job_extractor.extract(state["raw_job_spec"])
@@ -174,7 +174,7 @@ def create_nodes(
         is persisted in state so downstream nodes use the enhanced skill list.
         """
         step_name = "analyze_match"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
@@ -221,7 +221,7 @@ def create_nodes(
         (via score_with_plan), this node just passes it through.
         """
         step_name = "create_plan"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
@@ -246,7 +246,7 @@ def create_nodes(
     def tailor_summary(state: CVWarlockState) -> dict:
         """Tailor the professional summary (LAST in pipeline - has full context)."""
         step_name = "tailor_summary"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
@@ -300,7 +300,7 @@ def create_nodes(
     def tailor_experiences(state: CVWarlockState) -> dict:
         """Tailor experience entries with lookback filtering (SECOND in pipeline)."""
         step_name = "tailor_experiences"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
@@ -352,7 +352,7 @@ def create_nodes(
     def tailor_skills(state: CVWarlockState) -> dict:
         """Tailor the skills section (FIRST in new pipeline order)."""
         step_name = "tailor_skills"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
@@ -401,7 +401,7 @@ def create_nodes(
     def assemble_cv(state: CVWarlockState) -> dict:
         """Assemble the final tailored CV and compute total generation time."""
         step_name = "assemble_cv"
-        result = _start_step(state, step_name, use_cot)
+        result = _start_step(state, step_name, use_cot, on_step_start)
 
         if state.get("errors"):
             return _end_step(state, step_name, result)
