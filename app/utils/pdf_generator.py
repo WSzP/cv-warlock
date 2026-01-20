@@ -259,24 +259,37 @@ class CVPDFGenerator(FPDF):
         self.ln(2)
 
     def add_skill_line(self, category: str, skills: str) -> None:
-        """Add a skill category line (e.g., 'Languages: Python, TypeScript')."""
+        """Add a skill category line (e.g., 'Languages: Python, TypeScript').
+
+        If skills fit on one line with category, renders as: "Category: skill1, skill2"
+        If skills would wrap, renders category on its own line, then skills at left margin.
+        """
         self.set_font(self.font_name, "B", 10)
-        self.set_x(self.l_margin)  # Reset to left margin
+        self.set_x(self.l_margin)
 
         page_width = self.w - self.l_margin - self.r_margin
-        cat_width = self.get_string_width(category + ": ") + 2
+        cat_text = f"{category}: "
+        cat_width = self.get_string_width(cat_text) + 2
 
-        # If category is too long (>40% of page width), put skills on next line
-        if cat_width > page_width * 0.4:
-            self.multi_cell(0, 5, f"{category}:")
+        # Measure skills width
+        self.set_font(self.font_name, "", 10)
+        skills_clean = skills.strip()
+        skills_width = self.get_string_width(skills_clean)
+
+        # If category is too long OR skills would wrap, put skills on next line
+        # This prevents indented continuation lines
+        if cat_width > page_width * 0.4 or (cat_width + skills_width) > page_width:
+            self.set_font(self.font_name, "B", 10)
+            self.multi_cell(0, 5, cat_text.rstrip())  # Category without trailing space
             self.set_font(self.font_name, "", 10)
-            self.multi_cell(0, 5, skills.strip())
+            self.set_x(self.l_margin)
+            self.multi_cell(0, 5, skills_clean)
         else:
-            self.cell(cat_width, 5, f"{category}: ")
+            # Fits on one line
+            self.set_font(self.font_name, "B", 10)
+            self.cell(cat_width, 5, cat_text)
             self.set_font(self.font_name, "", 10)
-            # Calculate remaining width
-            available_width = self.w - self.r_margin - self.get_x()
-            self._safe_multi_cell(available_width, 5, skills.strip())
+            self.cell(0, 5, skills_clean, new_x="LMARGIN", new_y="NEXT")
 
 
 def parse_markdown_cv(markdown: str) -> dict[str, Any]:
@@ -415,9 +428,15 @@ def _render_section_content(pdf: CVPDFGenerator, header: str, content: list[str]
         _render_generic_section(pdf, content)
 
 
-def _render_experience_section(pdf: CVPDFGenerator, content: list[str]) -> None:
-    """Render experience section with job entries."""
+def _parse_experience_entries(content: list[str]) -> list[dict[str, Any]]:
+    """Parse experience content into structured entries.
+
+    Each entry has: title, company, date_location, bullets (list of strings)
+    """
+    entries: list[dict[str, Any]] = []
+    current_entry: dict[str, Any] | None = None
     i = 0
+
     while i < len(content):
         line = content[i].strip()
 
@@ -426,8 +445,12 @@ def _render_experience_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             i += 1
             continue
 
-        # H3 or bold line: likely job title
+        # H3 or bold line: likely job title - starts a new entry
         if line.startswith("### ") or (line.startswith("**") and line.endswith("**")):
+            # Save previous entry
+            if current_entry:
+                entries.append(current_entry)
+
             title = re.sub(r"^###\s*", "", line)
             title = re.sub(r"^\*\*|\*\*$", "", title)
 
@@ -440,34 +463,90 @@ def _render_experience_section(pdf: CVPDFGenerator, content: list[str]) -> None:
                 # Check if it's italic (company) or contains date patterns
                 if next_line.startswith("*") or re.search(r"\d{4}", next_line):
                     # Parse company | location | date pattern
-                    parts = re.split(r"\s*[|•·]\s*", next_line.strip("*_ "))
+                    clean_line = re.sub(r"^\*\*|\*\*", "", next_line).strip()
+                    parts = re.split(r"\s*[|•·]\s*", clean_line.strip("*_ "))
                     if len(parts) >= 1:
                         company = parts[0]
                     if len(parts) >= 2:
                         date_location = " | ".join(parts[1:])
                     i += 1
 
-            pdf.add_experience_header(title, company, date_location)
+            current_entry = {
+                "title": title,
+                "company": company,
+                "date_location": date_location,
+                "bullets": [],
+            }
             i += 1
             continue
 
         # Bullet points
         if line.startswith(("-", "*", "•")) and not line.startswith("**"):
             bullet_text = re.sub(r"^[-*•]\s*", "", line)
-            # Clean markdown formatting
             bullet_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", bullet_text)
             bullet_text = re.sub(r"\*([^*]+)\*", r"\1", bullet_text)
-            pdf.add_bullet_point(bullet_text)
+            if current_entry:
+                current_entry["bullets"].append(bullet_text)
             i += 1
             continue
 
-        # Regular text
+        # Regular text - treat as a bullet if we have an entry
         if line and not line.startswith("#"):
             clean_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
             clean_text = re.sub(r"\*([^*]+)\*", r"\1", clean_text)
-            pdf.add_paragraph(clean_text)
+            if current_entry:
+                current_entry["bullets"].append(clean_text)
 
         i += 1
+
+    # Don't forget the last entry
+    if current_entry:
+        entries.append(current_entry)
+
+    return entries
+
+
+def _estimate_entry_height(entry: dict[str, Any]) -> float:
+    """Estimate the height of an experience entry in mm.
+
+    This is approximate - used to decide if we need a page break.
+    """
+    height = 7.0  # Title line
+    if entry["company"] or entry["date_location"]:
+        height += 5.0  # Company/date line
+    height += 1.0  # Spacing after header
+    # Each bullet is approximately 5-10mm depending on wrap
+    # Estimate 7mm per bullet as average
+    height += len(entry["bullets"]) * 7.0
+    return height
+
+
+def _render_experience_section(pdf: CVPDFGenerator, content: list[str]) -> None:
+    """Render experience section with job entries.
+
+    Keeps each job entry together (no page breaks within an entry)
+    and adds spacing between entries.
+    """
+    entries = _parse_experience_entries(content)
+    first_entry = True
+
+    for entry in entries:
+        # Add spacing between entries (not before first)
+        if not first_entry:
+            pdf.ln(6)
+        first_entry = False
+
+        # Check if entry fits on current page, if not start new page
+        entry_height = _estimate_entry_height(entry)
+        space_left = pdf.h - pdf.get_y() - pdf.b_margin
+        if entry_height > space_left and space_left < pdf.h * 0.5:
+            # Entry won't fit and we're past halfway down the page - new page
+            pdf.add_page()
+
+        # Render the entry
+        pdf.add_experience_header(entry["title"], entry["company"], entry["date_location"])
+        for bullet in entry["bullets"]:
+            pdf.add_bullet_point(bullet)
 
 
 def _render_skills_section(pdf: CVPDFGenerator, content: list[str]) -> None:
@@ -507,6 +586,7 @@ def _render_skills_section(pdf: CVPDFGenerator, content: list[str]) -> None:
 def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
     """Render education section."""
     i = 0
+    first_entry = True
     while i < len(content):
         line = content[i].strip()
 
@@ -516,6 +596,11 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
 
         # H3 or bold: degree/institution
         if line.startswith("### ") or (line.startswith("**") and line.endswith("**")):
+            # Add spacing between education entries (not before first)
+            if not first_entry:
+                pdf.ln(4)
+            first_entry = False
+
             title = re.sub(r"^###\s*", "", line)
             title = re.sub(r"^\*\*|\*\*$", "", title)
 
@@ -524,8 +609,15 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
 
             if i + 1 < len(content):
                 next_line = content[i + 1].strip()
-                if next_line and not next_line.startswith(("-", "*", "#")):
-                    parts = re.split(r"\s*[|•·]\s*", next_line.strip("*_ "))
+                # Check for institution line - may start with ** for bold
+                # Don't skip lines starting with ** as those are institution names
+                is_bullet = next_line.startswith(("-", "•")) or (
+                    next_line.startswith("*") and not next_line.startswith("**")
+                )
+                if next_line and not next_line.startswith("#") and not is_bullet:
+                    # Strip bold markers and parse
+                    clean_line = re.sub(r"^\*\*|\*\*", "", next_line).strip()
+                    parts = re.split(r"\s*[|•·]\s*", clean_line.strip("*_ "))
                     if len(parts) >= 1:
                         institution = parts[0]
                     if len(parts) >= 2:
@@ -536,8 +628,12 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             i += 1
             continue
 
-        # Bullet points
-        if line.startswith(("-", "*", "•")):
+        # Bullet points (but NOT bold markers **)
+        if (
+            line.startswith("-")
+            or line.startswith("•")
+            or (line.startswith("*") and not line.startswith("**"))
+        ):
             text = re.sub(r"^[-*•]\s*", "", line)
             text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
             pdf.add_bullet_point(text)
