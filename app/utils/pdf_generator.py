@@ -445,6 +445,48 @@ class CVPDFGenerator(FPDF):
 
         self.ln(line_height)
 
+    def _has_links(self, text: str) -> bool:
+        """Check if text contains markdown or angle bracket links."""
+        link_pattern = r"\[([^\]]+)\]\(([^)]+)\)|<(https?://[^>]+)>"
+        return bool(re.search(link_pattern, text))
+
+    def _render_text_with_links(self, text: str, line_height: float = 5) -> None:
+        """Render text with inline clickable links.
+
+        Supports both markdown links [text](url) and angle bracket links <url>.
+        """
+        # Find all links: markdown [text](url) and angle bracket <url>
+        link_pattern = r"\[([^\]]+)\]\(([^)]+)\)|<(https?://[^>]+)>"
+
+        last_end = 0
+
+        for match in re.finditer(link_pattern, text):
+            # Text before this link
+            before = text[last_end : match.start()]
+            if before:
+                self.write(line_height, before)
+
+            # Determine link text and URL
+            if match.group(1) and match.group(2):
+                # Markdown link [text](url)
+                display_text = match.group(1)
+                url = match.group(2)
+            else:
+                # Angle bracket link <url>
+                url = match.group(3)
+                display_text = url
+
+            # Render the clickable link in accent color
+            self.set_text_color(*self.config.accent_color)
+            self.write(line_height, display_text, url)
+            self.set_text_color(*self.config.text_primary)
+
+            last_end = match.end()
+
+        # Render any remaining text after the last link
+        if last_end < len(text):
+            self.write(line_height, text[last_end:])
+
     def add_section_header(self, title: str) -> None:
         """Add section header (H2 equivalent)."""
         self.ln(self.config.section_spacing)
@@ -469,8 +511,8 @@ class CVPDFGenerator(FPDF):
 
             # Draw horizontal accent bar from page edge to just before the text
             # Bar is vertically centered with the text
-            bar_height = 2.5
-            bar_y = start_y + 3.5  # Vertically center with text
+            bar_height = 4.5
+            bar_y = start_y + 2.5  # Vertically center with text
             bar_end_x = self.l_margin - 3  # Small gap before text
 
             self.set_fill_color(*self.config.accent_color)
@@ -582,7 +624,10 @@ class CVPDFGenerator(FPDF):
         self.ln(1)
 
     def add_bullet_point(self, text: str, indent: int = 0) -> None:
-        """Add a bullet point with proper formatting."""
+        """Add a bullet point with proper formatting.
+
+        Supports clickable links in markdown [text](url) or angle bracket <url> format.
+        """
         self.set_font(self.font_name, "", self.config.body_size)
         self.set_text_color(*self.config.text_primary)
         self.set_x(self.l_margin)
@@ -606,9 +651,13 @@ class CVPDFGenerator(FPDF):
         if available_width < 20:
             self.ln()
             self.set_x(self.l_margin + bullet_indent + 5)
-            available_width = self.w - self.r_margin - self.get_x()
 
-        self._safe_multi_cell(available_width, 5, text.strip())
+        # Check if text contains links - use special rendering if so
+        if self._has_links(text):
+            self._render_text_with_links(text.strip(), line_height=5)
+            self.ln(1)
+        else:
+            self._safe_multi_cell(available_width, 5, text.strip())
 
     def add_paragraph(self, text: str) -> None:
         """Add a regular paragraph."""
