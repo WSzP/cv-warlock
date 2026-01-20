@@ -24,6 +24,7 @@ STEP_DESCRIPTIONS = {
     "validate_inputs": "Initializing workflow...",
     "extract_cv": "Extracting CV data...",
     "extract_job": "Analyzing job requirements...",
+    "extract_all": "Extracting CV and job data in parallel...",
     "analyze_match": "Analyzing CV-job match...",
     "create_plan": "Creating tailoring strategy...",
     "tailor_skills": "Adding job skills to CV (reasoning → generating)...",
@@ -36,6 +37,7 @@ STEP_DESCRIPTIONS_FAST = {
     "validate_inputs": "Initializing workflow...",
     "extract_cv": "Extracting CV data...",
     "extract_job": "Analyzing job requirements...",
+    "extract_all": "Extracting CV and job data in parallel...",
     "analyze_match": "Analyzing CV-job match...",
     "create_plan": "Creating tailoring strategy...",
     "tailor_skills": "Adding job skills to CV...",
@@ -163,6 +165,48 @@ def create_nodes(
             result["job_requirements"] = job_requirements
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"Job extraction failed: {e!s}"]
+
+        return _end_step(state, step_name, result)
+
+    def extract_all(state: CVWarlockState) -> dict:
+        """Extract CV and job data in parallel for faster processing."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        step_name = "extract_all"
+        result = _start_step(state, step_name, use_cot, on_step_start)
+        errors: list[str] = []
+
+        def extract_cv_task():
+            return cv_extractor.extract(state["raw_cv"])
+
+        def extract_job_task():
+            return job_extractor.extract(state["raw_job_spec"])
+
+        cv_data = None
+        job_requirements = None
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            cv_future = executor.submit(extract_cv_task)
+            job_future = executor.submit(extract_job_task)
+
+            for future in as_completed([cv_future, job_future]):
+                try:
+                    if future == cv_future:
+                        cv_data = future.result()
+                    else:
+                        job_requirements = future.result()
+                except Exception as e:
+                    if future == cv_future:
+                        errors.append(f"CV extraction failed: {e!s}")
+                    else:
+                        errors.append(f"Job extraction failed: {e!s}")
+
+        if cv_data:
+            result["cv_data"] = cv_data
+        if job_requirements:
+            result["job_requirements"] = job_requirements
+        if errors:
+            result["errors"] = state.get("errors", []) + errors
 
         return _end_step(state, step_name, result)
 
@@ -443,6 +487,7 @@ def create_nodes(
         "validate_inputs": validate_inputs,
         "extract_cv": extract_cv,
         "extract_job": extract_job,
+        "extract_all": extract_all,
         "analyze_match": analyze_match,
         "create_plan": create_plan,
         "tailor_summary": tailor_summary,

@@ -276,8 +276,7 @@ def render_error_details(error_info: dict, elapsed_time: float | None = None):
 WORKFLOW_STEPS = [
     ("graph_init", "Initializing graph"),
     ("validate_inputs", "Initializing workflow"),
-    ("extract_cv", "Extracting CV structure"),
-    ("extract_job", "Analyzing job requirements"),
+    ("extract_all", "Extracting CV + job in parallel"),
     ("analyze_match", "Matching profile to requirements"),
     ("create_plan", "Creating tailoring strategy"),
     ("tailor_skills", "Tailoring skills section"),

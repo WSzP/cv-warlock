@@ -168,8 +168,7 @@ def create_cv_warlock_graph(
 
     # Add all nodes
     workflow.add_node("validate_inputs", nodes["validate_inputs"])
-    workflow.add_node("extract_cv", nodes["extract_cv"])
-    workflow.add_node("extract_job", nodes["extract_job"])
+    workflow.add_node("extract_all", nodes["extract_all"])  # Parallel CV + job extraction
     workflow.add_node("analyze_match", nodes["analyze_match"])
     workflow.add_node("create_plan", nodes["create_plan"])
     workflow.add_node("tailor_summary", nodes["tailor_summary"])
@@ -185,17 +184,14 @@ def create_cv_warlock_graph(
         "validate_inputs",
         should_continue_after_validation,
         {
-            "continue": "extract_cv",
+            "continue": "extract_all",  # Single parallel extraction node
             "error": END,
         },
     )
 
-    # Sequential extraction (parallel execution requires complex state annotations)
-    workflow.add_edge("extract_cv", "extract_job")
-
     # Conditional edge after extraction
     workflow.add_conditional_edges(
-        "extract_job",
+        "extract_all",
         should_continue_after_extraction,
         {
             "continue": "analyze_match",
@@ -271,8 +267,7 @@ def run_cv_tailoring(
     if use_cot:
         step_descriptions = {
             "validate_inputs": "Initializing workflow...",
-            "extract_cv": "Extracting CV structure...",
-            "extract_job": "Analyzing job requirements...",
+            "extract_all": "Extracting CV + job in parallel...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
             "tailor_skills": "Adding job skills to CV (reasoning → generating)...",
@@ -283,8 +278,7 @@ def run_cv_tailoring(
     else:
         step_descriptions = {
             "validate_inputs": "Initializing workflow...",
-            "extract_cv": "Extracting CV structure...",
-            "extract_job": "Analyzing job requirements...",
+            "extract_all": "Extracting CV + job in parallel...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
             "tailor_skills": "Adding job skills to CV...",
