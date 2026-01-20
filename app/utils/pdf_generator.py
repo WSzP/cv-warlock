@@ -221,7 +221,7 @@ class CVPDFGenerator(FPDF):
     Supports multiple visual styles via the `style` parameter.
     """
 
-    def __init__(self, style: CVStyle = CVStyle.PLAIN) -> None:
+    def __init__(self, style: CVStyle = CVStyle.MODERN) -> None:
         super().__init__(format="A4")
         self.style = style
         self.config = STYLE_CONFIGS[style]
@@ -652,10 +652,42 @@ class CVPDFGenerator(FPDF):
             self.ln()
             self.set_x(self.l_margin + bullet_indent + 5)
 
-        # Check if text contains links - use special rendering if so
+        # Check if text contains links - render link on new line below text
         if self._has_links(text):
-            self._render_text_with_links(text.strip(), line_height=5)
-            self.ln(1)
+            # Extract links and text separately
+            link_pattern = r"\[([^\]]+)\]\(([^)]+)\)|<(https?://[^>]+)>"
+            matches = list(re.finditer(link_pattern, text))
+
+            if matches:
+                # Get text before the first link
+                first_match = matches[0]
+                text_before = text[: first_match.start()].strip()
+
+                # Render the text part
+                if text_before:
+                    self._safe_multi_cell(available_width, 5, text_before)
+                else:
+                    self.ln(5)
+
+                # Render each link on its own indented line
+                link_indent = self.l_margin + bullet_indent + 5
+                for match in matches:
+                    if match.group(1) and match.group(2):
+                        # Markdown link [text](url) - show text as link
+                        display_text = match.group(1)
+                        url = match.group(2)
+                    else:
+                        # Angle bracket link <url>
+                        url = match.group(3)
+                        display_text = url
+
+                    self.set_x(link_indent)
+                    self.set_text_color(*self.config.accent_color)
+                    self.write(5, display_text, url)
+                    self.set_text_color(*self.config.text_primary)
+                    self.ln(5)
+            else:
+                self._safe_multi_cell(available_width, 5, text.strip())
         else:
             self._safe_multi_cell(available_width, 5, text.strip())
 
@@ -852,12 +884,12 @@ def parse_markdown_cv(markdown: str) -> dict[str, Any]:
     return result
 
 
-def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.PLAIN) -> bytes:
+def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.MODERN) -> bytes:
     """Generate a well-structured PDF from markdown CV.
 
     Args:
         markdown: The CV content in markdown format.
-        style: The visual style to use ('plain' or 'modern'). Default is 'plain'.
+        style: The visual style to use ('plain' or 'modern'). Default is 'modern'.
 
     Returns:
         PDF content as bytes.

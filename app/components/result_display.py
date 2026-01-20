@@ -324,8 +324,8 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
     with col_style:
         pdf_style = st.radio(
             "PDF Style:",
-            options=[CVStyle.PLAIN, CVStyle.MODERN],
-            format_func=lambda x: "Plain" if x == CVStyle.PLAIN else "Modern",
+            options=[CVStyle.MODERN, CVStyle.PLAIN],
+            format_func=lambda x: "Modern" if x == CVStyle.MODERN else "Plain",
             key="result_pdf_style",
             horizontal=True,
         )
