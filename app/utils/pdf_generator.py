@@ -456,28 +456,47 @@ class CVPDFGenerator(FPDF):
         display_title = title.upper() if self.config.section_header_uppercase else title
 
         if self.style == CVStyle.MODERN and self.config.section_header_band:
-            # Modern: full-width colored band with white text
-            band_height = 8
-            band_y = self.get_y()
+            # Modern: sleek left accent bar with extending line
+            start_y = self.get_y()
 
-            # Draw the colored band (full width minus small margins for elegance)
+            # Draw thick vertical accent bar on the left
+            bar_width = 4
+            bar_height = 7
             self.set_fill_color(*self.config.accent_color)
             self.rect(
-                x=self.l_margin - 5,
-                y=band_y,
-                w=self.w - self.l_margin - self.r_margin + 10,
-                h=band_height,
+                x=self.l_margin - 2,
+                y=start_y,
+                w=bar_width,
+                h=bar_height,
                 style="F",
             )
 
-            # Add text on the band
-            self.set_xy(self.l_margin, band_y + 1.5)
-            self.set_font(self.font_name, "B", self.config.section_header_size)
-            self.set_text_color(*self.config.text_on_accent)
-            self.cell(0, 5, display_title, align="L")
+            # Draw the section title in bold navy
+            text_x = self.l_margin + bar_width + 4
+            self.set_xy(text_x, start_y + 0.5)
+            self.set_font(self.font_name, "B", self.config.section_header_size + 1)
+            self.set_text_color(*self.config.accent_color)
+            title_width = self.get_string_width(display_title)
+            self.cell(title_width + 2, 6, display_title, align="L")
 
-            # Move below the band
-            self.set_y(band_y + band_height + 4)
+            # Draw elegant extending line from title to right margin
+            line_start_x = text_x + title_width + 6
+            line_y = start_y + 3.5
+            line_end_x = self.w - self.r_margin
+            if line_end_x > line_start_x + 10:
+                # Main line in accent color
+                self.set_draw_color(*self.config.accent_color)
+                self.set_line_width(0.4)
+                self.line(line_start_x, line_y, line_end_x, line_y)
+                # Small decorative end cap
+                self.set_fill_color(*self.config.accent_color)
+                self.rect(line_end_x - 2, line_y - 1, 2, 2, style="F")
+
+            # Reset line width
+            self.set_line_width(0.2)
+
+            # Move below the header
+            self.set_y(start_y + bar_height + 4)
             self.set_text_color(*self.config.text_primary)
 
         elif self.style == CVStyle.MODERN:
