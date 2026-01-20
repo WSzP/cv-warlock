@@ -161,8 +161,10 @@ class TestCreateCVWarlockGraph:
         # Model is auto-selected based on provider (Dual-Model Strategy)
         create_cv_warlock_graph(provider="openai")
 
-        # Model is auto-selected as gpt-5.2 for openai provider
-        mock_get_provider.assert_called_once_with("openai", "gpt-5.2", "test-openai-key")
+        # Dual-Model Strategy: main provider + fast provider for tailoring
+        assert mock_get_provider.call_count == 2
+        mock_get_provider.assert_any_call("openai", "gpt-5.2", "test-openai-key")  # Main
+        mock_get_provider.assert_any_call("openai", "gpt-5-mini", "test-openai-key")  # Tailor
 
     @patch("cv_warlock.graph.workflow.get_settings")
     @patch("cv_warlock.graph.workflow.get_llm_provider")
@@ -182,9 +184,14 @@ class TestCreateCVWarlockGraph:
 
         create_cv_warlock_graph(api_key="explicit-key")
 
-        mock_get_provider.assert_called_once_with(
+        # Dual-Model Strategy: main provider + fast provider for tailoring
+        assert mock_get_provider.call_count == 2
+        mock_get_provider.assert_any_call(
             "anthropic", "claude-sonnet-4-5-20250929", "explicit-key"
-        )
+        )  # Main
+        mock_get_provider.assert_any_call(
+            "anthropic", "claude-haiku-4-5-20251001", "explicit-key"
+        )  # Tailor
 
     @patch("cv_warlock.graph.workflow.get_settings")
     @patch("cv_warlock.graph.workflow.get_llm_provider")
@@ -246,8 +253,10 @@ class TestCreateCVWarlockGraph:
         # Model is auto-selected based on provider (Dual-Model Strategy)
         create_cv_warlock_graph(provider="google")
 
-        # Model is auto-selected as gemini-3-flash-preview for google provider
-        mock_get_provider.assert_called_once_with("google", "gemini-3-flash-preview", "google-key")
+        # Dual-Model Strategy: main provider + fast provider for tailoring
+        # For Google, both use gemini-3-flash-preview (it's already fast)
+        assert mock_get_provider.call_count == 2
+        mock_get_provider.assert_any_call("google", "gemini-3-flash-preview", "google-key")
 
 
 class TestRunCVTailoring:
@@ -694,6 +703,7 @@ class TestRLMWorkflowCreation:
             "validate_inputs": MagicMock(),
             "extract_cv": MagicMock(),
             "extract_job": MagicMock(),
+            "extract_all": MagicMock(),  # Parallel extraction
             "analyze_match": MagicMock(),
             "create_plan": MagicMock(),
             "tailor_summary": MagicMock(),
@@ -736,6 +746,7 @@ class TestRLMWorkflowCreation:
             "validate_inputs": MagicMock(),
             "extract_cv": MagicMock(),
             "extract_job": MagicMock(),
+            "extract_all": MagicMock(),  # Parallel extraction
             "analyze_match": MagicMock(),
             "create_plan": MagicMock(),
             "tailor_summary": MagicMock(),
@@ -784,6 +795,7 @@ class TestRLMWorkflowCreation:
             "validate_inputs": MagicMock(),
             "extract_cv": MagicMock(),
             "extract_job": MagicMock(),
+            "extract_all": MagicMock(),  # Parallel extraction
             "analyze_match": MagicMock(),
             "create_plan": MagicMock(),
             "tailor_summary": MagicMock(),
@@ -825,6 +837,7 @@ class TestRLMWorkflowCreation:
             "validate_inputs": MagicMock(),
             "extract_cv": MagicMock(),
             "extract_job": MagicMock(),
+            "extract_all": MagicMock(),  # Parallel extraction
             "analyze_match": MagicMock(),
             "create_plan": MagicMock(),
             "tailor_summary": MagicMock(),

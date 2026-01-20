@@ -279,8 +279,7 @@ class TestE2EWorkflowWithMocks:
             # Verify expected steps are tracked
             step_names = [t.get("step_name") or t.step_name for t in step_timings]
             assert "validate_inputs" in step_names
-            assert "extract_cv" in step_names
-            assert "extract_job" in step_names
+            assert "extract_all" in step_names  # Parallel extraction
 
     def test_progress_callback_receives_updates(self, sample_cv_text, sample_job_text):
         """Test that progress callback is invoked for each step."""
@@ -324,7 +323,7 @@ class TestE2EWorkflowWithMocks:
             # Check that key steps were reported
             reported_steps = [step for step, _, _ in progress_updates]
             assert "validate_inputs" in reported_steps
-            assert "extract_cv" in reported_steps
+            assert "extract_all" in reported_steps  # Parallel extraction
 
 
 class TestE2EWorkflowSmoke:

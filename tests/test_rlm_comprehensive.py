@@ -87,6 +87,13 @@ def create_mock_standard_nodes(**overrides):
         "extract_job": MagicMock(
             return_value={"job_requirements": None, "current_step": "extract_job"}
         ),
+        "extract_all": MagicMock(
+            return_value={
+                "cv_data": None,
+                "job_requirements": None,
+                "current_step": "extract_all",
+            }
+        ),
         "analyze_match": MagicMock(
             return_value={"match_analysis": None, "current_step": "analyze_match"}
         ),

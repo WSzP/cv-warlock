@@ -96,8 +96,7 @@ def tailor(
     # Step descriptions for display
     step_labels = {
         "validate_inputs": "Initializing",
-        "extract_cv": "Extracting CV",
-        "extract_job": "Analyzing job",
+        "extract_all": "Extracting CV + job",
         "analyze_match": "Matching profile",
         "create_plan": "Creating plan",
         "tailor_skills": "Tailoring skills",
@@ -111,6 +110,10 @@ def tailor(
 
     def progress_callback(step_name: str, _description: str, elapsed: float) -> None:
         nonlocal last_elapsed
+
+        # Skip START events (elapsed=0), only display on END events (elapsed>0)
+        if elapsed == 0.0:
+            return
 
         # Calculate this step's duration from elapsed time
         step_time = elapsed - last_elapsed
@@ -239,8 +242,7 @@ def analyze(
     # Step descriptions for display
     step_labels = {
         "validate_inputs": "Initializing",
-        "extract_cv": "Extracting CV",
-        "extract_job": "Analyzing job",
+        "extract_all": "Extracting CV + job",
         "analyze_match": "Matching profile",
         "create_plan": "Creating plan",
         "tailor_skills": "Tailoring skills",
@@ -254,6 +256,10 @@ def analyze(
 
     def progress_callback(step_name: str, _description: str, elapsed: float) -> None:
         nonlocal last_elapsed
+
+        # Skip START events (elapsed=0), only display on END events (elapsed>0)
+        if elapsed == 0.0:
+            return
 
         # Calculate this step's duration from elapsed time
         step_time = elapsed - last_elapsed

@@ -396,11 +396,13 @@ def create_rlm_nodes(
             result["errors"] = state.get("errors", []) + [f"RLM match analysis fallback: {e}"]
             return result
 
-    # Return nodes dict - RLM for extraction/analysis, standard for tailoring
+    # Return nodes dict - use extract_all from standard nodes (parallel extraction)
+    # RLM extraction functions are kept but not used in the main workflow anymore
     return {
         "validate_inputs": standard_nodes["validate_inputs"],
         "extract_cv": extract_cv_rlm,
         "extract_job": extract_job_rlm,
+        "extract_all": standard_nodes["extract_all"],  # Parallel extraction
         "analyze_match": analyze_match_rlm,
         "create_plan": standard_nodes["create_plan"],
         "tailor_skills": standard_nodes["tailor_skills"],

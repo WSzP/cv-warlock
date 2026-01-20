@@ -269,8 +269,11 @@ class TestCreateNodes:
         """Test creating nodes with CoT disabled."""
         nodes = create_nodes(mock_provider, use_cot=False)
 
-        # Should still have all nodes
-        assert len(nodes) == 9
+        # Should still have all nodes (including extract_all for parallel extraction)
+        # 10 nodes: validate_inputs, extract_cv, extract_job, extract_all,
+        # analyze_match, create_plan, tailor_summary, tailor_experiences,
+        # tailor_skills, assemble_cv
+        assert len(nodes) == 10
 
 
 class TestValidateInputsNode:
