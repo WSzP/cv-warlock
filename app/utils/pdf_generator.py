@@ -317,16 +317,34 @@ class CVPDFGenerator(FPDF):
     def footer(self) -> None:
         """Add page number footer for multi-page CVs."""
         if self.page_no() > 1:
-            self.set_y(-15)
-            self.set_font(self.font_name, "I", 8)
             if self.style == CVStyle.MODERN:
-                # Modern: styled page indicator
-                self.set_text_color(*self.config.accent_color)
-                self.cell(0, 10, f"\u2014  {self.page_no()}  \u2014", align="C")
+                # Modern: elegant pill-style page number aligned right
+                self.set_y(-12)
+                page_text = str(self.page_no())
+
+                # Calculate pill dimensions
+                self.set_font(self.font_name, "B", 8)
+                text_width = self.get_string_width(page_text)
+                pill_width = text_width + 10
+                pill_height = 6
+                pill_x = self.w - self.r_margin - pill_width
+
+                # Draw pill background
+                self.set_fill_color(*self.config.accent_color)
+                self.rect(pill_x, self.get_y(), pill_width, pill_height, style="F")
+
+                # Draw page number in white
+                self.set_xy(pill_x, self.get_y() + 0.8)
+                self.set_text_color(*self.config.text_on_accent)
+                self.cell(pill_width, pill_height - 1, page_text, align="C")
+                self.set_text_color(*self.config.text_primary)
             else:
+                # Plain: simple centered page number
+                self.set_y(-15)
+                self.set_font(self.font_name, "I", 8)
                 self.set_text_color(*self.config.text_muted)
                 self.cell(0, 10, f"Page {self.page_no()}", align="C")
-            self.set_text_color(*self.config.text_primary)
+                self.set_text_color(*self.config.text_primary)
 
     def _draw_header_band(self, name: str) -> None:
         """Draw the full-width header band with name for modern style."""
@@ -429,6 +447,13 @@ class CVPDFGenerator(FPDF):
     def add_section_header(self, title: str) -> None:
         """Add section header (H2 equivalent)."""
         self.ln(self.config.section_spacing)
+
+        # Check if there's enough space for the header + minimum content
+        # If not, start a new page to avoid orphaned headers
+        min_content_height = 35  # Header + at least one entry or paragraph
+        space_left = self.h - self.get_y() - self.b_margin
+        if space_left < min_content_height:
+            self.add_page()
 
         # Apply uppercase if configured
         display_title = title.upper() if self.config.section_header_uppercase else title
