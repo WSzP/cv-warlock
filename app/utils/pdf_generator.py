@@ -699,6 +699,18 @@ class CVPDFGenerator(FPDF):
         self.multi_cell(0, 5, text.strip(), align="L")
         self.ln(2)
 
+    def add_bold_title(self, text: str) -> None:
+        """Add a standalone bold title (for project/publication entries without colon)."""
+        self.set_x(self.l_margin)
+        self.set_font(self.font_name, "B", self.config.body_size)
+        if self.style == CVStyle.MODERN:
+            self.set_text_color(*self.config.text_primary)
+        else:
+            self.set_text_color(*self.config.text_primary)
+        self.multi_cell(0, 5, text.strip(), align="L")
+        self.set_text_color(*self.config.text_primary)
+        self.set_font(self.font_name, "", self.config.body_size)
+
     def add_titled_paragraph(self, title: str, description: str) -> None:
         """Add a paragraph with bold title followed by regular description.
 
@@ -1208,9 +1220,9 @@ def _render_generic_section(pdf: CVPDFGenerator, content: list[str]) -> None:
                 description = title_match.group(2).strip()
                 pdf.add_titled_paragraph(title, description)
             else:
-                # Just bold text without colon - strip and render as paragraph
+                # Standalone bold text (no colon) - render as bold title
                 clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
-                pdf.add_paragraph(clean)
+                pdf.add_bold_title(clean)
         # Regular text
         elif not line.startswith("#"):
             clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
