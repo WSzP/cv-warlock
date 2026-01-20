@@ -47,24 +47,34 @@ def render_md_to_pdf_tool() -> None:
     # Input area
     st.subheader("Input Markdown")
 
-    use_sample = st.checkbox("Load sample markdown", value=False, key="md_to_pdf_sample")
+    # Initialize session state for markdown content
+    if "md_to_pdf_content" not in st.session_state:
+        st.session_state["md_to_pdf_content"] = ""
 
-    if use_sample:
-        sample_md = _load_sample_cv()
-        md_content = st.text_area(
-            "Paste or edit your markdown CV:",
-            value=sample_md,
-            height=400,
-            key="md_to_pdf_input",
-        )
-    else:
-        md_content = st.text_area(
-            "Paste your markdown CV:",
-            value="",
-            height=400,
-            placeholder="# Your Name\nEmail: your@email.com\n\n## Summary\n...",
-            key="md_to_pdf_input",
-        )
+    def _on_load_sample_change() -> None:
+        """Callback when sample checkbox changes."""
+        if st.session_state.get("md_to_pdf_sample"):
+            st.session_state["md_to_pdf_content"] = _load_sample_cv()
+        else:
+            st.session_state["md_to_pdf_content"] = ""
+
+    st.checkbox(
+        "Load sample markdown",
+        value=False,
+        key="md_to_pdf_sample",
+        on_change=_on_load_sample_change,
+    )
+
+    md_content = st.text_area(
+        "Paste or edit your markdown CV:",
+        value=st.session_state["md_to_pdf_content"],
+        height=400,
+        placeholder="# Your Name\nEmail: your@email.com\n\n## Summary\n...",
+        key="md_to_pdf_input",
+        on_change=lambda: st.session_state.update(
+            {"md_to_pdf_content": st.session_state["md_to_pdf_input"]}
+        ),
+    )
 
     # Word count
     word_count = len(md_content.split()) if md_content.strip() else 0
