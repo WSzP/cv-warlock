@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from app.utils.pdf_generator import generate_cv_pdf
+
+# Project root for loading sample files
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def _load_sample_cv() -> str:
+    """Load sample CV from examples directory."""
+    sample_path = PROJECT_ROOT / "examples" / "sample_cv.md"
+    if sample_path.exists():
+        return sample_path.read_text(encoding="utf-8")
+    return "# Sample CV not found\n\nPlease check examples/sample_cv.md exists."
 
 
 def render_md_to_pdf_tool() -> None:
@@ -19,42 +32,13 @@ def render_md_to_pdf_tool() -> None:
         "This uses the same PDF generation as the CV tailoring tool."
     )
 
-    # Sample markdown for reference
-    sample_md = """# John Doe
-Email: john.doe@email.com | Phone: (555) 123-4567 | LinkedIn: linkedin.com/in/johndoe
-
-## Summary
-Experienced software engineer with 8+ years building scalable web applications...
-
-## Experience
-
-### Senior Software Engineer
-**Tech Corp** | January 2022 - Present
-- Led development of microservices architecture serving 1M+ users
-- Reduced API response time by 40% through optimization
-
-### Software Engineer
-**StartupXYZ** | March 2019 - December 2021
-- Built full-stack features using React and Python
-- Mentored junior developers
-
-## Skills
-**Languages:** Python, TypeScript, Go
-**Frameworks:** React, FastAPI, Django
-**Tools:** Docker, Kubernetes, AWS
-
-## Education
-
-### Master of Science in Computer Science
-**University of Technology** | 2017 - 2019
-"""
-
     # Input area
     st.subheader("Input Markdown")
 
     use_sample = st.checkbox("Load sample markdown", value=False, key="md_to_pdf_sample")
 
     if use_sample:
+        sample_md = _load_sample_cv()
         md_content = st.text_area(
             "Paste or edit your markdown CV:",
             value=sample_md,
