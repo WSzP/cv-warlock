@@ -241,6 +241,10 @@ class CVPDFGenerator(FPDF):
 
     def _safe_multi_cell(self, w: float, h: float, text: str, **kwargs: object) -> None:
         """Multi-cell with width validation to prevent fpdf errors."""
+        # Default to left alignment if not specified
+        if "align" not in kwargs:
+            kwargs["align"] = "L"
+
         # Width of 0 means "use remaining page width" which is always safe
         if w == 0:
             self.multi_cell(w, h, text, **kwargs)  # type: ignore[arg-type]
@@ -509,7 +513,7 @@ class CVPDFGenerator(FPDF):
             self.set_fill_color(*self.config.accent_color)
             self.rect(self.l_margin - 6, marker_y, 2, 6, style="F")
 
-            self.multi_cell(0, 8, display_title)
+            self.multi_cell(0, 8, display_title, align="L")
             self.set_text_color(*self.config.text_primary)
             self.ln(2)
         else:
@@ -517,7 +521,7 @@ class CVPDFGenerator(FPDF):
             self.set_font(self.font_name, "B", self.config.section_header_size)
             self.set_x(self.l_margin)
             self.set_text_color(*self.config.text_primary)
-            self.multi_cell(0, 10, display_title)
+            self.multi_cell(0, 10, display_title, align="L")
 
             if self.config.section_header_underline:
                 self.set_draw_color(*self.config.divider_color)
@@ -557,7 +561,7 @@ class CVPDFGenerator(FPDF):
             # No '|' - render entire title in bold
             self.set_font(self.font_name, "B", title_size)
             self.set_text_color(*self.config.text_primary)
-            self.multi_cell(0, 7, title_clean)
+            self.multi_cell(0, 7, title_clean, align="L")
 
         # Company and date on same line (if both provided)
         if company or date_location:
@@ -573,19 +577,19 @@ class CVPDFGenerator(FPDF):
 
                 self.set_text_color(*self.config.text_muted)
                 if combined_width < available_width:
-                    self.multi_cell(0, 5, combined)
+                    self.multi_cell(0, 5, combined, align="L")
                 else:
-                    self.multi_cell(0, 5, company_clean)
+                    self.multi_cell(0, 5, company_clean, align="L")
                     self.set_x(self.l_margin)
-                    self.multi_cell(0, 5, date_clean)
+                    self.multi_cell(0, 5, date_clean, align="L")
                 self.set_text_color(*self.config.text_primary)
             elif company_clean:
                 self.set_text_color(*self.config.text_muted)
-                self.multi_cell(0, 5, company_clean)
+                self.multi_cell(0, 5, company_clean, align="L")
                 self.set_text_color(*self.config.text_primary)
             elif date_clean:
                 self.set_text_color(*self.config.text_muted)
-                self.multi_cell(0, 5, date_clean)
+                self.multi_cell(0, 5, date_clean, align="L")
                 self.set_text_color(*self.config.text_primary)
 
         self.ln(1)
@@ -624,7 +628,7 @@ class CVPDFGenerator(FPDF):
         self.set_font(self.font_name, "", self.config.body_size)
         self.set_text_color(*self.config.text_primary)
         self.set_x(self.l_margin)
-        self.multi_cell(0, 5, text.strip())
+        self.multi_cell(0, 5, text.strip(), align="L")
         self.ln(2)
 
     def add_titled_paragraph(self, title: str, description: str) -> None:
