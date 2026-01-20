@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from cv_warlock.models.cv import CVData
 
+# Import step descriptions from nodes module
+from cv_warlock.graph.nodes import STEP_DESCRIPTIONS
 from cv_warlock.llm.base import LLMProvider
 from cv_warlock.models.state import CVWarlockState, RLMMetadata, RLMTrajectoryStep
 from cv_warlock.rlm import (
@@ -25,9 +27,6 @@ from cv_warlock.rlm.prompts import (
     RLM_JOB_EXTRACTION_TASK,
     RLM_MATCH_ANALYSIS_TASK,
 )
-
-# Import step descriptions from nodes module
-from cv_warlock.graph.nodes import STEP_DESCRIPTIONS
 
 logger = logging.getLogger(__name__)
 
