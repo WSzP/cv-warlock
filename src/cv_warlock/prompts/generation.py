@@ -158,9 +158,14 @@ FORMAT:
 **[University]** | [Year]
 
 ## Projects
-[If relevant]
+### [Project Name] | [Role]
+[Description of project and achievements]
+
+### [Project Name] | [Role]
+[Description]
 
 ## Certifications
-[If relevant]
+- [Certification Name] ([Year])
+- [Certification Name] ([Year])
 
 Output the complete CV in Markdown."""
