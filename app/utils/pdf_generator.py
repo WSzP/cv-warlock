@@ -319,25 +319,25 @@ class CVPDFGenerator(FPDF):
         """Add page number footer for multi-page CVs."""
         if self.page_no() > 1:
             if self.style == CVStyle.MODERN:
-                # Modern: elegant pill-style page number aligned right
-                self.set_y(-12)
+                # Modern: page number in blue band that extends to bottom edge
                 page_text = str(self.page_no())
 
-                # Calculate pill dimensions
-                self.set_font(self.font_name, "B", 8)
+                # Calculate dimensions - band extends from top of text area to page bottom
+                self.set_font(self.font_name, "B", 10)
                 text_width = self.get_string_width(page_text)
-                pill_width = text_width + 10
-                pill_height = 6
-                pill_x = self.w - self.r_margin - pill_width
+                band_width = text_width + 16
+                band_height = 12  # Height of the visible band portion
+                band_x = self.w - self.r_margin - band_width
+                band_y = self.h - band_height  # Position at bottom edge
 
-                # Draw pill background
+                # Draw blue band that extends to bottom of page
                 self.set_fill_color(*self.config.accent_color)
-                self.rect(pill_x, self.get_y(), pill_width, pill_height, style="F")
+                self.rect(band_x, band_y, band_width, band_height, style="F")
 
-                # Draw page number in white
-                self.set_xy(pill_x, self.get_y() + 0.8)
+                # Draw page number in white, vertically centered in the band
+                self.set_xy(band_x, band_y + 2.5)
                 self.set_text_color(*self.config.text_on_accent)
-                self.cell(pill_width, pill_height - 1, page_text, align="C")
+                self.cell(band_width, band_height - 5, page_text, align="C")
                 self.set_text_color(*self.config.text_primary)
             else:
                 # Plain: simple centered page number
