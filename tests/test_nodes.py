@@ -405,6 +405,98 @@ class TestExtractJobNode:
         assert any("Job extraction failed" in e for e in result["errors"])
 
 
+class TestExtractAllNode:
+    """Tests for the extract_all node (parallel CV + job extraction)."""
+
+    def test_extract_all_success(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test successful parallel extraction of CV and job data."""
+        with (
+            patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=sample_cv_data),
+            patch(
+                "cv_warlock.graph.nodes.JobExtractor.extract",
+                return_value=sample_job_requirements,
+            ),
+        ):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_all"](base_state)
+
+        assert result["cv_data"] is sample_cv_data
+        assert result["job_requirements"] is sample_job_requirements
+        assert "errors" not in result or not result.get("errors")
+
+    def test_extract_all_cv_failure(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test extract_all when CV extraction fails."""
+        with (
+            patch(
+                "cv_warlock.graph.nodes.CVExtractor.extract",
+                side_effect=Exception("CV parse error"),
+            ),
+            patch(
+                "cv_warlock.graph.nodes.JobExtractor.extract",
+                return_value=sample_job_requirements,
+            ),
+        ):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_all"](base_state)
+
+        assert result["job_requirements"] is sample_job_requirements
+        assert any("CV extraction failed" in e for e in result["errors"])
+
+    def test_extract_all_job_failure(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_cv_data: CVData,
+    ) -> None:
+        """Test extract_all when job extraction fails."""
+        with (
+            patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=sample_cv_data),
+            patch(
+                "cv_warlock.graph.nodes.JobExtractor.extract",
+                side_effect=Exception("Job parse error"),
+            ),
+        ):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_all"](base_state)
+
+        assert result["cv_data"] is sample_cv_data
+        assert any("Job extraction failed" in e for e in result["errors"])
+
+    def test_extract_all_both_failures(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+    ) -> None:
+        """Test extract_all when both extractions fail."""
+        with (
+            patch(
+                "cv_warlock.graph.nodes.CVExtractor.extract",
+                side_effect=Exception("CV error"),
+            ),
+            patch(
+                "cv_warlock.graph.nodes.JobExtractor.extract",
+                side_effect=Exception("Job error"),
+            ),
+        ):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_all"](base_state)
+
+        assert "cv_data" not in result or result.get("cv_data") is None
+        assert "job_requirements" not in result or result.get("job_requirements") is None
+        assert len(result["errors"]) == 2
+
+
 class TestAnalyzeMatchNode:
     """Tests for the analyze_match node."""
 
