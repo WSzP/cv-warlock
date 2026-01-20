@@ -35,6 +35,33 @@ def _sanitize_markdown_bold(text: str) -> str:
     return text
 
 
+def _sanitize_unsupported_chars(text: str) -> str:
+    """Replace characters not supported by Poppins font with ASCII equivalents.
+
+    Poppins doesn't include certain Unicode symbols like arrows.
+    """
+    replacements = {
+        "\u2192": "->",  # → Right arrow
+        "\u2190": "<-",  # ← Left arrow
+        "\u2194": "<->",  # ↔ Left-right arrow
+        "\u21d2": "=>",  # ⇒ Double right arrow
+        "\u21d0": "<=",  # ⇐ Double left arrow
+        "\u2265": ">=",  # ≥ Greater than or equal
+        "\u2264": "<=",  # ≤ Less than or equal
+        "\u2260": "!=",  # ≠ Not equal
+        "\u2026": "...",  # … Ellipsis
+        "\u2014": "-",  # — Em dash
+        "\u2013": "-",  # – En dash
+        "\u2018": "'",  # ' Left single quote
+        "\u2019": "'",  # ' Right single quote
+        "\u201c": '"',  # " Left double quote
+        "\u201d": '"',  # " Right double quote
+    }
+    for char, replacement in replacements.items():
+        text = text.replace(char, replacement)
+    return text
+
+
 # Get the fonts directory (relative to project root)
 _FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 
@@ -373,8 +400,9 @@ def generate_cv_pdf(markdown: str) -> bytes:
     Returns:
         PDF content as bytes.
     """
-    # Sanitize malformed markdown before parsing
+    # Sanitize malformed markdown and unsupported characters before parsing
     markdown = _sanitize_markdown_bold(markdown)
+    markdown = _sanitize_unsupported_chars(markdown)
     parsed = parse_markdown_cv(markdown)
     pdf = CVPDFGenerator()
 
