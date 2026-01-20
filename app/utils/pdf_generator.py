@@ -286,34 +286,19 @@ class CVPDFGenerator(FPDF):
         """Add a paragraph with bold title followed by regular description.
 
         Format: "**Title**: Description text" renders as bold title, regular text.
+        Wraps to left margin if description is long.
         """
         self.set_font(self.font_name, "B", 10)
         self.set_x(self.l_margin)
 
         title_text = f"{title}: "
-        title_width = self.get_string_width(title_text) + 2
-
-        # Measure description width
-        self.set_font(self.font_name, "", 10)
         desc_clean = description.strip()
-        desc_width = self.get_string_width(desc_clean)
 
-        page_width = self.w - self.l_margin - self.r_margin
-
-        if (title_width + desc_width) <= page_width:
-            # Fits on one line
-            self.set_font(self.font_name, "B", 10)
-            self.cell(title_width, 5, title_text)
-            self.set_font(self.font_name, "", 10)
-            self.cell(0, 5, desc_clean, new_x="LMARGIN", new_y="NEXT")
-        else:
-            # Description wraps - put title then description on next line
-            self.set_font(self.font_name, "B", 10)
-            self.multi_cell(0, 5, title_text.rstrip())
-            self.set_font(self.font_name, "", 10)
-            self.set_x(self.l_margin)
-            self.multi_cell(0, 5, desc_clean)
-        self.ln(1)
+        # Use write() which continues on same line and wraps to left margin
+        self.write(5, title_text)
+        self.set_font(self.font_name, "", 10)
+        self.write(5, desc_clean)
+        self.ln(6)  # Move to next line with slight spacing
 
     def add_skill_line(self, category: str, skills: str) -> None:
         """Add a skill category line (e.g., 'Languages: Python, TypeScript').
@@ -325,15 +310,13 @@ class CVPDFGenerator(FPDF):
         self.set_x(self.l_margin)
 
         cat_text = f"{category}: "
-        cat_width = self.get_string_width(cat_text) + 2
         skills_clean = skills.strip()
 
-        # Print category (bold), stay on same line
-        self.cell(cat_width, 5, cat_text)
-
-        # Print skills (regular) - multi_cell wraps to left margin automatically
+        # Use write() which continues on same line and wraps to left margin
+        self.write(5, cat_text)
         self.set_font(self.font_name, "", 10)
-        self.multi_cell(0, 5, skills_clean)
+        self.write(5, skills_clean)
+        self.ln(5)  # Move to next line after skills
 
 
 def parse_markdown_cv(markdown: str) -> dict[str, Any]:
