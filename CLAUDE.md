@@ -199,3 +199,39 @@ Settings loaded via Pydantic Settings in `config.py`.
 **IMPORTANT**: Always run `uv run ruff format .` before committing to avoid CI failures.
 
 **For Claude**: When asked to commit, ALWAYS run `uv run ruff format .` first. This is implicit in any commit request.
+
+## Dependency Management
+
+**CRITICAL**: Always use the LATEST versions of all dependencies. Outdated libraries are unacceptable.
+
+### Why Latest Versions Matter
+
+- **Security**: Old versions have unpatched vulnerabilities
+- **API Access**: New features like LangChain 1.x model-agnostic `content_blocks` API
+- **Compatibility**: Modern packages expect modern dependencies
+- **Performance**: Latest versions include optimizations and bug fixes
+
+### Current Minimum Versions (LangChain 1.x ecosystem)
+
+```toml
+# LangChain 1.x with model-agnostic content_blocks API
+langchain>=1.2.6
+langchain-core>=1.2.7
+langgraph>=1.0.6
+
+# LLM providers - LangChain 1.x compatible
+langchain-openai>=1.1.7
+langchain-anthropic>=1.3.1
+langchain-google-genai>=4.2.0
+
+# Observability
+langsmith>=0.6.4
+```
+
+### Before Any PR or Feature Work
+
+1. Check PyPI for latest versions of key dependencies
+2. Update `pyproject.toml` if newer versions exist
+3. Run `uv sync --all-extras` to install updates
+4. Run `uv run pytest` to verify compatibility
+5. Never propose changes using outdated library APIs

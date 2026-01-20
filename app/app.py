@@ -45,9 +45,13 @@ def format_elapsed_time(seconds: float) -> str:
 def format_step_elapsed(seconds: float) -> str:
     """Format step elapsed time in compact bracket notation.
 
-    Examples: [1sec], [32sec], [2min 03sec]
+    Examples: [instant], [0.3sec], [1sec], [32sec], [2min 03sec]
     """
-    if seconds < 60:
+    if seconds < 0.1:
+        return "[instant]"
+    elif seconds < 1:
+        return f"[{seconds:.1f}sec]"
+    elif seconds < 60:
         return f"[{int(round(seconds))}sec]"
     else:
         minutes = int(seconds // 60)
