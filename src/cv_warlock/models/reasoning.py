@@ -262,6 +262,27 @@ class ExperienceGenerationResult(BaseModel):
         return _parse_stringified_list(v)
 
 
+class SingleExperienceReasoning(BaseModel):
+    """Reasoning for a single experience within a batch."""
+
+    experience_index: int = Field(description="Index of the experience (0-based)")
+    title: str = Field(description="Job title for this experience")
+    company: str = Field(description="Company name for this experience")
+    reasoning: ExperienceReasoning = Field(description="Full reasoning for this experience")
+
+
+class BatchExperienceReasoning(BaseModel):
+    """Batch reasoning result for multiple experiences in a single LLM call.
+
+    This model enables processing all experiences in one API call instead of N calls,
+    reducing latency by ~50% for the reasoning phase.
+    """
+
+    experiences: list[SingleExperienceReasoning] = Field(
+        description="Reasoning for each experience, indexed by position"
+    )
+
+
 # =============================================================================
 # SKILLS REASONING MODELS
 # =============================================================================

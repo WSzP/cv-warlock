@@ -218,6 +218,46 @@ Think through each step:
 Provide structured reasoning output following the ExperienceReasoning schema."""
 
 
+BATCH_EXPERIENCE_REASONING_PROMPT = """You are a CV strategist. Analyze ALL the following experiences and provide reasoning for each one in a SINGLE response.
+
+=== TARGET ROLE ===
+{job_title}
+
+Key Requirements: {target_requirements}
+
+Skills to Emphasize: {skills_to_emphasize}
+
+=== EXPERIENCES TO ANALYZE ===
+{experiences_text}
+
+=== CONTEXT FROM PREVIOUS SECTIONS ===
+Identity established in summary: {established_identity}
+Keywords already heavily used: {keywords_already_used}
+Metrics already featured: {metrics_already_used}
+
+=== YOUR TASK ===
+
+For EACH experience listed above, provide reasoning following these steps:
+
+1. **RELEVANCE SCORE** (0.0 to 1.0): How relevant is this experience to the target role?
+
+2. **EMPHASIS STRATEGY**: Based on relevance (keep CV scannable!):
+   - HIGH (0.7+): 4-5 bullets max - cornerstone experience
+   - MEDIUM (0.4-0.7): 3 focused bullets
+   - LOW (<0.4): 2 brief bullets
+
+3. **ACHIEVEMENT PRIORITIZATION**: Which achievements prove fit for target role?
+
+4. **KEYWORD INJECTION PLAN**: Which job posting terms fit naturally?
+
+5. **BULLET-BY-BULLET REASONING**: For each bullet you'll create:
+   - Original content, relevance, metric, power verb, keywords, reframed version
+
+6. **ASPECTS TO DOWNPLAY**: What doesn't help the application?
+
+Return a BatchExperienceReasoning with reasoning for ALL experiences. Match each reasoning to the correct experience_index (0-based)."""
+
+
 EXPERIENCE_GENERATION_PROMPT = """Generate experience bullets based on your strategic reasoning.
 
 === YOUR REASONING ===

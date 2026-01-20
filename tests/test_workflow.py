@@ -709,6 +709,7 @@ class TestRLMWorkflowCreation:
             "tailor_summary": MagicMock(),
             "tailor_experiences": MagicMock(),
             "tailor_skills": MagicMock(),
+            "tailor_skills_and_experiences": MagicMock(),  # Parallel skills + experiences
             "assemble_cv": MagicMock(),
         }
 
@@ -752,6 +753,7 @@ class TestRLMWorkflowCreation:
             "tailor_summary": MagicMock(),
             "tailor_experiences": MagicMock(),
             "tailor_skills": MagicMock(),
+            "tailor_skills_and_experiences": MagicMock(),  # Parallel skills + experiences
             "assemble_cv": MagicMock(),
         }
 
@@ -801,6 +803,7 @@ class TestRLMWorkflowCreation:
             "tailor_summary": MagicMock(),
             "tailor_experiences": MagicMock(),
             "tailor_skills": MagicMock(),
+            "tailor_skills_and_experiences": MagicMock(),
             "assemble_cv": MagicMock(),
         }
 
@@ -843,6 +846,7 @@ class TestRLMWorkflowCreation:
             "tailor_summary": MagicMock(),
             "tailor_experiences": MagicMock(),
             "tailor_skills": MagicMock(),
+            "tailor_skills_and_experiences": MagicMock(),  # Parallel skills + experiences
             "assemble_cv": MagicMock(),
         }
 

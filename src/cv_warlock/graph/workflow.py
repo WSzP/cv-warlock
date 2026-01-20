@@ -151,8 +151,9 @@ def create_cv_warlock_graph(
         )
     else:
         # Non-RLM mode: Dual-Model Strategy
-        # - Extraction/analysis: balanced model (Sonnet, GPT-5.2, Gemini Flash) for quality
-        # - Tailoring: fast model (Haiku, GPT-5-mini, Gemini Flash) for speed
+        # - Analysis: balanced model (Sonnet, GPT-5.2, Gemini Flash) for quality scoring
+        # - Extraction + Tailoring: fast model (Haiku, GPT-5-mini, Gemini Flash) for speed
+        #   Extraction is pattern-matching, not reasoning, so fast model is ideal
         llm_provider = get_llm_provider(provider, model, api_key)
         fast_model = _get_fast_model_for_provider(provider)
         tailor_provider = get_llm_provider(provider, fast_model, api_key)
@@ -161,6 +162,7 @@ def create_cv_warlock_graph(
             use_cot=use_cot,
             on_step_start=on_step_start,
             tailor_provider=tailor_provider,
+            # extraction_provider defaults to tailor_provider (Haiku) - fast enough for parsing
         )
 
     # Build the graph
@@ -171,9 +173,8 @@ def create_cv_warlock_graph(
     workflow.add_node("extract_all", nodes["extract_all"])  # Parallel CV + job extraction
     workflow.add_node("analyze_match", nodes["analyze_match"])
     workflow.add_node("create_plan", nodes["create_plan"])
+    workflow.add_node("tailor_skills_and_experiences", nodes["tailor_skills_and_experiences"])
     workflow.add_node("tailor_summary", nodes["tailor_summary"])
-    workflow.add_node("tailor_experiences", nodes["tailor_experiences"])
-    workflow.add_node("tailor_skills", nodes["tailor_skills"])
     workflow.add_node("assemble_cv", nodes["assemble_cv"])
 
     # Define edges
@@ -199,11 +200,14 @@ def create_cv_warlock_graph(
         },
     )
 
-    # Sequential tailoring pipeline (new order: skills → experiences → summary)
+    # Optimized tailoring pipeline: parallel skills + experiences → summary
     workflow.add_edge("analyze_match", "create_plan")
-    workflow.add_edge("create_plan", "tailor_skills")  # Skills FIRST
-    workflow.add_edge("tailor_skills", "tailor_experiences")  # Experiences second
-    workflow.add_edge("tailor_experiences", "tailor_summary")  # Summary LAST
+    workflow.add_edge(
+        "create_plan", "tailor_skills_and_experiences"
+    )  # Skills + experiences PARALLEL
+    workflow.add_edge(
+        "tailor_skills_and_experiences", "tailor_summary"
+    )  # Summary LAST (needs context)
     workflow.add_edge("tailor_summary", "assemble_cv")
     workflow.add_edge("assemble_cv", END)
 
@@ -262,16 +266,14 @@ def run_cv_tailoring(
     )
 
     # Step descriptions for progress updates
-    # New order: skills → experiences → summary
-    # Experience tailoring runs in parallel for significant time savings
+    # Optimized pipeline: parallel skills + experiences → summary
     if use_cot:
         step_descriptions = {
             "validate_inputs": "Initializing workflow...",
             "extract_all": "Extracting CV + job in parallel...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
-            "tailor_skills": "Adding job skills to CV (reasoning → generating)...",
-            "tailor_experiences": "Tailoring recent experiences in parallel...",
+            "tailor_skills_and_experiences": "Tailoring skills + experiences in parallel...",
             "tailor_summary": "Crafting summary from tailored content...",
             "assemble_cv": "Assembling final CV...",
         }
@@ -281,8 +283,7 @@ def run_cv_tailoring(
             "extract_all": "Extracting CV + job in parallel...",
             "analyze_match": "Matching your profile to requirements...",
             "create_plan": "Creating tailoring strategy...",
-            "tailor_skills": "Adding job skills to CV...",
-            "tailor_experiences": "Tailoring recent work experiences...",
+            "tailor_skills_and_experiences": "Tailoring skills + experiences in parallel...",
             "tailor_summary": "Crafting professional summary...",
             "assemble_cv": "Assembling final CV...",
         }
