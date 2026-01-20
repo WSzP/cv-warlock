@@ -6,10 +6,22 @@ from pathlib import Path
 
 import streamlit as st
 
-from app.utils.pdf_generator import generate_cv_pdf
+from app.utils.pdf_generator import CVStyle, generate_cv_pdf
 
 # Project root for loading sample files
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# Style display names and descriptions
+STYLE_OPTIONS = {
+    CVStyle.PLAIN: {
+        "label": "Plain",
+        "description": "Classic, clean layout with centered header and subtle underlines",
+    },
+    CVStyle.MODERN: {
+        "label": "Modern",
+        "description": "Contemporary design with accent colors and refined visual hierarchy",
+    },
+}
 
 
 def _load_sample_cv() -> str:
@@ -60,6 +72,25 @@ def render_md_to_pdf_tool() -> None:
 
     st.divider()
 
+    # Style selection
+    st.subheader("PDF Style")
+
+    style_col1, style_col2 = st.columns(2)
+
+    with style_col1:
+        selected_style = st.radio(
+            "Choose a style:",
+            options=list(STYLE_OPTIONS.keys()),
+            format_func=lambda x: STYLE_OPTIONS[x]["label"],
+            key="md_to_pdf_style",
+            horizontal=True,
+        )
+
+    with style_col2:
+        st.caption(STYLE_OPTIONS[selected_style]["description"])
+
+    st.divider()
+
     # Generate button and download
     col1, col2 = st.columns([1, 2])
 
@@ -74,12 +105,15 @@ def render_md_to_pdf_tool() -> None:
     if generate_clicked and md_content.strip():
         with st.spinner("Generating PDF..."):
             try:
-                pdf_bytes = generate_cv_pdf(md_content)
+                pdf_bytes = generate_cv_pdf(md_content, style=selected_style)
 
                 # Store in session state for download
                 st.session_state["generated_pdf"] = pdf_bytes
                 st.session_state["pdf_generated"] = True
-                st.success("PDF generated successfully!")
+                st.session_state["pdf_style"] = selected_style.value
+                st.success(
+                    f"PDF generated successfully with {STYLE_OPTIONS[selected_style]['label']} style!"
+                )
 
             except Exception as e:
                 st.error(f"PDF generation failed: {e}")
@@ -88,10 +122,11 @@ def render_md_to_pdf_tool() -> None:
     # Show download button if PDF was generated
     if st.session_state.get("pdf_generated") and st.session_state.get("generated_pdf"):
         with col2:
+            style_suffix = st.session_state.get("pdf_style", "plain")
             st.download_button(
                 label="Download PDF",
                 data=st.session_state["generated_pdf"],
-                file_name="cv.pdf",
+                file_name=f"cv_{style_suffix}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )

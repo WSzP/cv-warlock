@@ -5,7 +5,7 @@ from typing import Any
 
 import streamlit as st
 
-from app.utils.pdf_generator import generate_cv_pdf
+from app.utils.pdf_generator import CVStyle, generate_cv_pdf
 from cv_warlock.models.reasoning import CoverLetterGenerationResult
 
 
@@ -293,7 +293,6 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
 
     # Download buttons
     st.write("**Download Options**")
-    col1, col2, col3 = st.columns(3)
 
     # Create Cover Letter button (full width, above download buttons)
     col_cl_btn, col_cl_status = st.columns([1, 2])
@@ -320,6 +319,24 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
     # Get the content to export (edited version)
     cv_content = st.session_state.edited_cv
 
+    # PDF style selection
+    col_style, col_desc = st.columns([1, 2])
+    with col_style:
+        pdf_style = st.radio(
+            "PDF Style:",
+            options=[CVStyle.PLAIN, CVStyle.MODERN],
+            format_func=lambda x: "Plain" if x == CVStyle.PLAIN else "Modern",
+            key="result_pdf_style",
+            horizontal=True,
+        )
+    with col_desc:
+        if pdf_style == CVStyle.MODERN:
+            st.caption("Contemporary design with accent colors and refined visual hierarchy")
+        else:
+            st.caption("Classic, clean layout with centered header and subtle underlines")
+
+    col1, col2, col3 = st.columns(3)
+
     with col1:
         st.download_button(
             label="Download Markdown",
@@ -330,13 +347,14 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
         )
 
     with col2:
-        # Generate PDF on demand
+        # Generate PDF on demand with selected style
         try:
-            pdf_bytes = generate_cv_pdf(cv_content)
+            pdf_bytes = generate_cv_pdf(cv_content, style=pdf_style)
+            style_suffix = pdf_style.value
             st.download_button(
                 label="Download PDF",
                 data=pdf_bytes,
-                file_name="tailored_cv.pdf",
+                file_name=f"tailored_cv_{style_suffix}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )

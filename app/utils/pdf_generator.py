@@ -11,13 +11,122 @@ Key structural elements:
 - Semantic bullet points
 - Clean, readable fonts (Unicode TTF for full character support)
 - Proper PDF metadata
+
+Supported styles:
+- plain: Classic, clean CV layout (original style)
+- modern: Contemporary design with accent colors and refined visual hierarchy
 """
 
 import re
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from fpdf import FPDF, ViewerPreferences  # type: ignore[import-untyped]
+
+
+class CVStyle(str, Enum):
+    """Available CV PDF styles."""
+
+    PLAIN = "plain"
+    MODERN = "modern"
+
+
+@dataclass
+class StyleConfig:
+    """Configuration for a CV style."""
+
+    # Colors (RGB tuples)
+    accent_color: tuple[int, int, int]
+    accent_light: tuple[int, int, int]
+    text_primary: tuple[int, int, int]
+    text_secondary: tuple[int, int, int]
+    text_muted: tuple[int, int, int]
+    divider_color: tuple[int, int, int]
+
+    # Typography
+    name_size: int
+    section_header_size: int
+    job_title_size: int
+    body_size: int
+    contact_size: int
+
+    # Layout
+    left_margin: float
+    top_margin: float
+    right_margin: float
+    section_spacing: float
+    entry_spacing: float
+
+    # Style features
+    use_accent_bar: bool
+    accent_bar_width: float
+    section_header_uppercase: bool
+    section_header_underline: bool
+    section_header_fill: bool
+    contact_separator: str
+
+
+# Style presets
+STYLE_CONFIGS: dict[CVStyle, StyleConfig] = {
+    CVStyle.PLAIN: StyleConfig(
+        # Colors - all grayscale for plain
+        accent_color=(0, 0, 0),
+        accent_light=(240, 240, 240),
+        text_primary=(0, 0, 0),
+        text_secondary=(64, 64, 64),
+        text_muted=(96, 96, 96),
+        divider_color=(200, 200, 200),
+        # Typography
+        name_size=18,
+        section_header_size=16,
+        job_title_size=12,
+        body_size=10,
+        contact_size=10,
+        # Layout
+        left_margin=20.0,
+        top_margin=20.0,
+        right_margin=20.0,
+        section_spacing=6.0,
+        entry_spacing=6.0,
+        # Style features
+        use_accent_bar=False,
+        accent_bar_width=0.0,
+        section_header_uppercase=True,
+        section_header_underline=True,
+        section_header_fill=False,
+        contact_separator=" | ",
+    ),
+    CVStyle.MODERN: StyleConfig(
+        # Colors - sophisticated navy/slate palette
+        accent_color=(30, 58, 95),  # Deep navy blue
+        accent_light=(240, 244, 248),  # Very light blue-gray
+        text_primary=(28, 35, 43),  # Near-black with warmth
+        text_secondary=(71, 85, 105),  # Slate gray
+        text_muted=(100, 116, 139),  # Light slate
+        divider_color=(226, 232, 240),  # Subtle divider
+        # Typography - slightly larger for modern feel
+        name_size=22,
+        section_header_size=13,
+        job_title_size=11,
+        body_size=10,
+        contact_size=9,
+        # Layout - more breathing room
+        left_margin=22.0,
+        top_margin=18.0,
+        right_margin=20.0,
+        section_spacing=8.0,
+        entry_spacing=7.0,
+        # Style features
+        use_accent_bar=True,
+        accent_bar_width=3.0,
+        section_header_uppercase=True,
+        section_header_underline=False,
+        section_header_fill=False,
+        contact_separator="  \u2022  ",  # Spaced bullet
+    ),
+}
 
 
 def _sanitize_markdown_bold(text: str) -> str:
@@ -96,12 +205,24 @@ class CVPDFGenerator(FPDF):
     Uses Poppins font (Open Font License) for full international character
     support including Romanian diacritics (ț, ș, ă, â, î), accented characters,
     and other special symbols.
+
+    Supports multiple visual styles via the `style` parameter.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, style: CVStyle = CVStyle.PLAIN) -> None:
         super().__init__(format="A4")
+        self.style = style
+        self.config = STYLE_CONFIGS[style]
+
         self.set_auto_page_break(auto=True, margin=20)
-        self.set_margins(left=20, top=20, right=20)
+        self.set_margins(
+            left=self.config.left_margin,
+            top=self.config.top_margin,
+            right=self.config.right_margin,
+        )
+
+        # Track content area offset for accent bar
+        self._content_offset = self.config.accent_bar_width + 2 if self.config.use_accent_bar else 0
 
         # Load Poppins font for professional, modern look
         self._setup_poppins_font()
@@ -166,52 +287,98 @@ class CVPDFGenerator(FPDF):
             self.font_name = "Helvetica"
 
     def header(self) -> None:
-        """Minimal header - CVs shouldn't have page headers."""
-        pass
+        """Draw page header elements (accent bar for modern style)."""
+        if self.config.use_accent_bar:
+            # Draw accent bar on left side of page
+            self.set_fill_color(*self.config.accent_color)
+            self.rect(
+                x=0,
+                y=0,
+                w=self.config.accent_bar_width,
+                h=self.h,
+                style="F",
+            )
 
     def footer(self) -> None:
         """Add page number footer for multi-page CVs."""
         if self.page_no() > 1:
             self.set_y(-15)
             self.set_font(self.font_name, "I", 8)
-            self.set_text_color(128, 128, 128)
+            self.set_text_color(*self.config.text_muted)
             self.cell(0, 10, f"Page {self.page_no()}", align="C")
-            self.set_text_color(0, 0, 0)
+            self.set_text_color(*self.config.text_primary)
 
     def add_name(self, name: str) -> None:
         """Add candidate name as main heading (H1 equivalent)."""
-        self.set_font(self.font_name, "B", 18)
+        self.set_font(self.font_name, "B", self.config.name_size)
         self.set_x(self.l_margin)  # Reset to left margin
-        self.multi_cell(0, 12, name.strip(), align="C")
-        self.ln(2)
+
+        # Modern style: accent color for name, left-aligned
+        if self.style == CVStyle.MODERN:
+            self.set_text_color(*self.config.accent_color)
+            self.multi_cell(0, 12, name.strip(), align="L")
+            self.set_text_color(*self.config.text_primary)
+            self.ln(1)
+        else:
+            self.set_text_color(*self.config.text_primary)
+            self.multi_cell(0, 12, name.strip(), align="C")
+            self.ln(2)
 
     def add_contact_line(self, contact: str) -> None:
-        """Add contact info line (centered, smaller font)."""
-        self.set_font(self.font_name, "", 10)
+        """Add contact info line."""
+        self.set_font(self.font_name, "", self.config.contact_size)
         self.set_x(self.l_margin)  # Reset to left margin
-        self.set_text_color(64, 64, 64)
-        # Use multi_cell for long contact lines that might wrap
-        self.multi_cell(0, 6, contact.strip(), align="C")
-        self.set_text_color(0, 0, 0)
+        self.set_text_color(*self.config.text_secondary)
+
+        # Modern style: left-aligned contact with styled separators
+        if self.style == CVStyle.MODERN:
+            self.multi_cell(0, 5, contact.strip(), align="L")
+        else:
+            # Plain style: centered contact
+            self.multi_cell(0, 6, contact.strip(), align="C")
+
+        self.set_text_color(*self.config.text_primary)
 
     def add_section_header(self, title: str) -> None:
-        """Add section header (H2 equivalent) with underline."""
-        self.ln(6)
-        self.set_font(self.font_name, "B", 16)
-        self.set_x(self.l_margin)  # Ensure we start at left margin
-        self.multi_cell(0, 10, title.upper())
-        # Add subtle underline
-        self.set_draw_color(200, 200, 200)
-        self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-        self.ln(3)
+        """Add section header (H2 equivalent)."""
+        self.ln(self.config.section_spacing)
+        self.set_font(self.font_name, "B", self.config.section_header_size)
+        self.set_x(self.l_margin)
+
+        # Apply uppercase if configured
+        display_title = title.upper() if self.config.section_header_uppercase else title
+
+        if self.style == CVStyle.MODERN:
+            # Modern: accent color header with small colored bar
+            self.set_text_color(*self.config.accent_color)
+
+            # Draw small accent marker before title
+            marker_y = self.get_y() + 3
+            self.set_fill_color(*self.config.accent_color)
+            self.rect(self.l_margin - 6, marker_y, 2, 6, style="F")
+
+            self.multi_cell(0, 8, display_title)
+            self.set_text_color(*self.config.text_primary)
+            self.ln(2)
+        else:
+            # Plain: black header with underline
+            self.set_text_color(*self.config.text_primary)
+            self.multi_cell(0, 10, display_title)
+
+            if self.config.section_header_underline:
+                self.set_draw_color(*self.config.divider_color)
+                self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+
+            self.ln(3)
 
     def add_experience_header(self, title: str, company: str, date_location: str) -> None:
         """Add experience entry header with title, company, and date/location.
 
         If title contains '|', renders part before '|' in bold, rest in regular.
         """
-        self.set_x(self.l_margin)  # Ensure we start at left margin
+        self.set_x(self.l_margin)
         title_clean = title.strip()
+        title_size = self.config.job_title_size
 
         # Check if title contains '|' - split into bold and regular parts
         if "|" in title_clean:
@@ -220,84 +387,89 @@ class CVPDFGenerator(FPDF):
             regular_part = "| " + parts[1].strip() if len(parts) > 1 else ""
 
             # Render bold part
-            self.set_font(self.font_name, "B", 12)
+            self.set_font(self.font_name, "B", title_size)
+            self.set_text_color(*self.config.text_primary)
             bold_width = self.get_string_width(bold_part + " ") + 2
             self.cell(bold_width, 7, bold_part + " ")
 
             # Render regular part (including '|') on same line
             if regular_part:
-                self.set_font(self.font_name, "", 12)
+                self.set_font(self.font_name, "", title_size)
+                self.set_text_color(*self.config.text_secondary)
                 self.write(7, regular_part)
+                self.set_text_color(*self.config.text_primary)
             self.ln(7)
         else:
             # No '|' - render entire title in bold
-            self.set_font(self.font_name, "B", 12)
+            self.set_font(self.font_name, "B", title_size)
+            self.set_text_color(*self.config.text_primary)
             self.multi_cell(0, 7, title_clean)
 
         # Company and date on same line (if both provided)
         if company or date_location:
-            self.set_font(self.font_name, "", 10)
-            self.set_x(self.l_margin)  # Reset position after multi_cell
+            self.set_font(self.font_name, "", self.config.body_size)
+            self.set_x(self.l_margin)
             company_clean = company.strip() if company else ""
             date_clean = date_location.strip() if date_location else ""
 
             if company_clean and date_clean:
-                # Both company and date - combine with separator
                 combined = f"{company_clean} | {date_clean}"
                 combined_width = self.get_string_width(combined) + 2
                 available_width = self.w - self.l_margin - self.r_margin
 
-                self.set_text_color(96, 96, 96)
+                self.set_text_color(*self.config.text_muted)
                 if combined_width < available_width:
-                    # Fits on one line
                     self.multi_cell(0, 5, combined)
                 else:
-                    # Put on separate lines if too long
                     self.multi_cell(0, 5, company_clean)
                     self.set_x(self.l_margin)
                     self.multi_cell(0, 5, date_clean)
-                self.set_text_color(0, 0, 0)
+                self.set_text_color(*self.config.text_primary)
             elif company_clean:
-                # Only company
-                self.set_text_color(96, 96, 96)
+                self.set_text_color(*self.config.text_muted)
                 self.multi_cell(0, 5, company_clean)
-                self.set_text_color(0, 0, 0)
+                self.set_text_color(*self.config.text_primary)
             elif date_clean:
-                # Only date
-                self.set_text_color(96, 96, 96)
+                self.set_text_color(*self.config.text_muted)
                 self.multi_cell(0, 5, date_clean)
-                self.set_text_color(0, 0, 0)
+                self.set_text_color(*self.config.text_primary)
 
         self.ln(1)
 
     def add_bullet_point(self, text: str, indent: int = 0) -> None:
         """Add a bullet point with proper formatting."""
-        self.set_font(self.font_name, "", 10)
-        self.set_x(self.l_margin)  # Reset to left margin
+        self.set_font(self.font_name, "", self.config.body_size)
+        self.set_text_color(*self.config.text_primary)
+        self.set_x(self.l_margin)
 
-        bullet_indent = 5 + (indent * 5)  # Indent for nested bullets
+        bullet_indent = 5 + (indent * 5)
 
-        # Write bullet with indent
-        self.cell(bullet_indent, 5, "")  # Indent space
-        self.cell(5, 5, "•")  # Bullet character
+        # Modern style: accent-colored bullet
+        if self.style == CVStyle.MODERN:
+            self.cell(bullet_indent, 5, "")
+            self.set_text_color(*self.config.accent_color)
+            self.cell(5, 5, "\u2022")  # Bullet character
+            self.set_text_color(*self.config.text_primary)
+        else:
+            self.cell(bullet_indent, 5, "")
+            self.cell(5, 5, "\u2022")
 
-        # Calculate available width for text (from current position to right margin)
+        # Calculate available width for text
         text_start_x = self.get_x()
         available_width = self.w - self.r_margin - text_start_x
 
-        # Ensure minimum width to prevent fpdf error
         if available_width < 20:
             self.ln()
             self.set_x(self.l_margin + bullet_indent + 5)
             available_width = self.w - self.r_margin - self.get_x()
 
-        # Text with word wrap
         self._safe_multi_cell(available_width, 5, text.strip())
 
     def add_paragraph(self, text: str) -> None:
         """Add a regular paragraph."""
-        self.set_font(self.font_name, "", 10)
-        self.set_x(self.l_margin)  # Reset to left margin
+        self.set_font(self.font_name, "", self.config.body_size)
+        self.set_text_color(*self.config.text_primary)
+        self.set_x(self.l_margin)
         self.multi_cell(0, 5, text.strip())
         self.ln(2)
 
@@ -312,15 +484,20 @@ class CVPDFGenerator(FPDF):
         title_text = f"{title}: "
         desc_clean = description.strip()
 
-        # Write title in bold - use cell for short title to ensure bold renders
-        self.set_font(self.font_name, "B", 10)
+        # Write title in bold
+        self.set_font(self.font_name, "B", self.config.body_size)
+        if self.style == CVStyle.MODERN:
+            self.set_text_color(*self.config.accent_color)
+        else:
+            self.set_text_color(*self.config.text_primary)
         title_width = self.get_string_width(title_text) + 2
         self.cell(title_width, 5, title_text)
 
-        # Write description in regular - use write() for natural wrapping
-        self.set_font(self.font_name, "", 10)
+        # Write description in regular
+        self.set_font(self.font_name, "", self.config.body_size)
+        self.set_text_color(*self.config.text_primary)
         self.write(5, desc_clean)
-        self.ln(6)  # Move to next line with slight spacing
+        self.ln(6)
 
     def add_skill_line(self, category: str, skills: str) -> None:
         """Add a skill category line (e.g., 'Languages: Python, TypeScript').
@@ -333,15 +510,20 @@ class CVPDFGenerator(FPDF):
         cat_text = f"{category}: "
         skills_clean = skills.strip()
 
-        # Write category in bold - use cell to ensure bold renders
-        self.set_font(self.font_name, "B", 10)
+        # Write category in bold
+        self.set_font(self.font_name, "B", self.config.body_size)
+        if self.style == CVStyle.MODERN:
+            self.set_text_color(*self.config.accent_color)
+        else:
+            self.set_text_color(*self.config.text_primary)
         cat_width = self.get_string_width(cat_text) + 2
         self.cell(cat_width, 5, cat_text)
 
-        # Write skills in regular - use write() for natural wrapping to left margin
-        self.set_font(self.font_name, "", 10)
+        # Write skills in regular
+        self.set_font(self.font_name, "", self.config.body_size)
+        self.set_text_color(*self.config.text_primary)
         self.write(5, skills_clean)
-        self.ln(5)  # Move to next line after skills
+        self.ln(5)
 
 
 def parse_markdown_cv(markdown: str) -> dict[str, Any]:
@@ -416,20 +598,25 @@ def parse_markdown_cv(markdown: str) -> dict[str, Any]:
     return result
 
 
-def generate_cv_pdf(markdown: str) -> bytes:
+def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.PLAIN) -> bytes:
     """Generate a well-structured PDF from markdown CV.
 
     Args:
         markdown: The CV content in markdown format.
+        style: The visual style to use ('plain' or 'modern'). Default is 'plain'.
 
     Returns:
         PDF content as bytes.
     """
+    # Convert string to CVStyle enum if needed
+    if isinstance(style, str):
+        style = CVStyle(style.lower())
+
     # Sanitize malformed markdown and unsupported characters before parsing
     markdown = _sanitize_markdown_bold(markdown)
     markdown = _sanitize_unsupported_chars(markdown)
     parsed = parse_markdown_cv(markdown)
-    pdf = CVPDFGenerator()
+    pdf = CVPDFGenerator(style=style)
 
     # Set PDF metadata for better indexing
     pdf.set_title(f"{parsed['name']} | CV" if parsed["name"] else "Tailored CV")
@@ -448,11 +635,13 @@ def generate_cv_pdf(markdown: str) -> bytes:
         pdf.add_name(parsed["name"])
 
     # Contact info
+    config = STYLE_CONFIGS[style]
     for contact in parsed["contact"]:
         # Clean markdown formatting from contact line
         clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", contact)  # Remove bold
         clean = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean)  # Links to text
-        clean = re.sub(r"[|•·]", " | ", clean)  # Normalize separators
+        # Use style-appropriate separator
+        clean = re.sub(r"[|•·]", config.contact_separator, clean)
         clean = re.sub(r"\s+", " ", clean).strip()
         if clean:
             pdf.add_contact_line(clean)
