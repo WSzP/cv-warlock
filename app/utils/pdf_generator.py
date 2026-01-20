@@ -166,22 +166,13 @@ def _sanitize_markdown_bold(text: str) -> str:
 
 
 def _sanitize_unsupported_chars(text: str) -> str:
-    """Replace characters not supported by Poppins font with ASCII equivalents.
+    """Replace characters not well-supported across fonts with ASCII equivalents.
 
-    Poppins doesn't include certain Unicode symbols like arrows.
+    Most Unicode symbols (arrows, math symbols) are handled by the DejaVu Sans
+    fallback font. Only replace characters that cause rendering issues.
     """
     replacements = {
-        "\u2192": "->",  # → Right arrow
-        "\u2190": "<-",  # ← Left arrow
-        "\u2194": "<->",  # ↔ Left-right arrow
-        "\u21d2": "=>",  # ⇒ Double right arrow
-        "\u21d0": "<=",  # ⇐ Double left arrow
-        "\u2265": ">=",  # ≥ Greater than or equal
-        "\u2264": "<=",  # ≤ Less than or equal
-        "\u2260": "!=",  # ≠ Not equal
-        "\u2026": "...",  # … Ellipsis
-        "\u2014": "-",  # — Em dash
-        "\u2013": "-",  # – En dash
+        # Curly quotes to straight quotes (stylistic consistency)
         "\u2018": "'",  # ' Left single quote
         "\u2019": "'",  # ' Right single quote
         "\u201c": '"',  # " Left double quote
@@ -293,7 +284,7 @@ class CVPDFGenerator(FPDF):
         self.multi_cell(safe_width, h, text, **kwargs)  # type: ignore[arg-type]
 
     def _setup_poppins_font(self) -> None:
-        """Set up Poppins font for the PDF."""
+        """Set up Poppins font with DejaVu Sans fallback for Unicode symbols."""
         fonts = _get_poppins_fonts()
 
         if fonts:
@@ -303,6 +294,12 @@ class CVPDFGenerator(FPDF):
             self.add_font("Poppins", "I", str(fonts["italic"]))
             self.add_font("Poppins", "BI", str(fonts["bold_italic"]))
             self.font_name = "Poppins"
+
+            # Add DejaVu Sans as fallback for Unicode symbols (arrows, math, etc.)
+            dejavu_path = _FONTS_DIR / "DejaVuSans.ttf"
+            if dejavu_path.exists():
+                self.add_font("DejaVuSans", "", str(dejavu_path))
+                self.set_fallback_fonts(["DejaVuSans"])
         else:
             # Fallback to built-in Helvetica (limited character support)
             self.font_name = "Helvetica"
