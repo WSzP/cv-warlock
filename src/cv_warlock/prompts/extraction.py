@@ -16,6 +16,7 @@ CV_EXTRACTION_PROMPT = """Extract ALL structured data from this CV. Preserve exa
 - Technologies used, team size managed, scope (budget, impact)
 
 **EDUCATION**: Degree, field, institution, year, GPA (if 3.5+), honors
+- **raw_education_text**: Copy the ENTIRE education section EXACTLY as it appears in the CV, preserving ALL formatting, line breaks, and details (including "All But Dissertation", honors, thesis titles, etc.). This field is IMMUTABLE during tailoring.
 
 **SKILLS**: Languages, frameworks, tools, cloud, databases, methodologies
 

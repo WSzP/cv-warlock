@@ -130,6 +130,10 @@ class CVData(BaseModel):
     projects: list[Project] = Field(default_factory=list)
     certifications: list[Certification] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
+    raw_education_text: str | None = Field(
+        default=None,
+        description="Original education section exactly as it appears in the CV - DO NOT modify during tailoring",
+    )
 
     @field_validator("skills", "languages", mode="before")
     @classmethod

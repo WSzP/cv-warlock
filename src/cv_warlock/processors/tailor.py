@@ -1077,12 +1077,17 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
             if contact.github:
                 contact_str += f"GitHub: {contact.github}\n"
 
-        # Format education
-        education_str = ""
-        for edu in cv_data.education:
-            education_str += f"**{edu.degree}** - {edu.institution} ({edu.graduation_date})\n"
-            if edu.gpa:
-                education_str += f"GPA: {edu.gpa}\n"
+        # Format education - prefer raw text to preserve EXACT original formatting
+        # Education is IMMUTABLE during tailoring - never modify it
+        if cv_data.raw_education_text:
+            education_str = cv_data.raw_education_text
+        else:
+            # Fallback to structured data if raw text not available
+            education_str = ""
+            for edu in cv_data.education:
+                education_str += f"**{edu.degree}** - {edu.institution} ({edu.graduation_date})\n"
+                if edu.gpa:
+                    education_str += f"GPA: {edu.gpa}\n"
 
         # Format projects
         projects_str = ""

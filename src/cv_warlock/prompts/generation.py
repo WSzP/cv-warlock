@@ -125,20 +125,27 @@ Output ONLY the summary."""
 
 CV_ASSEMBLY_PROMPT = """Assemble these sections into a clean, ATS-compatible CV in Markdown.
 
-CONTACT (USE EXACTLY AS PROVIDED - DO NOT MODIFY): {contact}
+CONTACT (IMMUTABLE - COPY EXACTLY): {contact}
 SUMMARY: {tailored_summary}
 SKILLS: {tailored_skills}
 EXPERIENCE: {tailored_experiences}
-EDUCATION: {education}
+EDUCATION (IMMUTABLE - COPY EXACTLY): {education}
 PROJECTS: {projects}
 CERTIFICATIONS: {certifications}
 
 SECTION ORDER: Contact > Summary > Skills > Experience > Education > Projects > Certifications
 (Omit Projects/Certifications if "Not provided")
 
-CRITICAL: The CONTACT section is pre-formatted. Copy it EXACTLY as provided above, including any markdown links. Do NOT add city, country, or any other fields not already present.
+=== IMMUTABLE SECTIONS - COPY EXACTLY AS PROVIDED ===
+1. CONTACT: Copy EXACTLY as provided, including markdown links. Do NOT add/remove/modify any fields.
+2. EDUCATION: This section is IMMUTABLE and MUST NOT be modified in ANY way.
+   - Copy the ENTIRE education section EXACTLY as provided
+   - Do NOT reformat, reorganize, or "improve" it
+   - Do NOT remove ANY details (including "All But Dissertation", partial completion, honors, thesis titles, GPA, etc.)
+   - Do NOT change degree names, institution names, or dates
+   - Education is SET IN STONE - not part of tailoring
 
-FORMAT:
+OUTPUT FORMAT:
 
 ## Professional Summary
 [Summary paragraph]
@@ -154,18 +161,13 @@ FORMAT:
 - [Bullet]
 
 ## Education
-### [Degree] in [Field]
-**[University]** | [Year]
+[COPY EDUCATION SECTION EXACTLY AS PROVIDED - NO MODIFICATIONS]
 
 ## Projects
 ### [Project Name] | [Role]
 [Description of project and achievements]
 
-### [Project Name] | [Role]
-[Description]
-
 ## Certifications
-- [Certification Name] ([Year])
 - [Certification Name] ([Year])
 
 Output the complete CV in Markdown."""
