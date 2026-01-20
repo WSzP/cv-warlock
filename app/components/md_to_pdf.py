@@ -11,15 +11,15 @@ from app.utils.pdf_generator import CVStyle, generate_cv_pdf
 # Project root for loading sample files
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
-# Style display names and descriptions
+# Style display names and descriptions (Modern first = default)
 STYLE_OPTIONS = {
-    CVStyle.PLAIN: {
-        "label": "Plain",
-        "description": "Classic, clean layout with centered header and subtle underlines",
-    },
     CVStyle.MODERN: {
         "label": "Modern",
         "description": "Contemporary design with accent colors and refined visual hierarchy",
+    },
+    CVStyle.PLAIN: {
+        "label": "Plain",
+        "description": "Classic, clean layout with centered header and subtle underlines",
     },
 }
 
