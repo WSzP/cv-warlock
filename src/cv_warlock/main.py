@@ -62,11 +62,11 @@ def tailor(
             help="Only tailor jobs ending within N years (default: 4)",
         ),
     ] = None,
-    no_rlm: Annotated[
+    rlm: Annotated[
         bool,
         typer.Option(
-            "--no-rlm",
-            help="Disable RLM (Recursive Language Model) for large document handling",
+            "--rlm",
+            help="Enable RLM (Recursive Language Model) for large document handling",
         ),
     ] = False,
     verbose: Annotated[
@@ -90,7 +90,7 @@ def tailor(
         console.print(f"[dim]Job:[/dim] {job}")
         console.print(f"[dim]Provider:[/dim] {provider} (model auto-selected)")
         console.print(f"[dim]Lookback:[/dim] {lookback_years or 4} years")
-        console.print(f"[dim]RLM Mode:[/dim] {'Disabled' if no_rlm else 'Enabled'}")
+        console.print(f"[dim]RLM Mode:[/dim] {'Enabled' if rlm else 'Disabled'}")
         console.print()
 
     # Step descriptions for display
@@ -129,7 +129,7 @@ def tailor(
             raw_job_spec=raw_job_spec,
             provider=provider,
             lookback_years=lookback_years,
-            use_rlm=not no_rlm,
+            use_rlm=rlm,
             progress_callback=progress_callback,
         )
 
@@ -142,7 +142,7 @@ def tailor(
     console.print(f"\n[bold]Total time:[/bold] {format_time(total_time)}")
 
     # Show RLM metadata if used
-    if not no_rlm and result.get("rlm_metadata"):
+    if rlm and result.get("rlm_metadata"):
         rlm_meta = result["rlm_metadata"]
         if rlm_meta.get("used"):
             console.print(
@@ -216,11 +216,11 @@ def analyze(
         Literal["openai", "anthropic", "google"],
         typer.Option("--provider", "-p", help="LLM provider (model auto-selected)"),
     ] = "anthropic",
-    no_rlm: Annotated[
+    rlm: Annotated[
         bool,
         typer.Option(
-            "--no-rlm",
-            help="Disable RLM (Recursive Language Model) for large document handling",
+            "--rlm",
+            help="Enable RLM (Recursive Language Model) for large document handling",
         ),
     ] = False,
 ) -> None:
@@ -271,7 +271,7 @@ def analyze(
             raw_cv=raw_cv,
             raw_job_spec=raw_job_spec,
             provider=provider,
-            use_rlm=not no_rlm,
+            use_rlm=rlm,
             progress_callback=progress_callback,
         )
 
@@ -284,7 +284,7 @@ def analyze(
     console.print(f"\n[bold]Total time:[/bold] {format_time(total_time)}")
 
     # Show RLM metadata if used
-    if not no_rlm and result.get("rlm_metadata"):
+    if rlm and result.get("rlm_metadata"):
         rlm_meta = result["rlm_metadata"]
         if rlm_meta.get("used"):
             console.print(

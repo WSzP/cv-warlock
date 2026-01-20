@@ -849,7 +849,7 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
             "provider": provider,
             "api_key": effective_api_key,
             "use_cot": True,  # Always use high quality CoT mode
-            "use_rlm": st.session_state.get("use_rlm", True),
+            "use_rlm": st.session_state.get("use_rlm", False),
             "lookback_years": st.session_state.get("lookback_years", 4),
             "assume_all_tech_skills": st.session_state.get("assume_all_tech_skills", True),
         }
