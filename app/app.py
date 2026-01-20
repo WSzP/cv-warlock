@@ -17,6 +17,7 @@ load_dotenv(project_root / ".env.local")
 import streamlit as st  # noqa: E402
 from components.cv_input import render_cv_input  # noqa: E402
 from components.job_input import render_job_input  # noqa: E402
+from components.md_to_pdf import render_md_to_pdf_tool  # noqa: E402
 from components.result_display import render_result  # noqa: E402
 
 
@@ -443,6 +444,19 @@ def main():
 
     # Sidebar configuration
     with st.sidebar:
+        # Tool selector
+        st.title("Tools")
+        selected_tool = st.radio(
+            "Select tool",
+            options=["CV Tailoring", "Markdown to PDF"],
+            index=0,
+            key="selected_tool",
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+
+        st.divider()
+
         st.title("AI Provider")
 
         provider = st.selectbox(
@@ -612,7 +626,12 @@ def main():
             "🧙 This langchain experiment was created by [Peter W. Szabo](https://www.linkedin.com/in/wszabopeter/)."
         )
 
-    # Main content - Header with logo and title
+    # Handle tool selection
+    if selected_tool == "Markdown to PDF":
+        render_md_to_pdf_tool()
+        return
+
+    # Main content - Header with logo and title (CV Tailoring tool)
     logo_path = project_root / "assets/cv-warlock-logo-small.webp"
 
     # Logo on left, title + tagline on right

@@ -25,6 +25,7 @@ from cv_warlock.rlm.prompts import (
     RLM_JOB_EXTRACTION_TASK,
     RLM_MATCH_ANALYSIS_TASK,
 )
+
 # Import step descriptions from nodes module
 from cv_warlock.graph.nodes import STEP_DESCRIPTIONS
 
@@ -145,9 +146,7 @@ def create_rlm_nodes(
     from cv_warlock.graph.nodes import create_nodes
 
     # Create standard nodes as fallback
-    standard_nodes = create_nodes(
-        root_provider, use_cot=use_cot, on_step_start=on_step_start
-    )
+    standard_nodes = create_nodes(root_provider, use_cot=use_cot, on_step_start=on_step_start)
 
     # Create RLM orchestrator
     orchestrator = RLMOrchestrator(
@@ -183,7 +182,7 @@ def create_rlm_nodes(
             base_desc = STEP_DESCRIPTIONS.get("extract_cv", "Extracting CV data...")
             if base_desc:
                 description = f"{base_desc.rstrip('...')} (RLM)..."
-            
+
             try:
                 on_step_start("extract_cv", description)
             except Exception:
@@ -261,7 +260,7 @@ def create_rlm_nodes(
             base_desc = STEP_DESCRIPTIONS.get("extract_job", "Analyzing job requirements...")
             if base_desc:
                 description = f"{base_desc.rstrip('...')} (RLM)..."
-            
+
             try:
                 on_step_start("extract_job", description)
             except Exception:
@@ -345,7 +344,7 @@ def create_rlm_nodes(
             base_desc = STEP_DESCRIPTIONS.get("analyze_match", "Analyzing CV-job match...")
             if base_desc:
                 description = f"{base_desc.rstrip('...')} (RLM)..."
-            
+
             try:
                 on_step_start("analyze_match", description)
             except Exception:
