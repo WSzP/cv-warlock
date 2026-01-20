@@ -41,6 +41,25 @@ But please share the results of your experiments with me and the world on Linked
 - **CLI & Web UI**: Use via command line or Streamlit web interface
 - **LangGraph Workflow**: Robust multi-step processing with state management
 - **Real-Time Progress**: Live timing display during CV generation
+- **Markdown to PDF Converter**: Turn any markdown CV into a polished, professional PDF
+
+### Markdown to PDF Converter
+
+Got a CV in markdown format? *Of course you do.* It's 2026 and every AI assistant on the planet outputs markdown like it's going out of style (spoiler: it's not). Whether Claude wrote it, ChatGPT drafted it, or you actually typed it yourself like some kind of artisan, CV Warlock can transform that markdown into a beautiful, ATS-friendly PDF.
+
+**Two stunning styles:**
+
+- **Modern** (default): Contemporary design with a navy accent bar, horizontal section dividers, accent-colored bullets, and a refined visual hierarchy that says "I'm a professional who also has taste"
+- **Plain**: Classic, clean layout for the traditionalists who believe less is more
+
+**Features:**
+
+- Full Unicode support (Romanian diacritics, accents, special characters—the works)
+- Clickable links for email, phone, LinkedIn, and publications
+- Proper heading hierarchy and bullet formatting
+- Embedded Poppins font for consistent rendering everywhere
+
+Access it via the **"Markdown to PDF"** tab in the web UI, or use the PDF export button after tailoring your CV.
 
 ## RLM (Recursive Language Model)
 
