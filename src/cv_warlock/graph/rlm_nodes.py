@@ -25,6 +25,8 @@ from cv_warlock.rlm.prompts import (
     RLM_JOB_EXTRACTION_TASK,
     RLM_MATCH_ANALYSIS_TASK,
 )
+# Import step descriptions from nodes module
+from cv_warlock.graph.nodes import STEP_DESCRIPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,7 @@ def create_rlm_nodes(
     sub_provider: LLMProvider | None = None,
     config: RLMConfig | None = None,
     use_cot: bool = True,
+    on_step_start: Callable[[str, str], None] | None = None,
 ) -> dict[str, Callable[[CVWarlockState], dict]]:
     """Create RLM-enhanced workflow nodes.
 
@@ -142,7 +145,9 @@ def create_rlm_nodes(
     from cv_warlock.graph.nodes import create_nodes
 
     # Create standard nodes as fallback
-    standard_nodes = create_nodes(root_provider, use_cot=use_cot)
+    standard_nodes = create_nodes(
+        root_provider, use_cot=use_cot, on_step_start=on_step_start
+    )
 
     # Create RLM orchestrator
     orchestrator = RLMOrchestrator(
@@ -171,6 +176,18 @@ def create_rlm_nodes(
                 used=False,
             )
             return result
+
+        if on_step_start:
+            description = "Extracting CV structure via RLM..."
+            # Try to use standard description + RLM annotation if available
+            base_desc = STEP_DESCRIPTIONS.get("extract_cv", "Extracting CV data...")
+            if base_desc:
+                description = f"{base_desc.rstrip('...')} (RLM)..."
+            
+            try:
+                on_step_start("extract_cv", description)
+            except Exception:
+                pass
 
         logger.info("Using RLM for CV extraction")
 
@@ -238,6 +255,17 @@ def create_rlm_nodes(
         """Extract job requirements using RLM for long documents."""
         if not should_use_rlm(state):
             return standard_nodes["extract_job"](state)
+
+        if on_step_start:
+            description = "Analyzing job requirements via RLM..."
+            base_desc = STEP_DESCRIPTIONS.get("extract_job", "Analyzing job requirements...")
+            if base_desc:
+                description = f"{base_desc.rstrip('...')} (RLM)..."
+            
+            try:
+                on_step_start("extract_job", description)
+            except Exception:
+                pass
 
         logger.info("Using RLM for job extraction")
 
@@ -311,6 +339,17 @@ def create_rlm_nodes(
         """Analyze match using RLM for comprehensive analysis."""
         if not should_use_rlm(state):
             return standard_nodes["analyze_match"](state)
+
+        if on_step_start:
+            description = "Analyzing CV-job match via RLM..."
+            base_desc = STEP_DESCRIPTIONS.get("analyze_match", "Analyzing CV-job match...")
+            if base_desc:
+                description = f"{base_desc.rstrip('...')} (RLM)..."
+            
+            try:
+                on_step_start("analyze_match", description)
+            except Exception:
+                pass
 
         logger.info("Using RLM for match analysis")
 
