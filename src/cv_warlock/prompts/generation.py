@@ -28,12 +28,20 @@ RULES:
 9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY mentioned in job requirements.
    If TensorFlow is not in the job spec but a deep learning framework seems needed, use PyTorch instead.
 
-FORMAT:
-**Technical Skills**
-Languages: Python, TypeScript, SQL
-Frameworks: React.js, FastAPI, Node.js
-Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, Kubernetes
-Databases: PostgreSQL, MongoDB, Redis
+FORMAT (CRITICAL - each category and skills MUST be on the SAME LINE):
+## Technical Skills
+
+**Languages:** Python, TypeScript, SQL
+**Frameworks:** React.js, FastAPI, Node.js
+**Cloud & DevOps:** AWS (EC2, S3, Lambda), Docker, Kubernetes
+**Databases:** PostgreSQL, MongoDB, Redis
+
+WRONG (DO NOT DO THIS - skills on separate line):
+**Languages**
+Python, TypeScript, SQL
+
+CORRECT (skills on SAME line after colon):
+**Languages:** Python, TypeScript, SQL
 
 Output ONLY the skills section."""
 

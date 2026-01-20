@@ -400,20 +400,29 @@ SKILLS_GENERATION_PROMPT = """Generate the skills section based on your strategi
 9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY required in job posting.
    If deep learning framework is needed but TensorFlow not specified, use PyTorch instead.
 
-=== OUTPUT FORMAT ===
+=== OUTPUT FORMAT (CRITICAL - each category and skills MUST be on the SAME LINE) ===
 
-**Technical Skills**
-[Category 1]: skill1, skill2, skill3
-[Category 2]: skill1, skill2, skill3
-[Category 3]: skill1, skill2, skill3
+## Technical Skills
+
+**[Category 1]:** skill1, skill2, skill3
+**[Category 2]:** skill1, skill2, skill3
+**[Category 3]:** skill1, skill2, skill3
 
 Example:
-**Technical Skills**
-Languages: Python, TypeScript, SQL, Go
-Frameworks: React.js, FastAPI, Django, Node.js
-Cloud & DevOps: Amazon Web Services (AWS), Docker, Kubernetes, CI/CD
-Databases: PostgreSQL, MongoDB, Redis, DynamoDB
-Tools: Git, JIRA, Terraform, Datadog
+## Technical Skills
+
+**Languages:** Python, TypeScript, SQL, Go
+**Frameworks:** React.js, FastAPI, Django, Node.js
+**Cloud & DevOps:** Amazon Web Services (AWS), Docker, Kubernetes, CI/CD
+**Databases:** PostgreSQL, MongoDB, Redis, DynamoDB
+**Tools:** Git, JIRA, Terraform, Datadog
+
+WRONG (DO NOT DO THIS - skills on separate line):
+**Languages**
+Python, TypeScript, SQL
+
+CORRECT (skills on SAME line after colon):
+**Languages:** Python, TypeScript, SQL
 
 Write ONLY the formatted skills section. No explanations."""
 

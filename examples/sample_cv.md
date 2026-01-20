@@ -16,10 +16,13 @@ I scaled AceTech Development from 0 to 40+ people in under two years and complet
 
 I’m also the author of User Experience Mapping and a long-time TEDx curator, bringing sharp storytelling and stakeholder alignment to every build.
 
-## Top Skills
+## Technical Skills
 
-- Technical: Python, TypeScript, Nextjs, SQL, MongoDB, Kafka, NATS, LangChain, LangGraph, LangSmith, PyTorch, Vector DBs, Prompt Engineering, HPC, Agentic AI, Autonomous Agents
-- Leadership: Strategic planning, Team scaling, Stakeholder alignment, Cross-functional collaboration
+**AI/ML Core:** Large Language Models (LLMs), OpenAI, Anthropic, Mistral, Hugging Face, Prompt Engineering, Agentic AI, Autonomous Agents
+**RAG & Production Systems:** Retrieval-Augmented Generation (RAG), LangChain, LlamaIndex, Ragas, Langfuse, Vector Databases, Multi-step Workflows, Tool-using Systems
+**Backend & Data Engineering:** Python, TypeScript, SQL, MongoDB, Kafka, APIs
+**AI Frameworks & Libraries:** PyTorch, LangChain, LangGraph, LangSmith
+**Production & DevOps:** Observability, Cost Optimization, Cloud Deployment, On-Premises Deployment, High-Performance Computing (HPC), Modern AI in Production, Reliability Engineering
 
 ## Experience
 
@@ -33,7 +36,6 @@ September 2025 - Present | Târgu Mureș, Romania (remote)
 - Strengthened delivery governance through repeatable processes by designing, documenting, and transferring workflows, standards, and escalation paths, supporting consistent execution and audit-friendly traceability across projects.
 - Provided technical and architectural leadership for new initiatives by shaping project architecture, selecting tooling, and supporting implementation decisions to reduce delivery risk and improve maintainability.
 - Enabled cross-functional execution via hands-on problem resolution by unblocking teams through structured technical support and escalation handling, ensuring continuity and predictable progress under real delivery pressure.
-
 
 ### Founder, CEO at Tengrai Artificial Intelligence
 
