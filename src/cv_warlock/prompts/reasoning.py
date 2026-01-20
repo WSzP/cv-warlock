@@ -400,7 +400,11 @@ SKILLS_GENERATION_PROMPT = """Generate the skills section based on your strategi
 9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY required in job posting.
    If deep learning framework is needed but TensorFlow not specified, use PyTorch instead.
 
-=== OUTPUT FORMAT (CRITICAL - each category and skills MUST be on the SAME LINE) ===
+=== OUTPUT FORMAT (CRITICAL RULES - MUST follow EXACTLY) ===
+
+1. EVERY category name MUST be wrapped in ** for bold: **Category:**
+2. Category and skills MUST be on the SAME LINE
+3. Use colon INSIDE the bold: **Category:** not **Category**:
 
 ## Technical Skills
 
@@ -417,11 +421,17 @@ Example:
 **Databases:** PostgreSQL, MongoDB, Redis, DynamoDB
 **Tools:** Git, JIRA, Terraform, Datadog
 
-WRONG (DO NOT DO THIS - skills on separate line):
+WRONG - missing bold on category:
+Languages: Python, TypeScript, SQL
+
+WRONG - colon outside bold:
+**Languages**: Python, TypeScript, SQL
+
+WRONG - skills on separate line:
 **Languages**
 Python, TypeScript, SQL
 
-CORRECT (skills on SAME line after colon):
+CORRECT - bold category with colon inside, skills on same line:
 **Languages:** Python, TypeScript, SQL
 
 Write ONLY the formatted skills section. No explanations."""

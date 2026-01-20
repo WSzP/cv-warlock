@@ -28,7 +28,11 @@ RULES:
 9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY mentioned in job requirements.
    If TensorFlow is not in the job spec but a deep learning framework seems needed, use PyTorch instead.
 
-FORMAT (CRITICAL - each category and skills MUST be on the SAME LINE):
+FORMAT (CRITICAL RULES - MUST follow EXACTLY):
+1. EVERY category name MUST be wrapped in ** for bold: **Category:**
+2. Category and skills MUST be on the SAME LINE
+3. Use colon INSIDE the bold: **Category:** not **Category**:
+
 ## Technical Skills
 
 **Languages:** Python, TypeScript, SQL
@@ -36,11 +40,17 @@ FORMAT (CRITICAL - each category and skills MUST be on the SAME LINE):
 **Cloud & DevOps:** AWS (EC2, S3, Lambda), Docker, Kubernetes
 **Databases:** PostgreSQL, MongoDB, Redis
 
-WRONG (DO NOT DO THIS - skills on separate line):
+WRONG - missing bold on category:
+Languages: Python, TypeScript, SQL
+
+WRONG - colon outside bold:
+**Languages**: Python, TypeScript, SQL
+
+WRONG - skills on separate line:
 **Languages**
 Python, TypeScript, SQL
 
-CORRECT (skills on SAME line after colon):
+CORRECT - bold category with colon inside, skills on same line:
 **Languages:** Python, TypeScript, SQL
 
 Output ONLY the skills section."""
