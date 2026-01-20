@@ -460,31 +460,34 @@ class CVPDFGenerator(FPDF):
         display_title = title.upper() if self.config.section_header_uppercase else title
 
         if self.style == CVStyle.MODERN and self.config.section_header_band:
-            # Modern: bold text with thick accent underline
+            # Modern: horizontal accent bar leading into bold text (same height)
             start_y = self.get_y()
 
-            # Draw the section title in bold navy
-            self.set_xy(self.l_margin, start_y)
+            # Set up font to calculate text height
             self.set_font(self.font_name, "B", self.config.section_header_size + 2)
             self.set_text_color(*self.config.accent_color)
-            title_width = self.get_string_width(display_title)
-            self.cell(title_width + 2, 7, display_title, align="L")
 
-            # Draw thick accent underline from left edge of page to end of title
-            underline_y = start_y + 8
+            # Draw horizontal accent bar from page edge to just before the text
+            # Bar is vertically centered with the text
+            bar_height = 2.5
+            bar_y = start_y + 3.5  # Vertically center with text
+            bar_end_x = self.l_margin - 3  # Small gap before text
+
             self.set_fill_color(*self.config.accent_color)
-            # Line starts at x=0 (page edge) and extends to the end of the title text
-            underline_end = self.l_margin + title_width
             self.rect(
                 x=0,
-                y=underline_y,
-                w=underline_end,
-                h=1.5,
+                y=bar_y,
+                w=bar_end_x,
+                h=bar_height,
                 style="F",
             )
 
+            # Draw the section title in bold navy after the bar
+            self.set_xy(self.l_margin, start_y)
+            self.cell(0, 10, display_title, align="L")
+
             # Move below the header
-            self.set_y(underline_y + 6)
+            self.set_y(start_y + 12)
             self.set_text_color(*self.config.text_primary)
 
         elif self.style == CVStyle.MODERN:
