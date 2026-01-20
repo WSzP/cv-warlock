@@ -718,10 +718,10 @@ def _render_generic_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
             text = re.sub(r"\*([^*]+)\*", r"\1", text)
             pdf.add_bullet_point(text)
-        # Bold title pattern: **Title**: Description
+        # Bold title pattern: **Title:** Description OR **Title**: Description
         elif line.startswith("**"):
-            # Match **Title**: Description pattern
-            title_match = re.match(r"^\*\*([^*]+)\*\*:\s*(.*)$", line)
+            # Match **Title:** Description (colon inside) or **Title**: Description (colon outside)
+            title_match = re.match(r"^\*\*([^*]+?)(?::\*\*|\*\*:)\s*(.*)$", line)
             if title_match:
                 title = title_match.group(1).strip()
                 description = title_match.group(2).strip()
