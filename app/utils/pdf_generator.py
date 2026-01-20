@@ -39,11 +39,14 @@ class StyleConfig:
 
     # Colors (RGB tuples)
     accent_color: tuple[int, int, int]
-    accent_light: tuple[int, int, int]
+    accent_dark: tuple[int, int, int]  # Darker shade for gradients/hover
+    accent_light: tuple[int, int, int]  # Light tint for backgrounds
     text_primary: tuple[int, int, int]
     text_secondary: tuple[int, int, int]
     text_muted: tuple[int, int, int]
+    text_on_accent: tuple[int, int, int]  # Text color on accent backgrounds
     divider_color: tuple[int, int, int]
+    card_background: tuple[int, int, int]  # Subtle background for cards
 
     # Typography
     name_size: int
@@ -60,11 +63,15 @@ class StyleConfig:
     entry_spacing: float
 
     # Style features
-    use_accent_bar: bool
+    use_header_band: bool  # Full-width colored header
+    header_band_height: float
+    use_accent_bar: bool  # Left side accent bar
     accent_bar_width: float
     section_header_uppercase: bool
     section_header_underline: bool
-    section_header_fill: bool
+    section_header_band: bool  # Full colored background for section headers
+    use_skill_pills: bool  # Display skills as pill badges
+    use_entry_cards: bool  # Subtle background for job entries
     contact_separator: str
 
 
@@ -73,11 +80,14 @@ STYLE_CONFIGS: dict[CVStyle, StyleConfig] = {
     CVStyle.PLAIN: StyleConfig(
         # Colors - all grayscale for plain
         accent_color=(0, 0, 0),
+        accent_dark=(0, 0, 0),
         accent_light=(240, 240, 240),
         text_primary=(0, 0, 0),
         text_secondary=(64, 64, 64),
         text_muted=(96, 96, 96),
+        text_on_accent=(255, 255, 255),
         divider_color=(200, 200, 200),
+        card_background=(250, 250, 250),
         # Typography
         name_size=18,
         section_header_size=16,
@@ -91,40 +101,51 @@ STYLE_CONFIGS: dict[CVStyle, StyleConfig] = {
         section_spacing=6.0,
         entry_spacing=6.0,
         # Style features
+        use_header_band=False,
+        header_band_height=0.0,
         use_accent_bar=False,
         accent_bar_width=0.0,
         section_header_uppercase=True,
         section_header_underline=True,
-        section_header_fill=False,
+        section_header_band=False,
+        use_skill_pills=False,
+        use_entry_cards=False,
         contact_separator=" | ",
     ),
     CVStyle.MODERN: StyleConfig(
-        # Colors - sophisticated navy/slate palette
-        accent_color=(30, 58, 95),  # Deep navy blue
-        accent_light=(240, 244, 248),  # Very light blue-gray
-        text_primary=(28, 35, 43),  # Near-black with warmth
-        text_secondary=(71, 85, 105),  # Slate gray
-        text_muted=(100, 116, 139),  # Light slate
-        divider_color=(226, 232, 240),  # Subtle divider
-        # Typography - slightly larger for modern feel
-        name_size=22,
-        section_header_size=13,
+        # Colors - sophisticated deep navy palette
+        accent_color=(20, 50, 90),  # Deep navy blue
+        accent_dark=(15, 35, 65),  # Darker navy for depth
+        accent_light=(235, 242, 250),  # Very light blue tint
+        text_primary=(25, 30, 38),  # Near-black with warmth
+        text_secondary=(55, 65, 80),  # Dark slate
+        text_muted=(90, 100, 115),  # Medium slate
+        text_on_accent=(255, 255, 255),  # White on accent
+        divider_color=(220, 228, 238),  # Subtle blue-gray divider
+        card_background=(247, 250, 253),  # Very subtle blue tint
+        # Typography - larger, bolder
+        name_size=26,
+        section_header_size=11,
         job_title_size=11,
         body_size=10,
         contact_size=9,
-        # Layout - more breathing room
-        left_margin=22.0,
-        top_margin=18.0,
+        # Layout - generous spacing
+        left_margin=20.0,
+        top_margin=15.0,
         right_margin=20.0,
-        section_spacing=8.0,
-        entry_spacing=7.0,
+        section_spacing=10.0,
+        entry_spacing=8.0,
         # Style features
-        use_accent_bar=True,
-        accent_bar_width=3.0,
+        use_header_band=True,
+        header_band_height=38.0,
+        use_accent_bar=False,
+        accent_bar_width=0.0,
         section_header_uppercase=True,
         section_header_underline=False,
-        section_header_fill=False,
-        contact_separator="  \u2022  ",  # Spaced bullet
+        section_header_band=True,
+        use_skill_pills=True,
+        use_entry_cards=False,
+        contact_separator="  \u2022  ",
     ),
 }
 
@@ -287,72 +308,162 @@ class CVPDFGenerator(FPDF):
             self.font_name = "Helvetica"
 
     def header(self) -> None:
-        """Draw page header elements (accent bar for modern style)."""
+        """Draw page header elements."""
+        # Draw accent bar on left side if enabled (not used in new modern design)
         if self.config.use_accent_bar:
-            # Draw accent bar on left side of page
             self.set_fill_color(*self.config.accent_color)
-            self.rect(
-                x=0,
-                y=0,
-                w=self.config.accent_bar_width,
-                h=self.h,
-                style="F",
-            )
+            self.rect(x=0, y=0, w=self.config.accent_bar_width, h=self.h, style="F")
 
     def footer(self) -> None:
         """Add page number footer for multi-page CVs."""
         if self.page_no() > 1:
             self.set_y(-15)
             self.set_font(self.font_name, "I", 8)
-            self.set_text_color(*self.config.text_muted)
-            self.cell(0, 10, f"Page {self.page_no()}", align="C")
+            if self.style == CVStyle.MODERN:
+                # Modern: styled page indicator
+                self.set_text_color(*self.config.accent_color)
+                self.cell(0, 10, f"\u2014  {self.page_no()}  \u2014", align="C")
+            else:
+                self.set_text_color(*self.config.text_muted)
+                self.cell(0, 10, f"Page {self.page_no()}", align="C")
             self.set_text_color(*self.config.text_primary)
+
+    def _draw_header_band(self, name: str) -> None:
+        """Draw the full-width header band with name for modern style."""
+        band_height = self.config.header_band_height
+
+        # Draw the colored header band
+        self.set_fill_color(*self.config.accent_color)
+        self.rect(x=0, y=0, w=self.w, h=band_height, style="F")
+
+        # Add subtle gradient effect with darker bottom edge
+        self.set_fill_color(*self.config.accent_dark)
+        self.rect(x=0, y=band_height - 2, w=self.w, h=2, style="F")
+
+        # Position name vertically centered in the header band
+        # Font size 26pt ≈ 9mm, so center at (band_height - 9) / 2 ≈ 14.5mm
+        name_y = (band_height - 9) / 2
+        self.set_xy(self.l_margin, name_y)
+        self.set_font(self.font_name, "B", self.config.name_size)
+        self.set_text_color(*self.config.text_on_accent)
+        self.cell(0, 10, name.strip(), align="L")
+
+        # Move cursor below the header band
+        self.set_y(band_height + 5)
+        self.set_text_color(*self.config.text_primary)
 
     def add_name(self, name: str) -> None:
         """Add candidate name as main heading (H1 equivalent)."""
-        self.set_font(self.font_name, "B", self.config.name_size)
-        self.set_x(self.l_margin)  # Reset to left margin
-
-        # Modern style: accent color for name, left-aligned
-        if self.style == CVStyle.MODERN:
+        if self.style == CVStyle.MODERN and self.config.use_header_band:
+            # Modern: draw full header band with name
+            self._draw_header_band(name)
+        elif self.style == CVStyle.MODERN:
+            # Modern without header band: accent colored name
+            self.set_font(self.font_name, "B", self.config.name_size)
+            self.set_x(self.l_margin)
             self.set_text_color(*self.config.accent_color)
             self.multi_cell(0, 12, name.strip(), align="L")
             self.set_text_color(*self.config.text_primary)
             self.ln(1)
         else:
+            # Plain: centered black name
+            self.set_font(self.font_name, "B", self.config.name_size)
+            self.set_x(self.l_margin)
             self.set_text_color(*self.config.text_primary)
             self.multi_cell(0, 12, name.strip(), align="C")
             self.ln(2)
 
-    def add_contact_line(self, contact: str) -> None:
-        """Add contact info line."""
+    def add_contact_line(self, contact: str, links: list[tuple[str, str]] | None = None) -> None:
+        """Add contact info line with optional clickable links.
+
+        Args:
+            contact: The contact text to display.
+            links: List of (display_text, url) tuples for clickable links.
+        """
         self.set_font(self.font_name, "", self.config.contact_size)
-        self.set_x(self.l_margin)  # Reset to left margin
+        self.set_x(self.l_margin)
         self.set_text_color(*self.config.text_secondary)
 
-        # Modern style: left-aligned contact with styled separators
-        if self.style == CVStyle.MODERN:
-            self.multi_cell(0, 5, contact.strip(), align="L")
+        if links:
+            # Render contact line with clickable links
+            self._render_contact_with_links(contact, links)
         else:
-            # Plain style: centered contact
-            self.multi_cell(0, 6, contact.strip(), align="C")
+            # Simple text rendering
+            if self.style == CVStyle.MODERN:
+                self.multi_cell(0, 5, contact.strip(), align="L")
+            else:
+                self.multi_cell(0, 6, contact.strip(), align="C")
 
         self.set_text_color(*self.config.text_primary)
+
+    def _render_contact_with_links(self, contact: str, links: list[tuple[str, str]]) -> None:
+        """Render contact line with clickable links inline."""
+        line_height = 5 if self.style == CVStyle.MODERN else 6
+        remaining = contact
+
+        # Process each link in order of appearance
+        for display_text, url in links:
+            if display_text not in remaining:
+                continue
+
+            # Split at this link
+            before, after = remaining.split(display_text, 1)
+
+            # Render text before the link
+            if before:
+                self.write(line_height, before)
+
+            # Render the link (clickable, accent colored)
+            self.set_text_color(*self.config.accent_color)
+            self.write(line_height, display_text, url)
+            self.set_text_color(*self.config.text_secondary)
+
+            remaining = after
+
+        # Render any remaining text after the last link
+        if remaining:
+            self.write(line_height, remaining)
+
+        self.ln(line_height)
 
     def add_section_header(self, title: str) -> None:
         """Add section header (H2 equivalent)."""
         self.ln(self.config.section_spacing)
-        self.set_font(self.font_name, "B", self.config.section_header_size)
-        self.set_x(self.l_margin)
 
         # Apply uppercase if configured
         display_title = title.upper() if self.config.section_header_uppercase else title
 
-        if self.style == CVStyle.MODERN:
-            # Modern: accent color header with small colored bar
+        if self.style == CVStyle.MODERN and self.config.section_header_band:
+            # Modern: full-width colored band with white text
+            band_height = 8
+            band_y = self.get_y()
+
+            # Draw the colored band (full width minus small margins for elegance)
+            self.set_fill_color(*self.config.accent_color)
+            self.rect(
+                x=self.l_margin - 5,
+                y=band_y,
+                w=self.w - self.l_margin - self.r_margin + 10,
+                h=band_height,
+                style="F",
+            )
+
+            # Add text on the band
+            self.set_xy(self.l_margin, band_y + 1.5)
+            self.set_font(self.font_name, "B", self.config.section_header_size)
+            self.set_text_color(*self.config.text_on_accent)
+            self.cell(0, 5, display_title, align="L")
+
+            # Move below the band
+            self.set_y(band_y + band_height + 4)
+            self.set_text_color(*self.config.text_primary)
+
+        elif self.style == CVStyle.MODERN:
+            # Modern without band: accent color with marker
+            self.set_font(self.font_name, "B", self.config.section_header_size)
+            self.set_x(self.l_margin)
             self.set_text_color(*self.config.accent_color)
 
-            # Draw small accent marker before title
             marker_y = self.get_y() + 3
             self.set_fill_color(*self.config.accent_color)
             self.rect(self.l_margin - 6, marker_y, 2, 6, style="F")
@@ -362,6 +473,8 @@ class CVPDFGenerator(FPDF):
             self.ln(2)
         else:
             # Plain: black header with underline
+            self.set_font(self.font_name, "B", self.config.section_header_size)
+            self.set_x(self.l_margin)
             self.set_text_color(*self.config.text_primary)
             self.multi_cell(0, 10, display_title)
 
@@ -499,31 +612,91 @@ class CVPDFGenerator(FPDF):
         self.write(5, desc_clean)
         self.ln(6)
 
+    def _draw_skill_pill(self, skill: str, x: float, y: float) -> float:
+        """Draw a single skill pill badge and return its width."""
+        self.set_font(self.font_name, "", 8)
+        text_width = self.get_string_width(skill)
+        pill_width = text_width + 6  # Padding
+        pill_height = 5.5
+
+        # Draw pill background
+        self.set_fill_color(*self.config.accent_light)
+        # Draw rounded rectangle (approximate with rect since fpdf2 doesn't have round_rect easily)
+        self.rect(x, y, pill_width, pill_height, style="F")
+
+        # Draw text
+        self.set_xy(x + 3, y + 0.8)
+        self.set_text_color(*self.config.accent_color)
+        self.cell(text_width, 4, skill)
+
+        return pill_width
+
     def add_skill_line(self, category: str, skills: str) -> None:
         """Add a skill category line (e.g., 'Languages: Python, TypeScript').
 
         Category is bold, followed by skills on the same line. If skills wrap,
         continuation lines start at left margin (not indented).
         """
-        self.set_x(self.l_margin)
-
-        cat_text = f"{category}: "
-        skills_clean = skills.strip()
-
-        # Write category in bold
-        self.set_font(self.font_name, "B", self.config.body_size)
-        if self.style == CVStyle.MODERN:
-            self.set_text_color(*self.config.accent_color)
+        if self.style == CVStyle.MODERN and self.config.use_skill_pills:
+            # Modern with pills: category header then skill pills
+            self._add_skill_pills(category, skills)
         else:
-            self.set_text_color(*self.config.text_primary)
-        cat_width = self.get_string_width(cat_text) + 2
-        self.cell(cat_width, 5, cat_text)
+            # Standard rendering
+            self.set_x(self.l_margin)
 
-        # Write skills in regular
-        self.set_font(self.font_name, "", self.config.body_size)
+            cat_text = f"{category}: "
+            skills_clean = skills.strip()
+
+            # Write category in bold
+            self.set_font(self.font_name, "B", self.config.body_size)
+            if self.style == CVStyle.MODERN:
+                self.set_text_color(*self.config.accent_color)
+            else:
+                self.set_text_color(*self.config.text_primary)
+            cat_width = self.get_string_width(cat_text) + 2
+            self.cell(cat_width, 5, cat_text)
+
+            # Write skills in regular
+            self.set_font(self.font_name, "", self.config.body_size)
+            self.set_text_color(*self.config.text_primary)
+            self.write(5, skills_clean)
+            self.ln(5)
+
+    def _add_skill_pills(self, category: str, skills: str) -> None:
+        """Add skills as pill badges with category header."""
+        # Category header
+        self.set_x(self.l_margin)
+        self.set_font(self.font_name, "B", 9)
+        self.set_text_color(*self.config.accent_color)
+        self.cell(0, 6, category)
+        self.ln(6)
+
+        # Parse skills (comma or semicolon separated)
+        skill_list = [s.strip() for s in skills.replace(";", ",").split(",") if s.strip()]
+
+        # Layout pills with wrapping
+        x = self.l_margin
+        y = self.get_y()
+        max_x = self.w - self.r_margin
+        pill_spacing = 3
+        row_height = 7
+
+        for skill in skill_list:
+            self.set_font(self.font_name, "", 8)
+            pill_width = self.get_string_width(skill) + 6
+
+            # Check if we need to wrap to next line
+            if x + pill_width > max_x:
+                x = self.l_margin
+                y += row_height
+
+            # Draw the pill
+            self._draw_skill_pill(skill, x, y)
+            x += pill_width + pill_spacing
+
+        # Move cursor below all pills
+        self.set_y(y + row_height + 2)
         self.set_text_color(*self.config.text_primary)
-        self.write(5, skills_clean)
-        self.ln(5)
 
 
 def parse_markdown_cv(markdown: str) -> dict[str, Any]:
@@ -639,12 +812,18 @@ def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.PLAIN) -> byte
     for contact in parsed["contact"]:
         # Clean markdown formatting from contact line
         clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", contact)  # Remove bold
-        clean = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean)  # Links to text
+
+        # Extract links before converting to plain text: [(display, url), ...]
+        links: list[tuple[str, str]] = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", clean)
+
+        # Convert markdown links to just display text
+        clean = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", clean)
+
         # Use style-appropriate separator
         clean = re.sub(r"[|•·]", config.contact_separator, clean)
         clean = re.sub(r"\s+", " ", clean).strip()
         if clean:
-            pdf.add_contact_line(clean)
+            pdf.add_contact_line(clean, links if links else None)
 
     # Sections
     for section in parsed["sections"]:
@@ -802,8 +981,8 @@ def _render_skills_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             continue
 
         # Check for category: skills pattern (handles bold markers around category)
-        # Matches patterns like: "Languages:", "**Languages:**", "*Languages:**"
-        category_match = re.match(r"^[\*_]*([A-Za-z][A-Za-z &/]+?)[\*_]*:\s*(.*)$", line)
+        # Matches patterns like: "Languages:", "**Languages:**", "*Languages:**", "High-Growth SaaS:"
+        category_match = re.match(r"^[\*_]*([A-Za-z][A-Za-z0-9 &/\-]+?)[\*_]*:\s*(.*)$", line)
         if category_match and not line.startswith(("-", "•")):
             category = category_match.group(1).strip()
             skills = category_match.group(2).strip()
