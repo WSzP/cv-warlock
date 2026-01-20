@@ -150,12 +150,17 @@ def create_cv_warlock_graph(
             on_step_start=on_step_start,
         )
     else:
-        # Non-RLM mode: use balanced model (Sonnet, GPT-5.2, Gemini Flash)
+        # Non-RLM mode: Dual-Model Strategy
+        # - Extraction/analysis: balanced model (Sonnet, GPT-5.2, Gemini Flash) for quality
+        # - Tailoring: fast model (Haiku, GPT-5-mini, Gemini Flash) for speed
         llm_provider = get_llm_provider(provider, model, api_key)
+        fast_model = _get_fast_model_for_provider(provider)
+        tailor_provider = get_llm_provider(provider, fast_model, api_key)
         nodes = create_nodes(
             llm_provider,
             use_cot=use_cot,
             on_step_start=on_step_start,
+            tailor_provider=tailor_provider,
         )
 
     # Build the graph

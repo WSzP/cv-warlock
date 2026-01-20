@@ -145,7 +145,13 @@ def create_rlm_nodes(
     from cv_warlock.graph.nodes import create_nodes
 
     # Create standard nodes as fallback
-    standard_nodes = create_nodes(root_provider, use_cot=use_cot, on_step_start=on_step_start)
+    # Use sub_provider (fast model) for tailoring steps for better performance
+    standard_nodes = create_nodes(
+        root_provider,
+        use_cot=use_cot,
+        on_step_start=on_step_start,
+        tailor_provider=sub_provider,
+    )
 
     # Create RLM orchestrator
     orchestrator = RLMOrchestrator(

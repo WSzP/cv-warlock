@@ -94,22 +94,28 @@ def create_nodes(
     llm_provider: LLMProvider,
     use_cot: bool = True,
     on_step_start: Callable[[str, str], None] | None = None,
+    tailor_provider: LLMProvider | None = None,
 ) -> dict:
     """Create all workflow nodes with the given LLM provider.
 
     Args:
-        llm_provider: The LLM provider to use.
+        llm_provider: The LLM provider to use for extraction and analysis.
         use_cot: Whether to use chain-of-thought reasoning for generation.
                  Default True for higher quality, False for faster generation.
         on_step_start: Optional callback(step_name, description) fired when a step starts.
+        tailor_provider: Optional faster provider for tailoring steps (skills, experiences,
+                        summary). If not provided, uses llm_provider for all steps.
 
     Returns:
         dict: Dictionary of node functions.
     """
+    # Use fast provider for tailoring if provided, otherwise use main provider
+    fast_provider = tailor_provider or llm_provider
+
     cv_extractor = CVExtractor(llm_provider)
     job_extractor = JobExtractor(llm_provider)
     match_analyzer = MatchAnalyzer(llm_provider)
-    cv_tailor = CVTailor(llm_provider, use_cot=use_cot)
+    cv_tailor = CVTailor(fast_provider, use_cot=use_cot)
 
     def validate_inputs(state: CVWarlockState) -> dict:
         """Validate input documents exist and are non-empty."""
