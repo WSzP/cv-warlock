@@ -470,13 +470,15 @@ class CVPDFGenerator(FPDF):
             title_width = self.get_string_width(display_title)
             self.cell(title_width + 2, 7, display_title, align="L")
 
-            # Draw thick accent underline directly under the text
+            # Draw thick accent underline from left edge of page to end of title
             underline_y = start_y + 8
             self.set_fill_color(*self.config.accent_color)
+            # Line starts at x=0 (page edge) and extends to the end of the title text
+            underline_end = self.l_margin + title_width
             self.rect(
-                x=self.l_margin,
+                x=0,
                 y=underline_y,
-                w=title_width + 4,
+                w=underline_end,
                 h=1.5,
                 style="F",
             )
