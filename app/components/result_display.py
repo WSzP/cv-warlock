@@ -9,6 +9,29 @@ from app.utils.pdf_generator import CVStyle, generate_cv_pdf
 from cv_warlock.models.reasoning import CoverLetterGenerationResult
 
 
+def _extract_cv_filename(markdown: str, suffix: str = "cv") -> str:
+    """Extract name from CV markdown and create a filename-safe string.
+
+    Args:
+        markdown: The CV markdown content.
+        suffix: Suffix to append (e.g., 'cv', 'cover-letter').
+
+    Returns:
+        Filename like 'peter-w-szabo-cv' (without extension).
+    """
+    # Look for # Name as the first heading
+    match = re.search(r"^#\s+(.+?)$", markdown, re.MULTILINE)
+    if match:
+        name = match.group(1).strip()
+        # Convert to lowercase, replace spaces/special chars with hyphens
+        filename = re.sub(r"[^\w\s-]", "", name.lower())
+        filename = re.sub(r"[\s_]+", "-", filename)
+        filename = re.sub(r"-+", "-", filename).strip("-")
+        if filename:
+            return f"{filename}-{suffix}"
+    return suffix
+
+
 def _run_retest_scoring(edited_cv: str, result: dict[str, Any]) -> dict[str, Any] | None:
     """Re-run scoring on edited CV content.
 
@@ -337,11 +360,14 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
 
     col1, col2, col3 = st.columns(3)
 
+    # Generate filename based on name in CV
+    base_filename = _extract_cv_filename(cv_content, "cv")
+
     with col1:
         st.download_button(
             label="Download Markdown",
             data=cv_content,
-            file_name="tailored_cv.md",
+            file_name=f"{base_filename}.md",
             mime="text/markdown",
             use_container_width=True,
         )
@@ -350,11 +376,10 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
         # Generate PDF on demand with selected style
         try:
             pdf_bytes = generate_cv_pdf(cv_content, style=pdf_style)
-            style_suffix = pdf_style.value
             st.download_button(
                 label="Download PDF",
                 data=pdf_bytes,
-                file_name=f"tailored_cv_{style_suffix}.pdf",
+                file_name=f"{base_filename}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
@@ -372,7 +397,7 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
         st.download_button(
             label="Download Plain Text",
             data=plain_text,
-            file_name="tailored_cv.txt",
+            file_name=f"{base_filename}.txt",
             mime="text/plain",
             use_container_width=True,
         )

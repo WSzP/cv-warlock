@@ -2,11 +2,36 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import streamlit as st
 
 from app.utils.pdf_generator import CVStyle, generate_cv_pdf
+
+
+def _extract_cv_filename(markdown: str, suffix: str = "cv") -> str:
+    """Extract name from CV markdown and create a filename-safe string.
+
+    Args:
+        markdown: The CV markdown content.
+        suffix: Suffix to append (e.g., 'cv', 'cover-letter').
+
+    Returns:
+        Filename like 'peter-w-szabo-cv' (without extension).
+    """
+    # Look for # Name as the first heading
+    match = re.search(r"^#\s+(.+?)$", markdown, re.MULTILINE)
+    if match:
+        name = match.group(1).strip()
+        # Convert to lowercase, replace spaces/special chars with hyphens
+        filename = re.sub(r"[^\w\s-]", "", name.lower())
+        filename = re.sub(r"[\s_]+", "-", filename)
+        filename = re.sub(r"-+", "-", filename).strip("-")
+        if filename:
+            return f"{filename}-{suffix}"
+    return suffix
+
 
 # Project root for loading sample files
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -109,6 +134,7 @@ def render_md_to_pdf_tool() -> None:
                 st.session_state["generated_pdf"] = pdf_bytes
                 st.session_state["pdf_generated"] = True
                 st.session_state["pdf_style"] = selected_style.value
+                st.session_state["pdf_source_md"] = md_content  # Store for filename extraction
                 st.success(
                     f"PDF generated successfully with {STYLE_OPTIONS[selected_style]['label']} style!"
                 )
@@ -120,11 +146,13 @@ def render_md_to_pdf_tool() -> None:
     # Show download button if PDF was generated
     if st.session_state.get("pdf_generated") and st.session_state.get("generated_pdf"):
         with col2:
-            style_suffix = st.session_state.get("pdf_style", "plain")
+            # Generate filename from CV name
+            source_md = st.session_state.get("pdf_source_md", "")
+            base_filename = _extract_cv_filename(source_md, "cv")
             st.download_button(
                 label="Download PDF",
                 data=st.session_state["generated_pdf"],
-                file_name=f"cv_{style_suffix}.pdf",
+                file_name=f"{base_filename}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
