@@ -47,6 +47,7 @@ class StyleConfig:
     text_on_accent: tuple[int, int, int]  # Text color on accent backgrounds
     divider_color: tuple[int, int, int]
     card_background: tuple[int, int, int]  # Subtle background for cards
+    link_color: tuple[int, int, int]  # Clickable link color (distinct from accent)
 
     # Typography
     name_size: int
@@ -88,6 +89,7 @@ STYLE_CONFIGS: dict[CVStyle, StyleConfig] = {
         text_on_accent=(255, 255, 255),
         divider_color=(200, 200, 200),
         card_background=(250, 250, 250),
+        link_color=(0, 68, 204),  # #0044CC - distinct clickable link color
         # Typography
         name_size=18,
         section_header_size=16,
@@ -123,6 +125,7 @@ STYLE_CONFIGS: dict[CVStyle, StyleConfig] = {
         text_on_accent=(255, 255, 255),  # White on accent
         divider_color=(220, 228, 238),  # Subtle blue-gray divider
         card_background=(247, 250, 253),  # Very subtle blue tint
+        link_color=(0, 68, 204),  # #0044CC - distinct clickable link color
         # Typography - larger, bolder
         name_size=26,
         section_header_size=11,
@@ -238,6 +241,14 @@ class CVPDFGenerator(FPDF):
 
         # Load Poppins font for professional, modern look
         self._setup_poppins_font()
+
+    def _write_link(self, text: str, url: str, line_height: float = 5) -> None:
+        """Write a clickable link in distinct link color.
+
+        Uses link_color (#0044CC) to indicate clickability.
+        """
+        self.set_text_color(*self.config.link_color)
+        self.write(line_height, text, url)
 
     def _safe_multi_cell(self, w: float, h: float, text: str, **kwargs: object) -> None:
         """Multi-cell with width validation to prevent fpdf errors."""
@@ -432,9 +443,8 @@ class CVPDFGenerator(FPDF):
             if before:
                 self.write(line_height, before)
 
-            # Render the link (clickable, accent colored)
-            self.set_text_color(*self.config.accent_color)
-            self.write(line_height, display_text, url)
+            # Render the link (clickable, distinct link color with dotted underline)
+            self._write_link(display_text, url, line_height)
             self.set_text_color(*self.config.text_secondary)
 
             remaining = after
@@ -476,9 +486,8 @@ class CVPDFGenerator(FPDF):
                 url = match.group(3)
                 display_text = url
 
-            # Render the clickable link in accent color
-            self.set_text_color(*self.config.accent_color)
-            self.write(line_height, display_text, url)
+            # Render the clickable link with distinct color and dotted underline
+            self._write_link(display_text, url, line_height)
             self.set_text_color(*self.config.text_primary)
 
             last_end = match.end()
@@ -682,8 +691,7 @@ class CVPDFGenerator(FPDF):
                         display_text = url
 
                     self.set_x(link_indent)
-                    self.set_text_color(*self.config.accent_color)
-                    self.write(5, display_text, url)
+                    self._write_link(display_text, url, 5)
                     self.set_text_color(*self.config.text_primary)
                     self.ln(5)
             else:
