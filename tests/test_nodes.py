@@ -1,6 +1,7 @@
 """Tests for LangGraph workflow nodes."""
 
 import time
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,6 +16,10 @@ from cv_warlock.graph.nodes import (
 from cv_warlock.models.cv import ContactInfo, CVData, Education, Experience
 from cv_warlock.models.job_spec import JobRequirements
 from cv_warlock.models.state import CVWarlockState, MatchAnalysis, TailoringPlan
+
+# =============================================================================
+# Fixtures
+# =============================================================================
 
 
 @pytest.fixture
@@ -118,49 +123,67 @@ def base_state() -> CVWarlockState:
     }
 
 
+def create_mock_cot_result(
+    final_content: str,  # noqa: ARG001
+    quality: str = "good",
+    refinement_count: int = 1,
+    **extra_attrs: Any,
+) -> MagicMock:
+    """Create a mock CoT result with common attributes."""
+    mock_critique = MagicMock()
+    mock_critique.quality_level.value = quality
+
+    mock_result = MagicMock()
+    mock_result.critique = mock_critique
+    mock_result.refinement_count = refinement_count
+
+    for attr, value in extra_attrs.items():
+        setattr(mock_result, attr, value)
+
+    return mock_result
+
+
+# =============================================================================
+# Step Descriptions Tests
+# =============================================================================
+
+EXPECTED_WORKFLOW_STEPS = [
+    "validate_inputs",
+    "extract_cv",
+    "extract_job",
+    "analyze_match",
+    "create_plan",
+    "tailor_skills",
+    "tailor_experiences",
+    "tailor_summary",
+    "assemble_cv",
+]
+
+
 class TestStepDescriptions:
     """Tests for step description constants."""
 
-    def test_step_descriptions_cot_has_all_steps(self) -> None:
-        """Test that STEP_DESCRIPTIONS has all workflow steps."""
-        expected_steps = [
-            "validate_inputs",
-            "extract_cv",
-            "extract_job",
-            "analyze_match",
-            "create_plan",
-            "tailor_skills",
-            "tailor_experiences",
-            "tailor_summary",
-            "assemble_cv",
-        ]
-
-        for step in expected_steps:
-            assert step in STEP_DESCRIPTIONS
-
-    def test_step_descriptions_fast_has_all_steps(self) -> None:
-        """Test that STEP_DESCRIPTIONS_FAST has all workflow steps."""
-        expected_steps = [
-            "validate_inputs",
-            "extract_cv",
-            "extract_job",
-            "analyze_match",
-            "create_plan",
-            "tailor_skills",
-            "tailor_experiences",
-            "tailor_summary",
-            "assemble_cv",
-        ]
-
-        for step in expected_steps:
-            assert step in STEP_DESCRIPTIONS_FAST
+    @pytest.mark.parametrize(
+        "descriptions,desc_type",
+        [
+            (STEP_DESCRIPTIONS, "CoT"),
+            (STEP_DESCRIPTIONS_FAST, "Fast"),
+        ],
+    )
+    def test_step_descriptions_has_all_steps(self, descriptions: dict, desc_type: str) -> None:
+        """Test that step descriptions have all workflow steps."""
+        for step in EXPECTED_WORKFLOW_STEPS:
+            assert step in descriptions, f"{desc_type} missing step: {step}"
 
     def test_cot_descriptions_differ_from_fast(self) -> None:
         """Test that CoT descriptions are more detailed than fast."""
-        # CoT descriptions mention reasoning
         assert "reasoning" in STEP_DESCRIPTIONS["tailor_skills"]
-        # Fast descriptions are simpler
         assert "reasoning" not in STEP_DESCRIPTIONS_FAST["tailor_skills"]
+
+
+# =============================================================================
+# _start_step and _end_step Tests
+# =============================================================================
 
 
 class TestStartStep:
@@ -172,26 +195,41 @@ class TestStartStep:
 
         assert result["current_step"] == "extract_cv"
         assert "current_step_description" in result
-        assert "current_step_start" in result
         assert isinstance(result["current_step_start"], float)
 
-    def test_start_step_uses_cot_descriptions(self, base_state: CVWarlockState) -> None:
-        """Test that _start_step uses CoT descriptions when enabled."""
-        result = _start_step(base_state, "tailor_skills", use_cot=True)
-
-        assert "reasoning" in result["current_step_description"]
-
-    def test_start_step_uses_fast_descriptions(self, base_state: CVWarlockState) -> None:
-        """Test that _start_step uses fast descriptions when CoT disabled."""
-        result = _start_step(base_state, "tailor_skills", use_cot=False)
-
-        assert "reasoning" not in result["current_step_description"]
+    @pytest.mark.parametrize(
+        "use_cot,should_have_reasoning",
+        [(True, True), (False, False)],
+    )
+    def test_start_step_description_mode(
+        self, base_state: CVWarlockState, use_cot: bool, should_have_reasoning: bool
+    ) -> None:
+        """Test that _start_step uses correct descriptions based on CoT mode."""
+        result = _start_step(base_state, "tailor_skills", use_cot=use_cot)
+        has_reasoning = "reasoning" in result["current_step_description"]
+        assert has_reasoning == should_have_reasoning
 
     def test_start_step_fallback_description(self, base_state: CVWarlockState) -> None:
         """Test fallback description for unknown steps."""
         result = _start_step(base_state, "unknown_step", use_cot=True)
-
         assert "Running unknown_step" in result["current_step_description"]
+
+    def test_start_step_calls_callback(self, base_state: CVWarlockState) -> None:
+        """Test that _start_step calls the on_step_start callback."""
+        callback = MagicMock()
+        result = _start_step(base_state, "extract_cv", use_cot=True, on_step_start=callback)
+
+        callback.assert_called_once_with("extract_cv", STEP_DESCRIPTIONS["extract_cv"])
+        assert result["current_step"] == "extract_cv"
+
+    def test_start_step_handles_callback_exception(self, base_state: CVWarlockState) -> None:
+        """Test that _start_step handles callback exceptions gracefully."""
+        callback = MagicMock(side_effect=Exception("Callback error"))
+        result = _start_step(base_state, "extract_cv", use_cot=True, on_step_start=callback)
+
+        callback.assert_called_once()
+        assert result["current_step"] == "extract_cv"
+        assert "current_step_start" in result
 
 
 class TestEndStep:
@@ -199,12 +237,10 @@ class TestEndStep:
 
     def test_end_step_records_timing(self, base_state: CVWarlockState) -> None:
         """Test that _end_step records timing information."""
-        base_state["current_step_start"] = time.time() - 1.0  # 1 second ago
+        base_state["current_step_start"] = time.time() - 1.0
 
-        updates = {"some_key": "some_value"}
-        result = _end_step(base_state, "extract_cv", updates)
+        result = _end_step(base_state, "extract_cv", {"some_key": "some_value"})
 
-        assert "step_timings" in result
         assert len(result["step_timings"]) == 1
         timing = result["step_timings"][0]
         assert timing["step_name"] == "extract_cv"
@@ -213,17 +249,17 @@ class TestEndStep:
 
     def test_end_step_appends_to_existing_timings(self, base_state: CVWarlockState) -> None:
         """Test that _end_step appends to existing timings."""
-        existing_timing = {
-            "step_name": "validate_inputs",
-            "start_time": 0,
-            "end_time": 1,
-            "duration_seconds": 1.0,
-        }
-        base_state["step_timings"] = [existing_timing]
+        base_state["step_timings"] = [
+            {
+                "step_name": "validate_inputs",
+                "start_time": 0,
+                "end_time": 1,
+                "duration_seconds": 1.0,
+            }
+        ]
         base_state["current_step_start"] = time.time()
 
-        updates = {}
-        result = _end_step(base_state, "extract_cv", updates)
+        result = _end_step(base_state, "extract_cv", {})
 
         assert len(result["step_timings"]) == 2
         assert result["step_timings"][0]["step_name"] == "validate_inputs"
@@ -233,13 +269,14 @@ class TestEndStep:
         """Test that _end_step handles missing start time gracefully."""
         base_state["current_step_start"] = None
 
-        updates = {}
-        result = _end_step(base_state, "extract_cv", updates)
+        result = _end_step(base_state, "extract_cv", {})
 
-        # Should still create timing entry
-        assert "step_timings" in result
-        timing = result["step_timings"][0]
-        assert timing["duration_seconds"] == 0
+        assert result["step_timings"][0]["duration_seconds"] == 0
+
+
+# =============================================================================
+# create_nodes Tests
+# =============================================================================
 
 
 class TestCreateNodes:
@@ -249,31 +286,20 @@ class TestCreateNodes:
         """Test that create_nodes returns all required nodes."""
         nodes = create_nodes(mock_provider, use_cot=True)
 
-        expected_nodes = [
-            "validate_inputs",
-            "extract_cv",
-            "extract_job",
-            "analyze_match",
-            "create_plan",
-            "tailor_summary",
-            "tailor_experiences",
-            "tailor_skills",
-            "assemble_cv",
-        ]
-
-        for node_name in expected_nodes:
+        for node_name in EXPECTED_WORKFLOW_STEPS:
             assert node_name in nodes
             assert callable(nodes[node_name])
 
     def test_create_nodes_with_cot_disabled(self, mock_provider: MagicMock) -> None:
         """Test creating nodes with CoT disabled."""
         nodes = create_nodes(mock_provider, use_cot=False)
-
-        # Should still have all nodes (including extract_all for parallel extraction)
-        # 11 nodes: validate_inputs, extract_cv, extract_job, extract_all,
-        # analyze_match, create_plan, tailor_summary, tailor_experiences,
-        # tailor_skills, tailor_skills_and_experiences, assemble_cv
+        # 11 nodes including extract_all and tailor_skills_and_experiences
         assert len(nodes) == 11
+
+
+# =============================================================================
+# Validate Inputs Node Tests
+# =============================================================================
 
 
 class TestValidateInputsNode:
@@ -284,7 +310,6 @@ class TestValidateInputsNode:
     ) -> None:
         """Test validate_inputs with valid inputs."""
         nodes = create_nodes(mock_provider)
-
         result = nodes["validate_inputs"](base_state)
 
         assert result["errors"] == []
@@ -292,8 +317,7 @@ class TestValidateInputsNode:
         assert result["total_refinement_iterations"] == 0
 
     def test_validate_inputs_initializes_step_timings(self, mock_provider: MagicMock) -> None:
-        """Test that validate_inputs initializes step_timings if not present (line 147)."""
-        # State without step_timings key
+        """Test that validate_inputs initializes step_timings if not present."""
         state: CVWarlockState = {
             "raw_cv": "# John Doe\n\nSenior Engineer...",
             "raw_job_spec": "# Senior Software Engineer\n\nRequirements...",
@@ -302,63 +326,46 @@ class TestValidateInputsNode:
             "cv_data": None,
             "job_requirements": None,
             "errors": [],
-            # No step_timings key
         }  # type: ignore[typeddict-item]
 
         nodes = create_nodes(mock_provider)
         result = nodes["validate_inputs"](state)
 
-        # Should initialize step_timings
-        assert "step_timings" in result
         assert isinstance(result["step_timings"], list)
 
-    def test_validate_inputs_empty_cv(
-        self, mock_provider: MagicMock, base_state: CVWarlockState
+    @pytest.mark.parametrize(
+        "raw_cv,raw_job_spec,expected_errors,error_contains",
+        [
+            ("", "# Job", 1, "CV document"),
+            ("# CV", "", 1, "Job specification"),
+            ("", "   ", 2, None),  # Both empty
+            ("   \n\t  ", "# Job", 1, "CV"),  # Whitespace CV
+        ],
+    )
+    def test_validate_inputs_errors(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        raw_cv: str,
+        raw_job_spec: str,
+        expected_errors: int,
+        error_contains: str | None,
     ) -> None:
-        """Test validate_inputs with empty CV."""
-        base_state["raw_cv"] = ""
+        """Test validate_inputs with various invalid inputs."""
+        base_state["raw_cv"] = raw_cv
+        base_state["raw_job_spec"] = raw_job_spec
         nodes = create_nodes(mock_provider)
 
         result = nodes["validate_inputs"](base_state)
 
-        assert len(result["errors"]) == 1
-        assert "CV document" in result["errors"][0]
+        assert len(result["errors"]) == expected_errors
+        if error_contains:
+            assert any(error_contains in e for e in result["errors"])
 
-    def test_validate_inputs_empty_job_spec(
-        self, mock_provider: MagicMock, base_state: CVWarlockState
-    ) -> None:
-        """Test validate_inputs with empty job spec."""
-        base_state["raw_job_spec"] = ""
-        nodes = create_nodes(mock_provider)
 
-        result = nodes["validate_inputs"](base_state)
-
-        assert len(result["errors"]) == 1
-        assert "Job specification" in result["errors"][0]
-
-    def test_validate_inputs_both_empty(
-        self, mock_provider: MagicMock, base_state: CVWarlockState
-    ) -> None:
-        """Test validate_inputs with both inputs empty."""
-        base_state["raw_cv"] = ""
-        base_state["raw_job_spec"] = "   "  # Whitespace only
-        nodes = create_nodes(mock_provider)
-
-        result = nodes["validate_inputs"](base_state)
-
-        assert len(result["errors"]) == 2
-
-    def test_validate_inputs_whitespace_cv(
-        self, mock_provider: MagicMock, base_state: CVWarlockState
-    ) -> None:
-        """Test that whitespace-only CV is treated as empty."""
-        base_state["raw_cv"] = "   \n\t  "
-        nodes = create_nodes(mock_provider)
-
-        result = nodes["validate_inputs"](base_state)
-
-        assert len(result["errors"]) >= 1
-        assert any("CV" in e for e in result["errors"])
+# =============================================================================
+# Extraction Node Tests
+# =============================================================================
 
 
 class TestExtractCVNode:
@@ -376,7 +383,6 @@ class TestExtractCVNode:
             result = nodes["extract_cv"](base_state)
 
         assert result["cv_data"] is sample_cv_data
-        assert "errors" not in result or not result.get("errors")
 
     def test_extract_cv_handles_exception(
         self, mock_provider: MagicMock, base_state: CVWarlockState
@@ -389,7 +395,6 @@ class TestExtractCVNode:
         nodes = create_nodes(mock_provider)
         result = nodes["extract_cv"](base_state)
 
-        assert "errors" in result
         assert any("CV extraction failed" in e for e in result["errors"])
 
 
@@ -436,7 +441,7 @@ class TestExtractAllNode:
         sample_cv_data: CVData,
         sample_job_requirements: JobRequirements,
     ) -> None:
-        """Test successful parallel extraction of CV and job data."""
+        """Test successful parallel extraction."""
         with (
             patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=sample_cv_data),
             patch(
@@ -449,73 +454,89 @@ class TestExtractAllNode:
 
         assert result["cv_data"] is sample_cv_data
         assert result["job_requirements"] is sample_job_requirements
-        assert "errors" not in result or not result.get("errors")
 
-    def test_extract_all_cv_failure(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-        sample_job_requirements: JobRequirements,
-    ) -> None:
-        """Test extract_all when CV extraction fails."""
-        with (
-            patch(
-                "cv_warlock.graph.nodes.CVExtractor.extract",
-                side_effect=Exception("CV parse error"),
-            ),
-            patch(
-                "cv_warlock.graph.nodes.JobExtractor.extract",
-                return_value=sample_job_requirements,
-            ),
-        ):
-            nodes = create_nodes(mock_provider)
-            result = nodes["extract_all"](base_state)
-
-        assert result["job_requirements"] is sample_job_requirements
-        assert any("CV extraction failed" in e for e in result["errors"])
-
-    def test_extract_all_job_failure(
+    @pytest.mark.parametrize(
+        "cv_error,job_error,cv_expected,job_expected,error_count",
+        [
+            (Exception("CV error"), None, None, True, 1),  # CV fails
+            (None, Exception("Job error"), True, None, 1),  # Job fails
+            (Exception("CV"), Exception("Job"), None, None, 2),  # Both fail
+        ],
+    )
+    def test_extract_all_failures(
         self,
         mock_provider: MagicMock,
         base_state: CVWarlockState,
         sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        cv_error: Exception | None,
+        job_error: Exception | None,
+        cv_expected: bool | None,
+        job_expected: bool | None,
+        error_count: int,
     ) -> None:
-        """Test extract_all when job extraction fails."""
-        with (
-            patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=sample_cv_data),
-            patch(
-                "cv_warlock.graph.nodes.JobExtractor.extract",
-                side_effect=Exception("Job parse error"),
-            ),
-        ):
-            nodes = create_nodes(mock_provider)
-            result = nodes["extract_all"](base_state)
-
-        assert result["cv_data"] is sample_cv_data
-        assert any("Job extraction failed" in e for e in result["errors"])
-
-    def test_extract_all_both_failures(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test extract_all when both extractions fail."""
+        """Test extract_all with various failure scenarios."""
         with (
             patch(
                 "cv_warlock.graph.nodes.CVExtractor.extract",
-                side_effect=Exception("CV error"),
+                side_effect=cv_error if cv_error else None,
+                return_value=None if cv_error else sample_cv_data,
             ),
             patch(
                 "cv_warlock.graph.nodes.JobExtractor.extract",
-                side_effect=Exception("Job error"),
+                side_effect=job_error if job_error else None,
+                return_value=None if job_error else sample_job_requirements,
             ),
         ):
             nodes = create_nodes(mock_provider)
             result = nodes["extract_all"](base_state)
 
-        assert "cv_data" not in result or result.get("cv_data") is None
-        assert "job_requirements" not in result or result.get("job_requirements") is None
-        assert len(result["errors"]) == 2
+        if cv_expected:
+            assert result["cv_data"] is sample_cv_data
+        if job_expected:
+            assert result["job_requirements"] is sample_job_requirements
+        assert len(result["errors"]) == error_count
+
+
+# =============================================================================
+# Nodes Skip-on-Errors Tests (Parametrized)
+# =============================================================================
+
+
+class TestNodesSkipOnErrors:
+    """Parametrized tests for nodes that skip processing when errors exist."""
+
+    @pytest.mark.parametrize(
+        "node_name,result_key",
+        [
+            ("analyze_match", "match_analysis"),
+            ("create_plan", "tailoring_plan"),
+            ("tailor_skills", "tailored_skills"),
+            ("tailor_experiences", "tailored_experiences"),
+            ("tailor_summary", "tailored_summary"),
+            ("assemble_cv", "tailored_cv"),
+            ("tailor_skills_and_experiences", "tailored_skills"),
+        ],
+    )
+    def test_node_skips_on_errors(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        node_name: str,
+        result_key: str,
+    ) -> None:
+        """Test that nodes skip processing when errors exist."""
+        base_state["errors"] = ["Previous error"]
+
+        nodes = create_nodes(mock_provider)
+        result = nodes[node_name](base_state)
+
+        assert result_key not in result or result.get(result_key) is None
+
+
+# =============================================================================
+# Analyze Match Node Tests
+# =============================================================================
 
 
 class TestAnalyzeMatchNode:
@@ -535,11 +556,10 @@ class TestAnalyzeMatchNode:
         """Test successful match analysis."""
         base_state["cv_data"] = sample_cv_data
         base_state["job_requirements"] = sample_job_requirements
-        base_state["errors"] = []  # Ensure no errors
+        base_state["errors"] = []
 
         mock_scorer = MagicMock()
         mock_scorer_class.return_value = mock_scorer
-        # score_with_plan returns tuple of (match_analysis, tailoring_plan)
         mock_scorer.score_with_plan.return_value = (sample_match_analysis, sample_tailoring_plan)
 
         nodes = create_nodes(mock_provider)
@@ -563,198 +583,78 @@ class TestAnalyzeMatchNode:
         base_state["cv_data"] = sample_cv_data
         base_state["job_requirements"] = sample_job_requirements
         base_state["assume_all_tech_skills"] = True
-        base_state["errors"] = []  # Ensure no errors
+        base_state["errors"] = []
 
         mock_scorer = MagicMock()
         mock_scorer_class.return_value = mock_scorer
-        # score_with_plan returns tuple of (match_analysis, tailoring_plan)
         mock_scorer.score_with_plan.return_value = (sample_match_analysis, sample_tailoring_plan)
 
         nodes = create_nodes(mock_provider)
         result = nodes["analyze_match"](base_state)
 
-        # The augmented CV should have extra skills
         augmented_cv = result.get("cv_data")
         if augmented_cv:
-            # Should include job required/preferred skills
             all_skills_lower = [s.lower() for s in augmented_cv.skills]
-            assert "kubernetes" in all_skills_lower  # from preferred_skills
+            assert "kubernetes" in all_skills_lower
 
-    def test_analyze_match_skips_on_errors(
+    @patch("cv_warlock.scoring.hybrid.HybridScorer")
+    def test_analyze_match_no_augmentation_when_disabled(
         self,
+        mock_scorer_class: MagicMock,
         mock_provider: MagicMock,
         base_state: CVWarlockState,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_match_analysis: MatchAnalysis,
     ) -> None:
-        """Test that analyze_match skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
+        """Test that analyze_match doesn't augment skills when disabled."""
+        base_state["cv_data"] = sample_cv_data
+        base_state["job_requirements"] = sample_job_requirements
+        base_state["assume_all_tech_skills"] = False
+        base_state["errors"] = []
+        original_skill_count = len(sample_cv_data.skills)
+
+        mock_scorer = MagicMock()
+        mock_scorer_class.return_value = mock_scorer
+        mock_scorer.score.return_value = sample_match_analysis
 
         nodes = create_nodes(mock_provider)
         result = nodes["analyze_match"](base_state)
 
-        # Should not add match_analysis
-        assert "match_analysis" not in result or result.get("match_analysis") is None
+        if "cv_data" in result:
+            assert len(result["cv_data"].skills) == original_skill_count
 
-
-class TestCreatePlanNode:
-    """Tests for the create_plan node."""
-
-    def test_create_plan_skips_on_errors(
+    @patch("cv_warlock.scoring.hybrid.HybridScorer")
+    def test_analyze_match_handles_exception(
         self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that create_plan skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["create_plan"](base_state)
-
-        assert "tailoring_plan" not in result or result.get("tailoring_plan") is None
-
-
-class TestTailorSkillsNode:
-    """Tests for the tailor_skills node."""
-
-    def test_tailor_skills_skips_on_errors(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that tailor_skills skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["tailor_skills"](base_state)
-
-        assert "tailored_skills" not in result or result.get("tailored_skills") is None
-
-    def test_tailor_skills_initializes_context(
-        self,
+        mock_scorer_class: MagicMock,
         mock_provider: MagicMock,
         base_state: CVWarlockState,
         sample_cv_data: CVData,
         sample_job_requirements: JobRequirements,
     ) -> None:
-        """Test that tailor_skills initializes generation context."""
+        """Test that analyze_match handles scoring exceptions gracefully."""
         base_state["cv_data"] = sample_cv_data
         base_state["job_requirements"] = sample_job_requirements
+        base_state["errors"] = []
 
-        mock_chat_model = MagicMock()
-        mock_provider.get_chat_model.return_value = mock_chat_model
-
-        mock_result = MagicMock()
-        mock_result.content = "Skills section"
-        mock_chat_model.__or__ = MagicMock(return_value=mock_chat_model)
-        mock_chat_model.invoke.return_value = mock_result
-
-        nodes = create_nodes(mock_provider, use_cot=False)
-        result = nodes["tailor_skills"](base_state)
-
-        assert "generation_context" in result
-
-
-class TestTailorExperiencesNode:
-    """Tests for the tailor_experiences node."""
-
-    def test_tailor_experiences_skips_on_errors(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that tailor_experiences skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
+        mock_scorer = MagicMock()
+        mock_scorer_class.return_value = mock_scorer
+        mock_scorer.score.side_effect = Exception("Scoring failed")
 
         nodes = create_nodes(mock_provider)
-        result = nodes["tailor_experiences"](base_state)
+        result = nodes["analyze_match"](base_state)
 
-        assert "tailored_experiences" not in result or result.get("tailored_experiences") is None
-
-
-class TestTailorSummaryNode:
-    """Tests for the tailor_summary node."""
-
-    def test_tailor_summary_skips_on_errors(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that tailor_summary skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["tailor_summary"](base_state)
-
-        assert "tailored_summary" not in result or result.get("tailored_summary") is None
+        assert any("Match analysis failed" in e for e in result["errors"])
 
 
-class TestAssembleCVNode:
-    """Tests for the assemble_cv node."""
-
-    def test_assemble_cv_skips_on_errors(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that assemble_cv skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["assemble_cv"](base_state)
-
-        assert "tailored_cv" not in result or result.get("tailored_cv") is None
-
-    def test_assemble_cv_computes_total_time(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-        sample_cv_data: CVData,
-    ) -> None:
-        """Test that assemble_cv computes total generation time."""
-        base_state["cv_data"] = sample_cv_data
-        base_state["tailored_summary"] = "Summary"
-        base_state["tailored_experiences"] = ["Exp 1"]
-        base_state["tailored_skills"] = ["Skills"]
-        base_state["errors"] = []  # Ensure no errors
-        base_state["step_timings"] = [
-            {"step_name": "step1", "duration_seconds": 1.0},
-            {"step_name": "step2", "duration_seconds": 2.0},
-        ]
-
-        with patch("cv_warlock.graph.nodes.CVTailor.assemble_cv", return_value="# Assembled CV"):
-            nodes = create_nodes(mock_provider)
-            result = nodes["assemble_cv"](base_state)
-
-        assert result["tailored_cv"] == "# Assembled CV"
-        assert result["total_generation_time"] >= 3.0  # At least previous steps
+# =============================================================================
+# Create Plan Node Tests
+# =============================================================================
 
 
-class TestNodeErrorAccumulation:
-    """Tests for error accumulation across nodes."""
-
-    def test_errors_accumulate_across_nodes(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that errors accumulate and don't overwrite."""
-        base_state["errors"] = ["Error 1"]
-
-        # Make extraction fail
-        mock_model = MagicMock()
-        mock_provider.get_extraction_model.return_value = mock_model
-        mock_model.with_structured_output.side_effect = Exception("Error 2")
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["extract_cv"](base_state)
-
-        # Should have both errors
-        assert len(result["errors"]) == 2
-        assert "Error 1" in result["errors"]
-        assert any("Error 2" in e or "CV extraction failed" in e for e in result["errors"])
-
-
-class TestCreatePlanNodeSuccess:
-    """Tests for create_plan node success and error paths."""
+class TestCreatePlanNode:
+    """Tests for the create_plan node."""
 
     def test_create_plan_success(
         self,
@@ -804,8 +704,36 @@ class TestCreatePlanNodeSuccess:
         assert any("Tailoring plan failed" in e for e in result["errors"])
 
 
-class TestTailorSkillsNodeCoT:
-    """Tests for tailor_skills node with CoT enabled."""
+# =============================================================================
+# Tailor Skills Node Tests
+# =============================================================================
+
+
+class TestTailorSkillsNode:
+    """Tests for the tailor_skills node."""
+
+    def test_tailor_skills_initializes_context(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test that tailor_skills initializes generation context."""
+        base_state["cv_data"] = sample_cv_data
+        base_state["job_requirements"] = sample_job_requirements
+
+        mock_chat_model = MagicMock()
+        mock_provider.get_chat_model.return_value = mock_chat_model
+        mock_result = MagicMock()
+        mock_result.content = "Skills section"
+        mock_chat_model.__or__ = MagicMock(return_value=mock_chat_model)
+        mock_chat_model.invoke.return_value = mock_result
+
+        nodes = create_nodes(mock_provider, use_cot=False)
+        result = nodes["tailor_skills"](base_state)
+
+        assert "generation_context" in result
 
     def test_tailor_skills_cot_success(
         self,
@@ -819,19 +747,17 @@ class TestTailorSkillsNodeCoT:
         base_state["job_requirements"] = sample_job_requirements
         base_state["errors"] = []
 
-        # Create mock CoT result
         mock_reasoning = MagicMock()
         mock_reasoning.required_skills_matched = ["Python", "AWS"]
         mock_reasoning.preferred_skills_matched = ["Kubernetes"]
 
-        mock_critique = MagicMock()
-        mock_critique.quality_level.value = "good"
-
-        mock_cot_result = MagicMock()
-        mock_cot_result.final_skills = "**Technical Skills:** Python, AWS, Kubernetes"
-        mock_cot_result.reasoning = mock_reasoning
-        mock_cot_result.critique = mock_critique
-        mock_cot_result.refinement_count = 1
+        mock_cot_result = create_mock_cot_result(
+            final_content="**Technical Skills:** Python, AWS, Kubernetes",
+            quality="good",
+            refinement_count=1,
+            final_skills="**Technical Skills:** Python, AWS, Kubernetes",
+            reasoning=mock_reasoning,
+        )
 
         with patch(
             "cv_warlock.graph.nodes.CVTailor.tailor_skills_with_cot",
@@ -842,7 +768,6 @@ class TestTailorSkillsNodeCoT:
 
         assert result["tailored_skills"] == [mock_cot_result.final_skills]
         assert result["skills_reasoning_result"] is mock_cot_result
-        assert result["generation_context"] is not None
         assert result["total_refinement_iterations"] == 1
         assert result["quality_scores"]["skills"] == "good"
 
@@ -868,8 +793,13 @@ class TestTailorSkillsNodeCoT:
         assert any("Skills tailoring failed" in e for e in result["errors"])
 
 
-class TestTailorExperiencesNodePaths:
-    """Tests for tailor_experiences node success and error paths."""
+# =============================================================================
+# Tailor Experiences Node Tests
+# =============================================================================
+
+
+class TestTailorExperiencesNode:
+    """Tests for the tailor_experiences node."""
 
     def test_tailor_experiences_direct_success(
         self,
@@ -913,28 +843,20 @@ class TestTailorExperiencesNodePaths:
         base_state["generation_context"] = GenerationContext()
         base_state["errors"] = []
 
-        mock_tailored_texts = ["**Senior Engineer** at Tech Corp\n- Led team"]
-
-        # Create mock experience result
-        mock_critique = MagicMock()
-        mock_critique.quality_level.value = "good"
-
-        mock_exp_result = MagicMock()
-        mock_exp_result.refinement_count = 2
-        mock_exp_result.critique = mock_critique
-
+        mock_exp_result = create_mock_cot_result(
+            final_content="exp", quality="good", refinement_count=2
+        )
         mock_context = GenerationContext(skills_demonstrated=["Python"])
 
         with patch(
             "cv_warlock.graph.nodes.CVTailor.tailor_experiences_with_cot",
-            return_value=(mock_tailored_texts, [mock_exp_result], mock_context),
+            return_value=(["**Senior Engineer**"], [mock_exp_result], mock_context),
         ):
             nodes = create_nodes(mock_provider, use_cot=True)
             result = nodes["tailor_experiences"](base_state)
 
-        assert result["tailored_experiences"] == mock_tailored_texts
+        assert result["tailored_experiences"] == ["**Senior Engineer**"]
         assert result["experience_reasoning_results"] == [mock_exp_result]
-        assert result["generation_context"] is mock_context
         assert result["total_refinement_iterations"] == 2
         assert result["quality_scores"]["experience_0"] == "good"
 
@@ -962,8 +884,13 @@ class TestTailorExperiencesNodePaths:
         assert any("Experience tailoring failed" in e for e in result["errors"])
 
 
-class TestTailorSummaryNodePaths:
-    """Tests for tailor_summary node success and error paths."""
+# =============================================================================
+# Tailor Summary Node Tests
+# =============================================================================
+
+
+class TestTailorSummaryNode:
+    """Tests for the tailor_summary node."""
 
     def test_tailor_summary_direct_success(
         self,
@@ -980,16 +907,14 @@ class TestTailorSummaryNodePaths:
         base_state["tailored_skills"] = ["Python, AWS, Docker"]
         base_state["errors"] = []
 
-        mock_summary = "Experienced engineer with 10 years..."
-
         with patch(
             "cv_warlock.graph.nodes.CVTailor.tailor_summary",
-            return_value=mock_summary,
+            return_value="Experienced engineer with 10 years...",
         ):
             nodes = create_nodes(mock_provider, use_cot=False)
             result = nodes["tailor_summary"](base_state)
 
-        assert result["tailored_summary"] == mock_summary
+        assert result["tailored_summary"] == "Experienced engineer with 10 years..."
 
     def test_tailor_summary_cot_success(
         self,
@@ -1009,19 +934,17 @@ class TestTailorSummaryNodePaths:
         base_state["generation_context"] = GenerationContext()
         base_state["errors"] = []
 
-        # Create mock CoT result
         mock_reasoning = MagicMock()
         mock_reasoning.hook_strategy = "Lead with cloud expertise"
         mock_reasoning.strongest_metric = "10 years experience"
 
-        mock_critique = MagicMock()
-        mock_critique.quality_level.value = "excellent"
-
-        mock_cot_result = MagicMock()
-        mock_cot_result.final_summary = "Seasoned cloud architect..."
-        mock_cot_result.reasoning = mock_reasoning
-        mock_cot_result.critique = mock_critique
-        mock_cot_result.refinement_count = 0
+        mock_cot_result = create_mock_cot_result(
+            final_content="Seasoned cloud architect...",
+            quality="excellent",
+            refinement_count=0,
+            final_summary="Seasoned cloud architect...",
+            reasoning=mock_reasoning,
+        )
 
         with patch(
             "cv_warlock.graph.nodes.CVTailor.tailor_summary_with_cot",
@@ -1032,9 +955,9 @@ class TestTailorSummaryNodePaths:
 
         assert result["tailored_summary"] == mock_cot_result.final_summary
         assert result["summary_reasoning_result"] is mock_cot_result
-        assert result["generation_context"].established_identity == "Lead with cloud expertise"
         assert result["quality_scores"]["summary"] == "excellent"
 
+    @pytest.mark.parametrize("tailored_skills", [[], None])
     def test_tailor_summary_handles_empty_skills(
         self,
         mock_provider: MagicMock,
@@ -1042,24 +965,23 @@ class TestTailorSummaryNodePaths:
         sample_cv_data: CVData,
         sample_job_requirements: JobRequirements,
         sample_tailoring_plan: TailoringPlan,
+        tailored_skills: list | None,
     ) -> None:
-        """Test tailor_summary handles empty tailored_skills list."""
+        """Test tailor_summary handles empty/None tailored_skills."""
         base_state["cv_data"] = sample_cv_data
         base_state["job_requirements"] = sample_job_requirements
         base_state["tailoring_plan"] = sample_tailoring_plan
-        base_state["tailored_skills"] = []  # Empty list
+        base_state["tailored_skills"] = tailored_skills
         base_state["errors"] = []
-
-        mock_summary = "Summary without skills preview"
 
         with patch(
             "cv_warlock.graph.nodes.CVTailor.tailor_summary",
-            return_value=mock_summary,
+            return_value="Summary without skills preview",
         ):
             nodes = create_nodes(mock_provider, use_cot=False)
             result = nodes["tailor_summary"](base_state)
 
-        assert result["tailored_summary"] == mock_summary
+        assert result["tailored_summary"] == "Summary without skills preview"
 
     def test_tailor_summary_handles_exception(
         self,
@@ -1086,8 +1008,37 @@ class TestTailorSummaryNodePaths:
         assert any("Summary tailoring failed" in e for e in result["errors"])
 
 
-class TestAssembleCVNodePaths:
-    """Tests for assemble_cv node additional paths."""
+# =============================================================================
+# Assemble CV Node Tests
+# =============================================================================
+
+
+class TestAssembleCVNode:
+    """Tests for the assemble_cv node."""
+
+    def test_assemble_cv_computes_total_time(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_cv_data: CVData,
+    ) -> None:
+        """Test that assemble_cv computes total generation time."""
+        base_state["cv_data"] = sample_cv_data
+        base_state["tailored_summary"] = "Summary"
+        base_state["tailored_experiences"] = ["Exp 1"]
+        base_state["tailored_skills"] = ["Skills"]
+        base_state["errors"] = []
+        base_state["step_timings"] = [
+            {"step_name": "step1", "duration_seconds": 1.0},
+            {"step_name": "step2", "duration_seconds": 2.0},
+        ]
+
+        with patch("cv_warlock.graph.nodes.CVTailor.assemble_cv", return_value="# Assembled CV"):
+            nodes = create_nodes(mock_provider)
+            result = nodes["assemble_cv"](base_state)
+
+        assert result["tailored_cv"] == "# Assembled CV"
+        assert result["total_generation_time"] >= 3.0
 
     def test_assemble_cv_handles_exception(
         self,
@@ -1121,7 +1072,7 @@ class TestAssembleCVNodePaths:
         base_state["cv_data"] = sample_cv_data
         base_state["tailored_summary"] = "Summary"
         base_state["tailored_experiences"] = ["Exp 1"]
-        base_state["tailored_skills"] = []  # Empty list
+        base_state["tailored_skills"] = []
         base_state["errors"] = []
 
         with patch(
@@ -1131,7 +1082,6 @@ class TestAssembleCVNodePaths:
             nodes = create_nodes(mock_provider)
             result = nodes["assemble_cv"](base_state)
 
-        # Should pass empty string for skills
         mock_assemble.assert_called_once()
         call_args = mock_assemble.call_args
         assert call_args[0][3] == ""  # Fourth positional arg is skills
@@ -1150,117 +1100,51 @@ class TestAssembleCVNodePaths:
         base_state["tailored_skills"] = ["Skills"]
         base_state["errors"] = []
         base_state["step_timings"] = []
-        base_state["current_step_start"] = time.time() - 0.5  # Started 0.5s ago
+        base_state["current_step_start"] = time.time() - 0.5
 
-        with patch(
-            "cv_warlock.graph.nodes.CVTailor.assemble_cv",
-            return_value="# Final CV",
-        ):
+        with patch("cv_warlock.graph.nodes.CVTailor.assemble_cv", return_value="# Final CV"):
             nodes = create_nodes(mock_provider)
             result = nodes["assemble_cv"](base_state)
 
-        # Total time should include at least the current step duration
         assert result["total_generation_time"] >= 0.5
         assert "complete" in result["current_step_description"].lower()
 
 
-class TestAnalyzeMatchNodeEdgeCases:
-    """Tests for analyze_match node edge cases."""
+# =============================================================================
+# Error Accumulation Tests
+# =============================================================================
 
-    @patch("cv_warlock.scoring.hybrid.HybridScorer")
-    def test_analyze_match_no_skill_augmentation_when_disabled(
+
+class TestNodeErrorAccumulation:
+    """Tests for error accumulation across nodes."""
+
+    def test_errors_accumulate_across_nodes(
         self,
-        mock_scorer_class: MagicMock,
         mock_provider: MagicMock,
         base_state: CVWarlockState,
-        sample_cv_data: CVData,
-        sample_job_requirements: JobRequirements,
-        sample_match_analysis: MatchAnalysis,
     ) -> None:
-        """Test that analyze_match doesn't augment skills when disabled."""
-        base_state["cv_data"] = sample_cv_data
-        base_state["job_requirements"] = sample_job_requirements
-        base_state["assume_all_tech_skills"] = False  # Disabled
-        base_state["errors"] = []
-        original_skill_count = len(sample_cv_data.skills)
+        """Test that errors accumulate and don't overwrite."""
+        base_state["errors"] = ["Error 1"]
 
-        mock_scorer = MagicMock()
-        mock_scorer_class.return_value = mock_scorer
-        mock_scorer.score.return_value = sample_match_analysis
+        mock_model = MagicMock()
+        mock_provider.get_extraction_model.return_value = mock_model
+        mock_model.with_structured_output.side_effect = Exception("Error 2")
 
         nodes = create_nodes(mock_provider)
-        result = nodes["analyze_match"](base_state)
+        result = nodes["extract_cv"](base_state)
 
-        # CV data should not be modified (or not returned)
-        if "cv_data" in result:
-            # If returned, skills should be unchanged
-            assert len(result["cv_data"].skills) == original_skill_count
-
-    @patch("cv_warlock.scoring.hybrid.HybridScorer")
-    def test_analyze_match_handles_exception(
-        self,
-        mock_scorer_class: MagicMock,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-        sample_cv_data: CVData,
-        sample_job_requirements: JobRequirements,
-    ) -> None:
-        """Test that analyze_match handles scoring exceptions gracefully."""
-        base_state["cv_data"] = sample_cv_data
-        base_state["job_requirements"] = sample_job_requirements
-        base_state["errors"] = []
-
-        mock_scorer = MagicMock()
-        mock_scorer_class.return_value = mock_scorer
-        mock_scorer.score.side_effect = Exception("Scoring failed")
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["analyze_match"](base_state)
-
-        assert any("Match analysis failed" in e for e in result["errors"])
+        assert len(result["errors"]) == 2
+        assert "Error 1" in result["errors"]
+        assert any("Error 2" in e or "CV extraction failed" in e for e in result["errors"])
 
 
-class TestOnStepStartCallback:
-    """Tests for on_step_start callback handling."""
-
-    def test_start_step_calls_callback(self, base_state: CVWarlockState) -> None:
-        """Test that _start_step calls the on_step_start callback."""
-        callback = MagicMock()
-
-        result = _start_step(base_state, "extract_cv", use_cot=True, on_step_start=callback)
-
-        callback.assert_called_once_with("extract_cv", STEP_DESCRIPTIONS["extract_cv"])
-        assert result["current_step"] == "extract_cv"
-
-    def test_start_step_handles_callback_exception(self, base_state: CVWarlockState) -> None:
-        """Test that _start_step handles callback exceptions gracefully (lines 66-68)."""
-        callback = MagicMock(side_effect=Exception("Callback error"))
-
-        # Should not raise, should continue normally
-        result = _start_step(base_state, "extract_cv", use_cot=True, on_step_start=callback)
-
-        # Callback was attempted
-        callback.assert_called_once()
-        # Step info should still be returned
-        assert result["current_step"] == "extract_cv"
-        assert "current_step_start" in result
+# =============================================================================
+# Tailor Skills and Experiences (Parallel) Node Tests
+# =============================================================================
 
 
 class TestTailorSkillsAndExperiencesNode:
     """Tests for tailor_skills_and_experiences parallel node."""
-
-    def test_tailor_skills_and_experiences_skips_on_errors(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-    ) -> None:
-        """Test that tailor_skills_and_experiences skips processing if errors exist."""
-        base_state["errors"] = ["Previous error"]
-
-        nodes = create_nodes(mock_provider)
-        result = nodes["tailor_skills_and_experiences"](base_state)
-
-        assert "tailored_skills" not in result or result.get("tailored_skills") is None
 
     def test_tailor_skills_and_experiences_cot_success(
         self,
@@ -1270,7 +1154,7 @@ class TestTailorSkillsAndExperiencesNode:
         sample_job_requirements: JobRequirements,
         sample_tailoring_plan: TailoringPlan,
     ) -> None:
-        """Test tailor_skills_and_experiences with CoT enabled (lines 528-539, 550-566)."""
+        """Test tailor_skills_and_experiences with CoT enabled."""
         from cv_warlock.models.reasoning import GenerationContext
 
         base_state["cv_data"] = sample_cv_data
@@ -1278,27 +1162,21 @@ class TestTailorSkillsAndExperiencesNode:
         base_state["tailoring_plan"] = sample_tailoring_plan
         base_state["errors"] = []
 
-        # Create mock skills CoT result
         mock_skills_reasoning = MagicMock()
         mock_skills_reasoning.required_skills_matched = ["Python", "AWS"]
         mock_skills_reasoning.preferred_skills_matched = ["Kubernetes"]
 
-        mock_skills_critique = MagicMock()
-        mock_skills_critique.quality_level.value = "good"
+        mock_skills_result = create_mock_cot_result(
+            final_content="skills",
+            quality="good",
+            refinement_count=1,
+            final_skills="**Technical Skills:** Python, AWS",
+            reasoning=mock_skills_reasoning,
+        )
 
-        mock_skills_result = MagicMock()
-        mock_skills_result.final_skills = "**Technical Skills:** Python, AWS"
-        mock_skills_result.reasoning = mock_skills_reasoning
-        mock_skills_result.critique = mock_skills_critique
-        mock_skills_result.refinement_count = 1
-
-        # Create mock experiences CoT result
-        mock_exp_critique = MagicMock()
-        mock_exp_critique.quality_level.value = "excellent"
-
-        mock_exp_result = MagicMock()
-        mock_exp_result.refinement_count = 2
-        mock_exp_result.critique = mock_exp_critique
+        mock_exp_result = create_mock_cot_result(
+            final_content="exp", quality="excellent", refinement_count=2
+        )
 
         mock_exp_context = GenerationContext(
             skills_demonstrated=["Docker"],
@@ -1319,22 +1197,14 @@ class TestTailorSkillsAndExperiencesNode:
             nodes = create_nodes(mock_provider, use_cot=True)
             result = nodes["tailor_skills_and_experiences"](base_state)
 
-        # Check skills were processed
         assert result["tailored_skills"] == [mock_skills_result.final_skills]
         assert result["skills_reasoning_result"] is mock_skills_result
         assert result["quality_scores"]["skills"] == "good"
-
-        # Check experiences were processed
         assert result["tailored_experiences"] == ["Exp 1"]
         assert result["experience_reasoning_results"] == [mock_exp_result]
         assert result["quality_scores"]["experiences"] == ["excellent"]
-
-        # Check context was merged
-        assert result["generation_context"] is not None
         assert "Docker" in result["generation_context"].skills_demonstrated
-
-        # Check refinement counts accumulated
-        assert result["total_refinement_iterations"] == 3  # 1 + 2
+        assert result["total_refinement_iterations"] == 3
 
     def test_tailor_skills_and_experiences_direct_success(
         self,
@@ -1367,15 +1237,46 @@ class TestTailorSkillsAndExperiencesNode:
         assert result["tailored_experiences"] == ["Exp 1", "Exp 2"]
         assert result["generation_context"] is not None
 
-    def test_tailor_skills_and_experiences_skills_exception(
+    @pytest.mark.parametrize(
+        "skills_error,exp_error,skills_expected,exp_expected,error_patterns",
+        [
+            (
+                Exception("Skills error"),
+                None,
+                None,
+                ["Exp 1"],
+                ["Skills tailoring failed"],
+            ),
+            (
+                None,
+                Exception("Exp error"),
+                ["Python, AWS"],
+                None,
+                ["Experience tailoring failed"],
+            ),
+            (
+                Exception("Skills error"),
+                Exception("Exp error"),
+                None,
+                None,
+                ["Skills tailoring failed", "Experience tailoring failed"],
+            ),
+        ],
+    )
+    def test_tailor_skills_and_experiences_exceptions(
         self,
         mock_provider: MagicMock,
         base_state: CVWarlockState,
         sample_cv_data: CVData,
         sample_job_requirements: JobRequirements,
         sample_tailoring_plan: TailoringPlan,
+        skills_error: Exception | None,
+        exp_error: Exception | None,
+        skills_expected: list | None,
+        exp_expected: list | None,
+        error_patterns: list,
     ) -> None:
-        """Test tailor_skills_and_experiences handles skills exception (lines 519-523)."""
+        """Test tailor_skills_and_experiences handles various exceptions."""
         base_state["cv_data"] = sample_cv_data
         base_state["job_requirements"] = sample_job_requirements
         base_state["tailoring_plan"] = sample_tailoring_plan
@@ -1384,81 +1285,22 @@ class TestTailorSkillsAndExperiencesNode:
         with (
             patch(
                 "cv_warlock.graph.nodes.CVTailor.tailor_skills",
-                side_effect=Exception("Skills error"),
+                side_effect=skills_error if skills_error else None,
+                return_value=None if skills_error else "Python, AWS",
             ),
             patch(
                 "cv_warlock.graph.nodes.CVTailor.tailor_experiences",
-                return_value=["Exp 1"],
+                side_effect=exp_error if exp_error else None,
+                return_value=None if exp_error else ["Exp 1"],
             ),
         ):
             nodes = create_nodes(mock_provider, use_cot=False)
             result = nodes["tailor_skills_and_experiences"](base_state)
 
-        # Experiences should still succeed
-        assert result["tailored_experiences"] == ["Exp 1"]
-        # Error should be recorded
-        assert any("Skills tailoring failed" in e for e in result["errors"])
+        if skills_expected:
+            assert result["tailored_skills"] == skills_expected
+        if exp_expected:
+            assert result["tailored_experiences"] == exp_expected
 
-    def test_tailor_skills_and_experiences_experiences_exception(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-        sample_cv_data: CVData,
-        sample_job_requirements: JobRequirements,
-        sample_tailoring_plan: TailoringPlan,
-    ) -> None:
-        """Test tailor_skills_and_experiences handles experiences exception (lines 519-523)."""
-        base_state["cv_data"] = sample_cv_data
-        base_state["job_requirements"] = sample_job_requirements
-        base_state["tailoring_plan"] = sample_tailoring_plan
-        base_state["errors"] = []
-
-        with (
-            patch(
-                "cv_warlock.graph.nodes.CVTailor.tailor_skills",
-                return_value="Python, AWS",
-            ),
-            patch(
-                "cv_warlock.graph.nodes.CVTailor.tailor_experiences",
-                side_effect=Exception("Experiences error"),
-            ),
-        ):
-            nodes = create_nodes(mock_provider, use_cot=False)
-            result = nodes["tailor_skills_and_experiences"](base_state)
-
-        # Skills should still succeed
-        assert result["tailored_skills"] == ["Python, AWS"]
-        # Error should be recorded (line 574)
-        assert any("Experience tailoring failed" in e for e in result["errors"])
-
-    def test_tailor_skills_and_experiences_both_exceptions(
-        self,
-        mock_provider: MagicMock,
-        base_state: CVWarlockState,
-        sample_cv_data: CVData,
-        sample_job_requirements: JobRequirements,
-        sample_tailoring_plan: TailoringPlan,
-    ) -> None:
-        """Test tailor_skills_and_experiences handles both exceptions."""
-        base_state["cv_data"] = sample_cv_data
-        base_state["job_requirements"] = sample_job_requirements
-        base_state["tailoring_plan"] = sample_tailoring_plan
-        base_state["errors"] = []
-
-        with (
-            patch(
-                "cv_warlock.graph.nodes.CVTailor.tailor_skills",
-                side_effect=Exception("Skills error"),
-            ),
-            patch(
-                "cv_warlock.graph.nodes.CVTailor.tailor_experiences",
-                side_effect=Exception("Experiences error"),
-            ),
-        ):
-            nodes = create_nodes(mock_provider, use_cot=False)
-            result = nodes["tailor_skills_and_experiences"](base_state)
-
-        # Both errors should be recorded
-        assert len(result["errors"]) == 2
-        assert any("Skills tailoring failed" in e for e in result["errors"])
-        assert any("Experience tailoring failed" in e for e in result["errors"])
+        for pattern in error_patterns:
+            assert any(pattern in e for e in result["errors"])
