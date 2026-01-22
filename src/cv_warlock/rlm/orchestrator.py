@@ -27,6 +27,8 @@ from cv_warlock.rlm.models import (
 )
 from cv_warlock.rlm.prompts import (
     RLM_CONTINUE_PROMPT,
+    RLM_EXTRACTION_DIRECT_PROMPT,
+    RLM_EXTRACTION_WITH_CONTEXT_PROMPT,
     RLM_SUB_QUERY_PROMPT,
     RLM_SYSTEM_PROMPT,
 )
@@ -34,6 +36,64 @@ from cv_warlock.rlm.prompts import (
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+
+# =============================================================================
+# Module-level helper functions (registered in REPL environment)
+# =============================================================================
+
+
+def find_keyword(keyword: str, text: str) -> list[tuple[int, int]]:
+    """Find all occurrences of keyword in text (case-insensitive)."""
+    positions = []
+    start = 0
+    keyword_lower = keyword.lower()
+    text_lower = text.lower()
+    while True:
+        pos = text_lower.find(keyword_lower, start)
+        if pos == -1:
+            break
+        positions.append((pos, pos + len(keyword)))
+        start = pos + 1
+    return positions
+
+
+def find_sections(text: str) -> dict[str, str]:
+    """Parse text into sections based on markdown headers."""
+    header_pattern = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
+    headers = list(header_pattern.finditer(text))
+
+    if not headers:
+        return {"content": text}
+
+    sections = {}
+    for i, match in enumerate(headers):
+        name = match.group(2).strip().lower()
+        start = match.end()
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        sections[name] = text[start:end].strip()
+
+    return sections
+
+
+def _try_parse_json(content: str, schema: type[T] | None) -> T | None:
+    """Try to parse content as JSON and validate against schema."""
+    if not schema:
+        return None
+    try:
+        data = json.loads(content)
+        return schema.model_validate(data)
+    except (json.JSONDecodeError, Exception):
+        pass
+    # Try to extract JSON from within the content
+    json_match = re.search(r"\{[\s\S]*\}", content)
+    if json_match:
+        try:
+            data = json.loads(json_match.group())
+            return schema.model_validate(data)
+        except (json.JSONDecodeError, Exception):
+            pass
+    return None
 
 
 class RLMOrchestrator:
@@ -304,37 +364,7 @@ class RLMOrchestrator:
 
         def rlm_query(text: str, question: str) -> str:
             """Sub-model query function available in REPL."""
-            result = self._execute_sub_call(text, question, env)
-            return result.answer
-
-        def find_keyword(keyword: str, text: str) -> list[tuple[int, int]]:
-            """Find all occurrences of keyword in text."""
-            positions = []
-            start = 0
-            while True:
-                pos = text.lower().find(keyword.lower(), start)
-                if pos == -1:
-                    break
-                positions.append((pos, pos + len(keyword)))
-                start = pos + 1
-            return positions
-
-        def find_sections(text: str) -> dict[str, str]:
-            """Parse text into sections based on headers."""
-            header_pattern = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
-            headers = list(header_pattern.finditer(text))
-
-            if not headers:
-                return {"content": text}
-
-            sections = {}
-            for i, match in enumerate(headers):
-                name = match.group(2).strip().lower()
-                start = match.end()
-                end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
-                sections[name] = text[start:end].strip()
-
-            return sections
+            return self._execute_sub_call(text, question, env).answer
 
         env.register_function("rlm_query", rlm_query)
         env.register_function("find_keyword", find_keyword)
@@ -473,41 +503,20 @@ class RLMOrchestrator:
         output_schema: type[T] | None,
         env: REPLEnvironment,
     ) -> Any:
-        """Process the final answer from the model.
-
-        Args:
-            content: Final answer content or variable name.
-            output_schema: Optional Pydantic model for structured output.
-            env: REPL environment for variable resolution.
-
-        Returns:
-            Processed answer.
-        """
-        # Check if content is a variable reference
+        """Process the final answer from the model."""
+        # Resolve variable reference if applicable
         if content.isidentifier():
             value = env.get_variable(content)
             if value is not None:
                 content = str(value) if not isinstance(value, str) else value
 
-        # Try to parse as JSON if schema provided
+        # Try JSON parsing first
+        parsed = _try_parse_json(content, output_schema)
+        if parsed is not None:
+            return parsed
+
+        # Fall back to LLM extraction if schema provided
         if output_schema:
-            # First try direct JSON parse
-            try:
-                data = json.loads(content)
-                return output_schema.model_validate(data)
-            except (json.JSONDecodeError, Exception):
-                pass
-
-            # Try to extract JSON from within the content (model may wrap in text)
-            json_match = re.search(r"\{[\s\S]*\}", content)
-            if json_match:
-                try:
-                    data = json.loads(json_match.group())
-                    return output_schema.model_validate(data)
-                except (json.JSONDecodeError, Exception):
-                    pass
-
-            # Fall back to LLM-based structured extraction
             return self._extract_with_llm(content, output_schema, env)
 
         return content
@@ -518,132 +527,91 @@ class RLMOrchestrator:
         output_schema: type[T],
         env: REPLEnvironment,
     ) -> T | str:
-        """Use LLM to extract structured data from text content.
-
-        Falls back to direct extraction from raw CV/job text if analysis is empty.
-
-        Args:
-            content: Text content from RLM analysis.
-            output_schema: Pydantic model to extract.
-            env: REPL environment with context.
-
-        Returns:
-            Extracted Pydantic model or original content on failure.
-        """
-        # Get schema info for the prompt
+        """Use LLM to extract structured data from text content."""
         schema_name = output_schema.__name__
-        schema_fields = list(output_schema.model_fields.keys())
+        schema_fields = ", ".join(output_schema.model_fields.keys())
 
-        # Check if we have meaningful analysis content
-        has_analysis = content and len(content.strip()) > 100
-
-        if has_analysis:
-            # Build context from environment variables
-            context_parts = []
-            for key, value in env.variables.items():
-                if isinstance(value, (dict, list)):
-                    context_parts.append(f"{key}: {json.dumps(value, indent=2)}")
-                else:
-                    context_parts.append(f"{key}: {value}")
-            context = "\n".join(context_parts) if context_parts else "No additional context"
-
-            extraction_prompt = f"""Based on the following analysis and context, extract the structured data.
-
-## Analysis Result
-{content}
-
-## Additional Context from Analysis
-{context}
-
-## Required Output
-Extract the information into a {schema_name} with these fields: {", ".join(schema_fields)}
-
-Be thorough and include all relevant information found in the analysis."""
+        # Build extraction prompt based on content availability
+        if content and len(content.strip()) > 100:
+            context = self._build_context_string(env)
+            extraction_prompt = RLM_EXTRACTION_WITH_CONTEXT_PROMPT.format(
+                content=content,
+                context=context,
+                schema_name=schema_name,
+                schema_fields=schema_fields,
+            )
         else:
-            # No meaningful analysis - fall back to direct extraction from raw text
             logger.info(f"No analysis content, using direct extraction for {schema_name}")
-
-            # Use the raw CV text from environment (this is the source of truth)
-            raw_cv = env.cv_text if hasattr(env, "cv_text") else ""
-            raw_job = env.job_text if hasattr(env, "job_text") else ""
-
-            extraction_prompt = f"""Extract structured information from this CV document.
-
-## CV TEXT
-{raw_cv}
-
-## JOB REQUIREMENTS (for context)
-{raw_job}
-
-## Required Output
-Extract the information into a {schema_name} with these fields: {", ".join(schema_fields)}
-
-Be thorough and extract all relevant information from the CV."""
+            extraction_prompt = RLM_EXTRACTION_DIRECT_PROMPT.format(
+                cv_text=getattr(env, "cv_text", ""),
+                job_text=getattr(env, "job_text", ""),
+                schema_name=schema_name,
+                schema_fields=schema_fields,
+            )
 
         try:
             model = self.sub_provider.get_extraction_model()
-            structured_model = model.with_structured_output(output_schema)
-            result = structured_model.invoke(extraction_prompt)
+            result = model.with_structured_output(output_schema).invoke(extraction_prompt)
             logger.info(f"LLM extraction successful for {schema_name}")
             return cast(T, result)
         except Exception as e:
             logger.warning(f"LLM extraction failed for {schema_name}: {e}")
             return content
 
+    def _build_context_string(self, env: REPLEnvironment) -> str:
+        """Build context string from environment variables."""
+        if not env.variables:
+            return "No additional context"
+        parts = []
+        for key, value in env.variables.items():
+            if isinstance(value, (dict, list)):
+                parts.append(f"{key}: {json.dumps(value, indent=2)}")
+            else:
+                parts.append(f"{key}: {value}")
+        return "\n".join(parts)
+
     def _extract_fallback_answer(
         self,
         env: REPLEnvironment,
         output_schema: type[T] | None,
     ) -> Any:
-        """Extract fallback answer from stored variables.
-
-        Args:
-            env: REPL environment with stored variables.
-            output_schema: Optional Pydantic model for structured output.
-
-        Returns:
-            Best available answer or None.
-        """
-        # Look for common result variable names
+        """Extract fallback answer from stored variables."""
         result_keys = ["result", "answer", "output", "analysis", "findings", "summary"]
 
         for key in result_keys:
-            if key in env.variables:
-                value = env.variables[key]
-                if output_schema:
-                    try:
-                        if isinstance(value, dict):
-                            return output_schema.model_validate(value)
-                        elif isinstance(value, str):
-                            data = json.loads(value)
-                            return output_schema.model_validate(data)
-                    except Exception:
-                        pass
-                # If we found a value but couldn't parse it, try LLM extraction
-                if output_schema and value:
-                    content = str(value) if not isinstance(value, str) else value
-                    result = self._extract_with_llm(content, output_schema, env)
-                    if isinstance(result, output_schema):
-                        return result
-                return value
+            if key not in env.variables:
+                continue
+            value = env.variables[key]
 
-        # If we have variables but none matched result keys, try LLM extraction
-        # on the combined context
+            # Try direct validation for dicts
+            if output_schema and isinstance(value, dict):
+                try:
+                    return output_schema.model_validate(value)
+                except Exception:
+                    pass
+
+            # Try JSON parsing for strings
+            content = str(value) if not isinstance(value, str) else value
+            parsed = _try_parse_json(content, output_schema)
+            if parsed is not None:
+                return parsed
+
+            # Try LLM extraction
+            if output_schema and value:
+                result = self._extract_with_llm(content, output_schema, env)
+                if isinstance(result, output_schema):
+                    return result
+            return value
+
+        # Try LLM extraction on combined context
         if env.variables and output_schema:
-            combined = "\n".join(
-                f"{k}: {json.dumps(v) if isinstance(v, (dict, list)) else v}"
-                for k, v in env.variables.items()
-            )
+            combined = self._build_context_string(env)
             result = self._extract_with_llm(combined, output_schema, env)
             if isinstance(result, output_schema):
                 return result
             return dict(env.variables)
 
-        # Return all variables as fallback
-        if env.variables:
-            return dict(env.variables)
-
-        return None
+        return dict(env.variables) if env.variables else None
 
 
 ProviderType = Literal["openai", "anthropic", "google"]

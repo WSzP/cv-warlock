@@ -142,3 +142,31 @@ IMPORTANT: You should have enough data. Provide FINAL(answer) now.
 Only continue exploring if absolutely necessary - each iteration is costly.
 
 Provide FINAL(answer) or explain why more exploration is needed:"""
+
+# Extraction prompt when analysis context is available
+RLM_EXTRACTION_WITH_CONTEXT_PROMPT = """Based on the following analysis and context, extract the structured data.
+
+## Analysis Result
+{content}
+
+## Additional Context from Analysis
+{context}
+
+## Required Output
+Extract the information into a {schema_name} with these fields: {schema_fields}
+
+Be thorough and include all relevant information found in the analysis."""
+
+# Extraction prompt for direct extraction from raw text (fallback)
+RLM_EXTRACTION_DIRECT_PROMPT = """Extract structured information from this CV document.
+
+## CV TEXT
+{cv_text}
+
+## JOB REQUIREMENTS (for context)
+{job_text}
+
+## Required Output
+Extract the information into a {schema_name} with these fields: {schema_fields}
+
+Be thorough and extract all relevant information from the CV."""

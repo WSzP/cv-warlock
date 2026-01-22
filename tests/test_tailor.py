@@ -243,29 +243,24 @@ class TestCVTailorInit:
         """Test that all prompts are initialized."""
         tailor = CVTailor(mock_provider)
 
-        # Original prompts
+        # Direct mode prompts
         assert tailor.summary_prompt is not None
         assert tailor.experience_prompt is not None
         assert tailor.skills_prompt is not None
         assert tailor.assembly_prompt is not None
 
-        # CoT prompts - Summary
+        # CoT prompts - Summary (REASON -> GENERATE)
         assert tailor.summary_reasoning_prompt is not None
         assert tailor.summary_gen_prompt is not None
-        assert tailor.summary_critique_prompt is not None
-        assert tailor.summary_refine_prompt is not None
 
-        # CoT prompts - Experience
+        # CoT prompts - Experience (REASON -> GENERATE)
         assert tailor.exp_reasoning_prompt is not None
         assert tailor.exp_gen_prompt is not None
-        assert tailor.exp_critique_prompt is not None
-        assert tailor.exp_refine_prompt is not None
+        assert tailor.batch_exp_reasoning_prompt is not None
 
-        # CoT prompts - Skills
+        # CoT prompts - Skills (REASON -> GENERATE)
         assert tailor.skills_reasoning_prompt is not None
         assert tailor.skills_gen_prompt is not None
-        assert tailor.skills_critique_prompt is not None
-        assert tailor.skills_refine_prompt is not None
 
 
 class TestCVTailorSummary:
@@ -659,17 +654,6 @@ class TestCVTailorExperiencesBatch:
             )
 
         assert len(results) == len(sample_cv_data.experiences)
-
-
-class TestCVTailorMaxRefinement:
-    """Tests for refinement iteration constant."""
-
-    def test_max_refinement_iterations_constant(self, mock_provider: MagicMock) -> None:
-        """Test that MAX_REFINEMENT_ITERATIONS is set."""
-        tailor = CVTailor(mock_provider)
-
-        assert hasattr(tailor, "MAX_REFINEMENT_ITERATIONS")
-        assert tailor.MAX_REFINEMENT_ITERATIONS == 2
 
 
 class TestCVTailorDirectMethods:
@@ -1102,88 +1086,6 @@ class TestCVTailorCoTInternalMethods:
             result = tailor._generate_skills_from_reasoning(reasoning)
 
         assert result == expected_skills
-
-
-class TestCVTailorCritiqueAndRefine:
-    """Tests for critique and refine methods."""
-
-    def test_critique_summary_returns_summary_critique(
-        self,
-        mock_provider: MagicMock,
-        sample_job_requirements: JobRequirements,
-    ) -> None:
-        """Test that _critique_summary returns SummaryCritique."""
-        expected_critique = SummaryCritique(
-            has_strong_opening_hook=True,
-            includes_quantified_achievement=False,
-            mirrors_job_keywords=True,
-            appropriate_length=True,
-            avoids_fluff=True,
-            quality_level=QualityLevel.NEEDS_IMPROVEMENT,
-            issues_found=["Missing metrics"],
-            improvement_suggestions=["Add quantified achievement"],
-            should_refine=True,
-        )
-
-        reasoning = SummaryReasoning(
-            target_title_match="Match",
-            key_keywords_to_include=["Python"],
-            strongest_metric="50%",
-            unique_differentiator="Expert",
-            hook_strategy="Hook",
-            value_proposition="Value",
-            fit_statement="Fit",
-            confidence_score=0.9,
-        )
-
-        with patch.object(CVTailor, "_critique_summary", return_value=expected_critique):
-            tailor = CVTailor(mock_provider, use_cot=True)
-            result = tailor._critique_summary("Test summary", sample_job_requirements, reasoning)
-
-        assert isinstance(result, SummaryCritique)
-        assert result.should_refine is True
-
-    def test_refine_summary_returns_improved_text(
-        self,
-        mock_provider: MagicMock,
-        sample_job_requirements: JobRequirements,
-    ) -> None:
-        """Test that _refine_summary returns improved summary text."""
-        expected_improved = "Improved summary with metrics"
-
-        reasoning = SummaryReasoning(
-            target_title_match="Match",
-            key_keywords_to_include=["Python"],
-            strongest_metric="50%",
-            unique_differentiator="Expert",
-            hook_strategy="Hook",
-            value_proposition="Value",
-            fit_statement="Fit",
-            confidence_score=0.9,
-        )
-
-        critique = SummaryCritique(
-            has_strong_opening_hook=True,
-            includes_quantified_achievement=False,
-            mirrors_job_keywords=True,
-            appropriate_length=True,
-            avoids_fluff=True,
-            quality_level=QualityLevel.NEEDS_IMPROVEMENT,
-            issues_found=["Missing metrics"],
-            improvement_suggestions=["Add quantified achievement"],
-            should_refine=True,
-        )
-
-        with patch.object(CVTailor, "_refine_summary", return_value=expected_improved):
-            tailor = CVTailor(mock_provider, use_cot=True)
-            result = tailor._refine_summary(
-                "Original summary",
-                critique,
-                reasoning,
-                sample_job_requirements,
-            )
-
-        assert result == expected_improved
 
 
 class TestGetRelevantSkillsForExperience:

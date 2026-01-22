@@ -2,10 +2,10 @@
 
 This module provides CV section tailoring with optional CoT reasoning.
 When CoT is enabled (default), each section follows a REASON -> GENERATE pattern
-for balanced quality and speed. The optional "thorough" mode adds CRITIQUE -> REFINE.
+for balanced quality and speed.
 
 Performance optimizations:
-- Balanced mode: 2 LLM calls per section (REASON→GENERATE) instead of 4
+- Balanced mode: 2 LLM calls per section (REASON→GENERATE)
 - Compressed context: Only essential reasoning fields passed to generation
 - Async experience processing: All experiences processed in parallel
 """
@@ -41,18 +41,12 @@ from cv_warlock.prompts.generation import (
 )
 from cv_warlock.prompts.reasoning import (
     BATCH_EXPERIENCE_REASONING_PROMPT,
-    EXPERIENCE_CRITIQUE_PROMPT,
     EXPERIENCE_GENERATION_PROMPT,
     EXPERIENCE_REASONING_PROMPT,
-    EXPERIENCE_REFINE_PROMPT,
-    SKILLS_CRITIQUE_PROMPT,
     SKILLS_GENERATION_PROMPT,
     SKILLS_REASONING_PROMPT,
-    SKILLS_REFINE_PROMPT,
-    SUMMARY_CRITIQUE_PROMPT,
     SUMMARY_GENERATION_PROMPT,
     SUMMARY_REASONING_PROMPT,
-    SUMMARY_REFINE_PROMPT,
 )
 from cv_warlock.utils.date_utils import should_tailor_experience
 
@@ -160,20 +154,57 @@ Categories:
 {categories}"""
 
 
+def _create_placeholder_summary_critique() -> SummaryCritique:
+    """Create a placeholder critique for balanced mode (no actual critique step)."""
+    return SummaryCritique(
+        has_strong_opening_hook=True,
+        includes_quantified_achievement=True,
+        mirrors_job_keywords=True,
+        appropriate_length=True,
+        avoids_fluff=True,
+        quality_level=QualityLevel.GOOD,
+        issues_found=[],
+        improvement_suggestions=[],
+        should_refine=False,
+    )
+
+
+def _create_placeholder_experience_critique() -> ExperienceCritique:
+    """Create a placeholder critique for balanced mode (no actual critique step)."""
+    return ExperienceCritique(
+        all_bullets_start_with_power_verb=True,
+        all_bullets_show_impact=True,
+        metrics_present_where_possible=True,
+        relevant_keywords_incorporated=True,
+        bullets_appropriately_ordered=True,
+        quality_level=QualityLevel.GOOD,
+        weak_bullets=[],
+        improvement_suggestions=[],
+        should_refine=False,
+    )
+
+
+def _create_placeholder_skills_critique() -> SkillsCritique:
+    """Create a placeholder critique for balanced mode (no actual critique step)."""
+    return SkillsCritique(
+        all_required_skills_present=True,
+        uses_exact_job_terminology=True,
+        appropriate_categorization=True,
+        no_irrelevant_skills=True,
+        no_fabricated_skills=True,
+        quality_level=QualityLevel.GOOD,
+        missing_critical_terms=[],
+        improvement_suggestions=[],
+        should_refine=False,
+    )
+
+
 class CVTailor:
     """Tailor CV sections with optional chain-of-thought reasoning.
 
-    When use_cot=True (default), uses a multi-step reasoning pipeline:
-    1. REASON: Analyze inputs and plan approach (structured output)
-    2. GENERATE: Create content based on reasoning
-    3. CRITIQUE: Evaluate quality against criteria
-    4. REFINE: Improve if quality below threshold (max iterations)
-
+    When use_cot=True (default), uses a REASON -> GENERATE pipeline.
     When use_cot=False, uses direct single-prompt generation (faster but lower quality).
     """
-
-    # Configuration
-    MAX_REFINEMENT_ITERATIONS = 2
 
     def __init__(self, llm_provider: LLMProvider, use_cot: bool = True):
         """Initialize tailor with optional CoT reasoning.
@@ -186,7 +217,7 @@ class CVTailor:
         self.llm_provider = llm_provider
         self.use_cot = use_cot
 
-        # Original prompts (for backward compatibility / non-CoT mode)
+        # Direct mode prompts
         self.summary_prompt = ChatPromptTemplate.from_template(SUMMARY_TAILORING_PROMPT)
         self.experience_prompt = ChatPromptTemplate.from_template(EXPERIENCE_TAILORING_PROMPT)
         self.skills_prompt = ChatPromptTemplate.from_template(SKILLS_TAILORING_PROMPT)
@@ -195,8 +226,6 @@ class CVTailor:
         # CoT prompts - Summary
         self.summary_reasoning_prompt = ChatPromptTemplate.from_template(SUMMARY_REASONING_PROMPT)
         self.summary_gen_prompt = ChatPromptTemplate.from_template(SUMMARY_GENERATION_PROMPT)
-        self.summary_critique_prompt = ChatPromptTemplate.from_template(SUMMARY_CRITIQUE_PROMPT)
-        self.summary_refine_prompt = ChatPromptTemplate.from_template(SUMMARY_REFINE_PROMPT)
 
         # CoT prompts - Experience
         self.exp_reasoning_prompt = ChatPromptTemplate.from_template(EXPERIENCE_REASONING_PROMPT)
@@ -204,14 +233,10 @@ class CVTailor:
             BATCH_EXPERIENCE_REASONING_PROMPT
         )
         self.exp_gen_prompt = ChatPromptTemplate.from_template(EXPERIENCE_GENERATION_PROMPT)
-        self.exp_critique_prompt = ChatPromptTemplate.from_template(EXPERIENCE_CRITIQUE_PROMPT)
-        self.exp_refine_prompt = ChatPromptTemplate.from_template(EXPERIENCE_REFINE_PROMPT)
 
         # CoT prompts - Skills
         self.skills_reasoning_prompt = ChatPromptTemplate.from_template(SKILLS_REASONING_PROMPT)
         self.skills_gen_prompt = ChatPromptTemplate.from_template(SKILLS_GENERATION_PROMPT)
-        self.skills_critique_prompt = ChatPromptTemplate.from_template(SKILLS_CRITIQUE_PROMPT)
-        self.skills_refine_prompt = ChatPromptTemplate.from_template(SKILLS_REFINE_PROMPT)
 
     # =========================================================================
     # SUMMARY TAILORING
@@ -306,26 +331,10 @@ class CVTailor:
             reasoning, job_requirements, tailored_skills_preview
         )
 
-        # Balanced mode: Skip CRITIQUE and REFINE - use generated output directly
-        # This saves 2-4 LLM calls per summary
-
-        # Create a placeholder critique for API compatibility
-        critique = SummaryCritique(
-            has_strong_opening_hook=True,
-            includes_quantified_achievement=True,
-            mirrors_job_keywords=True,
-            appropriate_length=True,
-            avoids_fluff=True,
-            quality_level=QualityLevel.GOOD,
-            issues_found=[],
-            improvement_suggestions=[],
-            should_refine=False,
-        )
-
         return SummaryGenerationResult(
             reasoning=reasoning,
             generated_summary=generated,
-            critique=critique,
+            critique=_create_placeholder_summary_critique(),
             refinement_count=0,
             final_summary=generated,
         )
@@ -377,53 +386,6 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
                 "strongest_metric": reasoning.strongest_metric,
                 "keywords": ", ".join(reasoning.key_keywords_to_include),
                 "tailored_skills_preview": tailored_skills_preview or "Not yet generated",
-            }
-        )
-        return result.content
-
-    def _critique_summary(
-        self,
-        summary: str,
-        job_requirements: JobRequirements,
-        reasoning: SummaryReasoning,
-    ) -> SummaryCritique:
-        """Critique generated summary (Step 3)."""
-        model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(SummaryCritique, method="function_calling")
-
-        chain = self.summary_critique_prompt | structured_model
-        return chain.invoke(
-            {
-                "generated_summary": summary,
-                "job_title": job_requirements.job_title,
-                "company": job_requirements.company or "the company",
-                "required_keywords": ", ".join(reasoning.key_keywords_to_include),
-            }
-        )
-
-    def _refine_summary(
-        self,
-        current: str,
-        critique: SummaryCritique,
-        reasoning: SummaryReasoning,
-        job_requirements: JobRequirements,
-    ) -> str:
-        """Refine summary based on critique (Step 4).
-
-        Uses compressed reasoning context for efficiency.
-        """
-        model = self.llm_provider.get_chat_model()
-
-        chain = self.summary_refine_prompt | model
-        result = chain.invoke(
-            {
-                "current_summary": current,
-                "issues": "\n".join(f"- {i}" for i in critique.issues_found),
-                "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
-                # Use compressed context instead of full JSON dump
-                "reasoning_json": _compress_summary_reasoning(reasoning),
-                "strongest_metric": reasoning.strongest_metric,
-                "keywords": ", ".join(reasoning.key_keywords_to_include),
             }
         )
         return result.content
@@ -511,28 +473,12 @@ Keywords to incorporate: {", ".join(tailoring_plan["keywords_to_incorporate"][:5
         )
         generated_bullets = self._parse_bullets(generated_text)
 
-        # Balanced mode: Skip CRITIQUE and REFINE - use generated output directly
-        # This saves 2-4 LLM calls per experience (massive savings with multiple experiences)
-
-        # Create a placeholder critique for API compatibility
-        critique = ExperienceCritique(
-            all_bullets_start_with_power_verb=True,
-            all_bullets_show_impact=True,
-            metrics_present_where_possible=True,
-            relevant_keywords_incorporated=True,
-            bullets_appropriately_ordered=True,
-            quality_level=QualityLevel.GOOD,
-            weak_bullets=[],
-            improvement_suggestions=[],
-            should_refine=False,
-        )
-
         return ExperienceGenerationResult(
             experience_title=experience.title,
             experience_company=experience.company,
             reasoning=reasoning,
             generated_bullets=generated_bullets,
-            critique=critique,
+            critique=_create_placeholder_experience_critique(),
             refinement_count=0,
             final_bullets=generated_bullets,
         )
@@ -713,55 +659,6 @@ Achievements:
                 bullets.append(line)
         return [b for b in bullets if b]
 
-    def _critique_experience(
-        self,
-        bullets: list[str],
-        job_requirements: JobRequirements,
-        reasoning: ExperienceReasoning,
-    ) -> ExperienceCritique:
-        """Critique experience bullets (Step 3)."""
-        model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(
-            ExperienceCritique, method="function_calling"
-        )
-
-        chain = self.exp_critique_prompt | structured_model
-        return chain.invoke(
-            {
-                "generated_bullets": "\n".join(f"- {b}" for b in bullets),
-                "job_title": job_requirements.job_title,
-                "job_requirements": ", ".join(job_requirements.required_skills[:7]),
-            }
-        )
-
-    def _refine_experience(
-        self,
-        current_bullets: list[str],
-        critique: ExperienceCritique,
-        reasoning: ExperienceReasoning,
-        job_requirements: JobRequirements,
-        bullet_count: int,
-    ) -> str:
-        """Refine experience bullets (Step 4).
-
-        Uses compressed reasoning context for efficiency.
-        """
-        model = self.llm_provider.get_chat_model()
-
-        chain = self.exp_refine_prompt | model
-        result = chain.invoke(
-            {
-                "current_bullets": "\n".join(f"- {b}" for b in current_bullets),
-                "weak_bullets": "\n".join(f"- {w}" for w in critique.weak_bullets),
-                "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
-                # Use compressed context instead of full JSON dump
-                "reasoning_json": _compress_experience_reasoning(reasoning),
-                "bullet_count": bullet_count,
-                "keywords_to_use": ", ".join(reasoning.keywords_to_incorporate[:5]),
-            }
-        )
-        return result.content
-
     def tailor_experiences(
         self,
         cv_data: CVData,
@@ -885,25 +782,12 @@ Achievements:
                 )
                 generated_bullets = self._parse_bullets(generated_text)
 
-                # Create placeholder critique for balanced mode
-                critique = ExperienceCritique(
-                    all_bullets_start_with_power_verb=True,
-                    all_bullets_show_impact=True,
-                    metrics_present_where_possible=True,
-                    relevant_keywords_incorporated=True,
-                    bullets_appropriately_ordered=True,
-                    quality_level=QualityLevel.GOOD,
-                    weak_bullets=[],
-                    improvement_suggestions=[],
-                    should_refine=False,
-                )
-
                 return ExperienceGenerationResult(
                     experience_title=exp.title,
                     experience_company=exp.company,
                     reasoning=reasoning,
                     generated_bullets=generated_bullets,
-                    critique=critique,
+                    critique=_create_placeholder_experience_critique(),
                     refinement_count=0,
                     final_bullets=generated_bullets,
                 )
@@ -970,17 +854,7 @@ Achievements:
                 bullet_reasoning=[],
             ),
             generated_bullets=original_bullets,
-            critique=ExperienceCritique(
-                all_bullets_start_with_power_verb=True,
-                all_bullets_show_impact=True,
-                metrics_present_where_possible=True,
-                relevant_keywords_incorporated=True,
-                bullets_appropriately_ordered=True,
-                quality_level=QualityLevel.GOOD,
-                weak_bullets=[],
-                improvement_suggestions=[],
-                should_refine=False,
-            ),
+            critique=_create_placeholder_experience_critique(),
             refinement_count=0,
             final_bullets=original_bullets,
         )
@@ -1051,26 +925,10 @@ Achievements:
         # Step 2: GENERATE
         generated = self._generate_skills_from_reasoning(reasoning)
 
-        # Balanced mode: Skip CRITIQUE and REFINE - use generated output directly
-        # This saves 2-4 LLM calls for skills section
-
-        # Create a placeholder critique for API compatibility
-        critique = SkillsCritique(
-            all_required_skills_present=True,
-            uses_exact_job_terminology=True,
-            appropriate_categorization=True,
-            no_irrelevant_skills=True,
-            no_fabricated_skills=True,
-            quality_level=QualityLevel.GOOD,
-            missing_critical_terms=[],
-            improvement_suggestions=[],
-            should_refine=False,
-        )
-
         return SkillsGenerationResult(
             reasoning=reasoning,
             generated_skills=generated,
-            critique=critique,
+            critique=_create_placeholder_skills_critique(),
             refinement_count=0,
             final_skills=generated,
         )
@@ -1113,52 +971,6 @@ Achievements:
             {
                 # Use compressed context instead of full JSON dump
                 "reasoning_json": _compress_skills_reasoning(reasoning),
-            }
-        )
-        return result.content
-
-    def _critique_skills(
-        self,
-        skills_text: str,
-        cv_data: CVData,
-        job_requirements: JobRequirements,
-    ) -> SkillsCritique:
-        """Critique skills section (Step 3)."""
-        model = self.llm_provider.get_extraction_model()
-        structured_model = model.with_structured_output(SkillsCritique, method="function_calling")
-
-        chain = self.skills_critique_prompt | structured_model
-        return chain.invoke(
-            {
-                "generated_skills": skills_text,
-                "required_skills": ", ".join(job_requirements.required_skills),
-                "preferred_skills": ", ".join(job_requirements.preferred_skills),
-                "candidate_skills": ", ".join(cv_data.skills),
-            }
-        )
-
-    def _refine_skills(
-        self,
-        current: str,
-        critique: SkillsCritique,
-        reasoning: SkillsReasoning,
-        cv_data: CVData,
-    ) -> str:
-        """Refine skills section (Step 4).
-
-        Uses compressed reasoning context for efficiency.
-        """
-        model = self.llm_provider.get_chat_model()
-
-        chain = self.skills_refine_prompt | model
-        result = chain.invoke(
-            {
-                "current_skills": current,
-                "missing_terms": ", ".join(critique.missing_critical_terms),
-                "suggestions": "\n".join(f"- {s}" for s in critique.improvement_suggestions),
-                # Use compressed context instead of full JSON dump
-                "reasoning_json": _compress_skills_reasoning(reasoning),
-                "candidate_skills": ", ".join(cv_data.skills),
             }
         )
         return result.content
