@@ -1406,6 +1406,260 @@ class TestRLMNodesCreation:
             assert any("RLM match analysis fallback" in e for e in result["errors"])
 
 
+class TestRLMNodesOnStepStartCallback:
+    """Tests for on_step_start callback handling in RLM nodes (lines 185-194, 264-272, 348-356)."""
+
+    def test_extract_cv_rlm_calls_on_step_start(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm calls on_step_start callback."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+        }
+
+        callback = MagicMock()
+
+        cv_data = CVData(
+            contact=ContactInfo(name="Test", email="test@test.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer=cv_data,
+                trajectory=[],
+                sub_call_count=1,
+                total_iterations=2,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config, on_step_start=callback)
+            nodes["extract_cv"](state)
+
+            # Callback should have been called
+            callback.assert_called_once()
+            call_args = callback.call_args
+            assert call_args[0][0] == "extract_cv"
+            assert "RLM" in call_args[0][1]
+
+    def test_extract_cv_rlm_handles_callback_exception(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_cv_rlm handles callback exception gracefully (lines 191-194)."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+        }
+
+        callback = MagicMock(side_effect=Exception("Callback error"))
+
+        cv_data = CVData(
+            contact=ContactInfo(name="Test", email="test@test.com"),
+            summary="Test",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer=cv_data,
+                trajectory=[],
+                sub_call_count=1,
+                total_iterations=2,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config, on_step_start=callback)
+
+            # Should not raise, should continue normally
+            result = nodes["extract_cv"](state)
+
+            # Callback was attempted
+            callback.assert_called_once()
+            # Extraction should still succeed
+            assert result["cv_data"] == cv_data
+
+    def test_extract_job_rlm_calls_on_step_start(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm calls on_step_start callback."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+        }
+
+        callback = MagicMock()
+
+        job_requirements = JobRequirements(
+            job_title="Senior Developer",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer=job_requirements,
+                trajectory=[],
+                sub_call_count=1,
+                total_iterations=2,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config, on_step_start=callback)
+            nodes["extract_job"](state)
+
+            # Callback should have been called
+            callback.assert_called_once()
+            call_args = callback.call_args
+            assert call_args[0][0] == "extract_job"
+            assert "RLM" in call_args[0][1]
+
+    def test_extract_job_rlm_handles_callback_exception(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test extract_job_rlm handles callback exception gracefully (lines 269-272)."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+        }
+
+        callback = MagicMock(side_effect=Exception("Callback error"))
+
+        job_requirements = JobRequirements(
+            job_title="Senior Developer",
+            required_skills=["Python"],
+            preferred_skills=[],
+            responsibilities=[],
+        )
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer=job_requirements,
+                trajectory=[],
+                sub_call_count=1,
+                total_iterations=2,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config, on_step_start=callback)
+
+            # Should not raise, should continue normally
+            result = nodes["extract_job"](state)
+
+            callback.assert_called_once()
+            assert result["job_requirements"] == job_requirements
+
+    def test_analyze_match_rlm_calls_on_step_start(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test analyze_match_rlm calls on_step_start callback."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+        }
+
+        callback = MagicMock()
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer={
+                    "strong_matches": ["Python"],
+                    "partial_matches": [],
+                    "gaps": [],
+                    "transferable_skills": [],
+                    "relevance_score": 0.8,
+                },
+                trajectory=[],
+                sub_call_count=1,
+                total_iterations=2,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config, on_step_start=callback)
+            nodes["analyze_match"](state)
+
+            callback.assert_called_once()
+            call_args = callback.call_args
+            assert call_args[0][0] == "analyze_match"
+            assert "RLM" in call_args[0][1]
+
+    def test_analyze_match_rlm_handles_callback_exception(
+        self, mock_llm_provider, sample_cv_text, sample_job_text
+    ):
+        """Test analyze_match_rlm handles callback exception gracefully (lines 353-356)."""
+        from cv_warlock.graph.rlm_nodes import create_rlm_nodes
+
+        large_cv = sample_cv_text * 10
+        large_job = sample_job_text * 10
+        state = {
+            "raw_cv": large_cv,
+            "raw_job_spec": large_job,
+            "use_rlm": True,
+        }
+
+        callback = MagicMock(side_effect=Exception("Callback error"))
+
+        with patch.object(RLMOrchestrator, "complete") as mock_complete:
+            mock_complete.return_value = RLMResult(
+                answer={
+                    "strong_matches": ["Python"],
+                    "partial_matches": [],
+                    "gaps": [],
+                    "transferable_skills": [],
+                    "relevance_score": 0.8,
+                },
+                trajectory=[],
+                sub_call_count=1,
+                total_iterations=2,
+                success=True,
+            )
+
+            config = RLMConfig(size_threshold=100)
+            nodes = create_rlm_nodes(mock_llm_provider, config=config, on_step_start=callback)
+
+            # Should not raise, should continue normally
+            result = nodes["analyze_match"](state)
+
+            callback.assert_called_once()
+            assert result["match_analysis"]["relevance_score"] == 0.8
+
+
 # =============================================================================
 # Chunking Tests (Edge Cases)
 # =============================================================================
