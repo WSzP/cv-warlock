@@ -35,7 +35,7 @@ But please share the results of your experiments with me and the world on Linked
 - **Smart CV Tailoring**: Analyzes job requirements and rewrites your CV to highlight relevant experience
 - **Chain-of-Thought Reasoning**: High quality generation with CoT method (REASON → GENERATE → CRITIQUE → REFINE)
 - **RLM (Recursive Language Model)**: Handles arbitrarily long CVs and job specs through recursive orchestration
-- **Match Analysis**: Shows how well your CV matches the job, including gaps and transferable skills
+- **Match Analysis**: Shows how well your CV matches the job, including gaps and transferable skills. See [Hybrid ATS Scoring](docs/SCORING.md) for details on the scoring algorithm
 - **Assume All Tech Skills**: Checkbox option (enabled by default) that assumes you have all technical skills from the job posting
 - **Multi-Provider LLM Support**: Works with OpenAI, Anthropic Claude, and Google Gemini
 - **CLI & Web UI**: Use via command line or Streamlit web interface

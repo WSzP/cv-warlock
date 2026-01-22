@@ -76,13 +76,13 @@ class RLMProvider(LLMProvider):
         self.last_rlm_result: RLMResult | None = None
 
     def _get_default_sub_model(self) -> str:
-        """Get default faster model for sub-calls."""
+        """Get default model for sub-calls (Sonnet-tier for quality)."""
         if self.sub_provider_name == "anthropic":
-            return "claude-haiku-4-5-20251001"
+            return "claude-sonnet-4-5-20250929"
         elif self.sub_provider_name == "openai":
-            return "gpt-5-mini"
+            return "gpt-5.2"
         elif self.sub_provider_name == "google":
-            return "gemini-3-flash-preview"
+            return "gemini-3-pro-preview"
         return self.root_model
 
     def _get_orchestrator(self) -> RLMOrchestrator:

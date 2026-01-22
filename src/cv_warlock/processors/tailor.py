@@ -1228,7 +1228,7 @@ Achievements:
             {
                 "contact": contact_str,
                 "tailored_summary": tailored_summary,
-                "tailored_experiences": "\n\n---\n\n".join(tailored_experiences),
+                "tailored_experiences": "\n\n".join(tailored_experiences),
                 "tailored_skills": tailored_skills,
                 "education": education_str or "Not provided",
                 "certifications": certs_str or "Not provided",
