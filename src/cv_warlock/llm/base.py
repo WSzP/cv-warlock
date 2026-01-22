@@ -70,6 +70,6 @@ def get_llm_provider(
     elif provider == "google":
         from cv_warlock.llm.google import GoogleProvider
 
-        return GoogleProvider(model=model or "gemini-3-flash-preview", api_key=api_key)
+        return GoogleProvider(model=model or "gemini-3-pro-preview", api_key=api_key)
     else:
         raise ValueError(f"Unknown provider: {provider}")

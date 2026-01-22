@@ -63,7 +63,7 @@ class TestGetLLMProvider:
     def test_google_default_model(self, mock_provider: MagicMock) -> None:
         """Test that google uses default model when not specified."""
         get_llm_provider("google")
-        mock_provider.assert_called_once_with(model="gemini-3-flash-preview", api_key=None)
+        mock_provider.assert_called_once_with(model="gemini-3-pro-preview", api_key=None)
 
     def test_unknown_provider_raises(self) -> None:
         """Test that unknown provider raises ValueError."""
