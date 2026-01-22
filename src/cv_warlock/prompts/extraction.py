@@ -11,6 +11,9 @@ CV_EXTRACTION_PROMPT = """Extract ALL structured data from this CV. Preserve exa
 === EXTRACT ===
 
 **EXPERIENCE** (for each role):
+- Look strictly for headers like "### Role at Company" or "### Role | Company"
+- Split "Role at Company" into Title="Role" and Company="Company"
+- Extract dates from the line immediately following the header
 - Title, company, location, dates (start-end or "Present")
 - Description, achievements WITH metrics (revenue, %, users, team size, time saved)
 - Technologies used, team size managed, scope (budget, impact)
