@@ -237,8 +237,8 @@ def render_result(result: dict[str, Any]) -> None:
     if "active_result_tab" not in st.session_state:
         st.session_state.active_result_tab = "Tailored CV"
 
-    # Tab options
-    tab_options = ["Tailored CV", "Cover Letter", "Match Analysis", "Tailoring Plan"]
+    # Tab options (Cover Letter is shown inline below CV, not as a tab)
+    tab_options = ["Tailored CV", "Match Analysis", "Tailoring Plan"]
 
     # Tab selector using segmented control (allows programmatic switching via session state)
     active_tab = st.radio(
@@ -257,8 +257,6 @@ def render_result(result: dict[str, Any]) -> None:
     # Render content based on active tab
     if active_tab == "Tailored CV":
         render_tailored_cv(result)
-    elif active_tab == "Cover Letter":
-        render_cover_letter(result)
     elif active_tab == "Match Analysis":
         render_match_analysis(result)
     elif active_tab == "Tailoring Plan":
@@ -316,28 +314,6 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
 
     # Download buttons
     st.write("**Download Options**")
-
-    # Create Cover Letter button (full width, above download buttons)
-    col_cl_btn, col_cl_status = st.columns([1, 2])
-    with col_cl_btn:
-        if st.button(
-            "Create Cover Letter",
-            key="create_cover_letter_btn",
-            type="primary",
-            use_container_width=True,
-            disabled=st.session_state.get("is_generating_cover_letter", False),
-        ):
-            # Store the edited CV to be used for cover letter generation
-            st.session_state.cover_letter_source_cv = st.session_state.edited_cv
-            st.session_state.is_generating_cover_letter = True
-            # Switch to Cover Letter tab
-            st.session_state.active_result_tab = "Cover Letter"
-            st.rerun()
-    with col_cl_status:
-        if st.session_state.get("cover_letter"):
-            st.success("Cover letter ready! See the **Cover Letter** tab.")
-
-    st.write("")  # Small spacing
 
     # Get the content to export (edited version)
     cv_content = st.session_state.edited_cv
@@ -402,6 +378,121 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
             use_container_width=True,
         )
 
+    # --- Cover Letter Section (inline below CV) ---
+    st.divider()
+    _render_inline_cover_letter(result)
+
+
+def _render_inline_cover_letter(result: dict[str, Any]) -> None:
+    """Render the cover letter section inline below the CV.
+
+    Args:
+        result: The workflow result containing tailored CV, job requirements, etc.
+    """
+    st.subheader("Cover Letter")
+
+    st.markdown(
+        "Generate a **plain text** cover letter optimized for job application forms. "
+        "Uses your tailored CV and the job requirements for context."
+    )
+
+    # Character limit from session state
+    char_limit = st.session_state.get("cover_letter_char_limit", 2000)
+    st.caption(f"Target length: **{char_limit:,}** characters (set in sidebar)")
+
+    # Generate button
+    col_btn, _ = st.columns([1, 3])
+    with col_btn:
+        generate_btn = st.button(
+            "Generate Cover Letter",
+            type="primary",
+            disabled=st.session_state.is_generating_cover_letter,
+            use_container_width=True,
+            key="inline_cover_letter_btn",
+        )
+
+    # Phase 1: Button clicked - set flag and rerun
+    if generate_btn and not st.session_state.is_generating_cover_letter:
+        # Store the edited CV to be used for cover letter generation
+        st.session_state.cover_letter_source_cv = st.session_state.edited_cv
+        st.session_state.is_generating_cover_letter = True
+        st.rerun()
+
+    # Phase 2: Actually generate
+    if st.session_state.is_generating_cover_letter:
+        with st.spinner("Generating cover letter with CoT reasoning..."):
+            try:
+                cover_letter_result = _generate_cover_letter(result, char_limit)
+                st.session_state.cover_letter = cover_letter_result.final_cover_letter
+                st.session_state.cover_letter_result = cover_letter_result
+            except Exception as e:
+                st.error(f"Cover letter generation failed: {e}")
+                st.session_state.cover_letter = None
+                st.session_state.cover_letter_result = None
+            finally:
+                st.session_state.is_generating_cover_letter = False
+                st.rerun()
+
+    # Display cover letter if available
+    if st.session_state.cover_letter:
+        final_text = st.session_state.cover_letter
+        char_count = len(final_text)
+
+        # Character count display
+        col_count, _ = st.columns([1, 3])
+        with col_count:
+            if char_count <= char_limit:
+                delta_text = f"{char_limit - char_count:,} under limit"
+                st.metric("Characters", f"{char_count:,}", delta=delta_text)
+            else:
+                delta_text = f"{char_count - char_limit:,} over limit"
+                st.metric("Characters", f"{char_count:,}", delta=delta_text, delta_color="inverse")
+
+        # Display in text area (allows easy copy)
+        st.text_area(
+            "Cover Letter (click to select all, then copy)",
+            value=final_text,
+            height=400,
+            key="inline_cover_letter_display",
+            help="Plain text ready to paste into job applications",
+        )
+
+        # Download and action buttons
+        col_download, col_regenerate = st.columns(2)
+
+        with col_download:
+            st.download_button(
+                label="Download as .txt",
+                data=final_text,
+                file_name="cover_letter.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="inline_cover_letter_download",
+            )
+
+        with col_regenerate:
+            if st.button(
+                "Regenerate", use_container_width=True, key="inline_cover_letter_regenerate"
+            ):
+                st.session_state.cover_letter = None
+                st.session_state.cover_letter_result = None
+                st.session_state.is_generating_cover_letter = True
+                st.rerun()
+
+        # Show reasoning in expander
+        cover_letter_result = st.session_state.cover_letter_result
+        if cover_letter_result and hasattr(cover_letter_result, "reasoning"):
+            with st.expander("View Reasoning", expanded=False):
+                reasoning = cover_letter_result.reasoning
+                st.markdown(f"**Opening Hook:** {reasoning.opening_hook}")
+                st.markdown("**Key Selling Points:**")
+                for point in reasoning.key_selling_points:
+                    st.markdown(f"- {point}")
+                st.markdown(f"**Company Connection:** {reasoning.company_connection}")
+                st.markdown(f"**Featured Metric:** {reasoning.metric_to_feature}")
+                st.markdown(f"**Call to Action:** {reasoning.call_to_action}")
+                st.markdown(f"**Tone Guidance:** {reasoning.tone_guidance}")
+
 
 def _generate_cover_letter(result: dict[str, Any], char_limit: int) -> CoverLetterGenerationResult:
     """Generate cover letter using the CoverLetterGenerator.
@@ -447,118 +538,6 @@ def _generate_cover_letter(result: dict[str, Any], char_limit: int) -> CoverLett
         match_analysis=result.get("match_analysis", {}),
         character_limit=char_limit,
     )
-
-
-def render_cover_letter(result: dict[str, Any]) -> None:
-    """Render the cover letter tab with generation and download options.
-
-    Args:
-        result: The workflow result containing tailored CV, job requirements, etc.
-    """
-    # Check if CV was generated
-    if not result.get("tailored_cv"):
-        st.info("Generate a tailored CV first, then create a cover letter.")
-        return
-
-    st.subheader("Cover Letter Generator")
-
-    st.markdown(
-        "Generate a **plain text** cover letter optimized for job application forms. "
-        "Uses your tailored CV and the job requirements for context."
-    )
-
-    # Character limit from session state
-    char_limit = st.session_state.get("cover_letter_char_limit", 2000)
-    st.caption(f"Target length: **{char_limit:,}** characters (set in sidebar)")
-
-    # Generate button
-    col_btn, col_space = st.columns([1, 3])
-    with col_btn:
-        generate_btn = st.button(
-            "Generate Cover Letter",
-            type="primary",
-            disabled=st.session_state.is_generating_cover_letter,
-            use_container_width=True,
-        )
-
-    # Phase 1: Button clicked - set flag and rerun
-    if generate_btn and not st.session_state.is_generating_cover_letter:
-        st.session_state.is_generating_cover_letter = True
-        st.rerun()
-
-    # Phase 2: Actually generate
-    if st.session_state.is_generating_cover_letter:
-        with st.spinner("Generating cover letter with CoT reasoning..."):
-            try:
-                cover_letter_result = _generate_cover_letter(result, char_limit)
-                st.session_state.cover_letter = cover_letter_result.final_cover_letter
-                st.session_state.cover_letter_result = cover_letter_result
-            except Exception as e:
-                st.error(f"Cover letter generation failed: {e}")
-                st.session_state.cover_letter = None
-                st.session_state.cover_letter_result = None
-            finally:
-                st.session_state.is_generating_cover_letter = False
-                st.rerun()
-
-    # Display cover letter if available
-    if st.session_state.cover_letter:
-        st.divider()
-
-        final_text = st.session_state.cover_letter
-        char_count = len(final_text)
-
-        # Character count display
-        col_count, col_status = st.columns([1, 3])
-        with col_count:
-            if char_count <= char_limit:
-                delta_text = f"{char_limit - char_count:,} under limit"
-                st.metric("Characters", f"{char_count:,}", delta=delta_text)
-            else:
-                delta_text = f"{char_count - char_limit:,} over limit"
-                st.metric("Characters", f"{char_count:,}", delta=delta_text, delta_color="inverse")
-
-        # Display in text area (allows easy copy)
-        st.text_area(
-            "Cover Letter (click to select all, then copy)",
-            value=final_text,
-            height=400,
-            key="cover_letter_display",
-            help="Plain text ready to paste into job applications",
-        )
-
-        # Download and action buttons
-        col_download, col_regenerate = st.columns(2)
-
-        with col_download:
-            st.download_button(
-                label="Download as .txt",
-                data=final_text,
-                file_name="cover_letter.txt",
-                mime="text/plain",
-                use_container_width=True,
-            )
-
-        with col_regenerate:
-            if st.button("Regenerate", use_container_width=True):
-                st.session_state.cover_letter = None
-                st.session_state.cover_letter_result = None
-                st.session_state.is_generating_cover_letter = True
-                st.rerun()
-
-        # Show reasoning in expander
-        cover_letter_result = st.session_state.cover_letter_result
-        if cover_letter_result and hasattr(cover_letter_result, "reasoning"):
-            with st.expander("View Reasoning", expanded=False):
-                reasoning = cover_letter_result.reasoning
-                st.markdown(f"**Opening Hook:** {reasoning.opening_hook}")
-                st.markdown("**Key Selling Points:**")
-                for point in reasoning.key_selling_points:
-                    st.markdown(f"- {point}")
-                st.markdown(f"**Company Connection:** {reasoning.company_connection}")
-                st.markdown(f"**Featured Metric:** {reasoning.metric_to_feature}")
-                st.markdown(f"**Call to Action:** {reasoning.call_to_action}")
-                st.markdown(f"**Tone Guidance:** {reasoning.tone_guidance}")
 
 
 def render_match_analysis(result: dict[str, Any]) -> None:
