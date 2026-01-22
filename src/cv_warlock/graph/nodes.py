@@ -159,6 +159,19 @@ def create_nodes(
         try:
             cv_data = cv_extractor.extract(state["raw_cv"])
             result["cv_data"] = cv_data
+
+            # Validate extraction - check if CV has experience content but extraction missed it
+            raw_cv_lower = state["raw_cv"].lower()
+            has_experience_section = any(
+                marker in raw_cv_lower
+                for marker in ["## experience", "## professional experience", "## work experience"]
+            )
+            if has_experience_section and not cv_data.experiences:
+                # CV has experience section but extraction returned empty - likely LLM error
+                result["errors"] = state.get("errors", []) + [
+                    "CV extraction warning: Experience section detected but no experiences extracted. "
+                    "This may be a parsing issue - please try again."
+                ]
         except Exception as e:
             result["errors"] = state.get("errors", []) + [f"CV extraction failed: {e!s}"]
 
@@ -212,6 +225,17 @@ def create_nodes(
 
         if cv_data:
             result["cv_data"] = cv_data
+            # Validate extraction - check if CV has experience content but extraction missed it
+            raw_cv_lower = state["raw_cv"].lower()
+            has_experience_section = any(
+                marker in raw_cv_lower
+                for marker in ["## experience", "## professional experience", "## work experience"]
+            )
+            if has_experience_section and not cv_data.experiences:
+                errors.append(
+                    "CV extraction warning: Experience section detected but no experiences extracted. "
+                    "This may be a parsing issue - please try again."
+                )
         if job_requirements:
             result["job_requirements"] = job_requirements
         if errors:
