@@ -398,6 +398,62 @@ class TestExtractCVNode:
         assert any("CV extraction failed" in e for e in result["errors"])
 
 
+class TestExtractCVExperienceWarning:
+    """Tests for extract_cv experience section validation."""
+
+    def test_extract_cv_warns_when_experience_section_empty(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+    ) -> None:
+        """Test extract_cv warns when CV has experience section but extraction returns empty."""
+        # CV has experience section marker
+        base_state["raw_cv"] = "# John Doe\n\n## Experience\n\nSenior Engineer at Tech Corp"
+
+        # Create CV data with empty experiences
+        empty_exp_cv = CVData(
+            contact=ContactInfo(name="John Doe", email="john@example.com"),
+            summary="Engineer",
+            experiences=[],  # Empty experiences despite section existing
+            education=[],
+            skills=["Python"],
+        )
+
+        with patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=empty_exp_cv):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_cv"](base_state)
+
+        assert any("Experience section detected" in e for e in result["errors"])
+        assert any("no experiences extracted" in e for e in result["errors"])
+
+    @pytest.mark.parametrize(
+        "section_marker",
+        ["## Experience", "## Professional Experience", "## Work Experience"],
+    )
+    def test_extract_cv_warns_for_various_experience_markers(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        section_marker: str,
+    ) -> None:
+        """Test extract_cv warns for all supported experience section markers."""
+        base_state["raw_cv"] = f"# John Doe\n\n{section_marker}\n\nSenior Engineer"
+
+        empty_exp_cv = CVData(
+            contact=ContactInfo(name="John Doe", email="john@example.com"),
+            summary="Engineer",
+            experiences=[],
+            education=[],
+            skills=["Python"],
+        )
+
+        with patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=empty_exp_cv):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_cv"](base_state)
+
+        assert any("Experience section detected" in e for e in result["errors"])
+
+
 class TestExtractJobNode:
     """Tests for the extract_job node."""
 
@@ -496,6 +552,40 @@ class TestExtractAllNode:
         if job_expected:
             assert result["job_requirements"] is sample_job_requirements
         assert len(result["errors"]) == error_count
+
+    def test_extract_all_warns_when_experience_section_empty(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_job_requirements: JobRequirements,
+    ) -> None:
+        """Test extract_all warns when CV has experience section but extraction returns empty."""
+        # CV has experience section marker
+        base_state["raw_cv"] = "# John Doe\n\n## Experience\n\nSenior Engineer at Tech Corp"
+
+        # Create CV data with empty experiences
+        empty_exp_cv = CVData(
+            contact=ContactInfo(name="John Doe", email="john@example.com"),
+            summary="Engineer",
+            experiences=[],  # Empty experiences despite section existing
+            education=[],
+            skills=["Python"],
+        )
+
+        with (
+            patch("cv_warlock.graph.nodes.CVExtractor.extract", return_value=empty_exp_cv),
+            patch(
+                "cv_warlock.graph.nodes.JobExtractor.extract",
+                return_value=sample_job_requirements,
+            ),
+        ):
+            nodes = create_nodes(mock_provider)
+            result = nodes["extract_all"](base_state)
+
+        assert result["cv_data"] is empty_exp_cv
+        assert result["job_requirements"] is sample_job_requirements
+        assert any("Experience section detected" in e for e in result["errors"])
+        assert any("no experiences extracted" in e for e in result["errors"])
 
 
 # =============================================================================
@@ -702,6 +792,33 @@ class TestCreatePlanNode:
             result = nodes["create_plan"](base_state)
 
         assert any("Tailoring plan failed" in e for e in result["errors"])
+
+    def test_create_plan_uses_precomputed_plan(
+        self,
+        mock_provider: MagicMock,
+        base_state: CVWarlockState,
+        sample_cv_data: CVData,
+        sample_job_requirements: JobRequirements,
+        sample_match_analysis: MatchAnalysis,
+        sample_tailoring_plan: TailoringPlan,
+    ) -> None:
+        """Test create_plan passes through pre-computed plan from analyze_match."""
+        base_state["cv_data"] = sample_cv_data
+        base_state["job_requirements"] = sample_job_requirements
+        base_state["match_analysis"] = sample_match_analysis
+        base_state["tailoring_plan"] = sample_tailoring_plan  # Pre-computed by analyze_match
+        base_state["errors"] = []
+
+        with patch(
+            "cv_warlock.graph.nodes.MatchAnalyzer.create_tailoring_plan",
+        ) as mock_create_plan:
+            nodes = create_nodes(mock_provider)
+            result = nodes["create_plan"](base_state)
+
+        # Should NOT call create_tailoring_plan since plan was pre-computed
+        mock_create_plan.assert_not_called()
+        # Should pass through the existing plan
+        assert result["tailoring_plan"] is sample_tailoring_plan
 
 
 # =============================================================================
