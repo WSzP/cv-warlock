@@ -10,9 +10,9 @@ keywords = ["cv", "resume", "ai", "langchain", "langgraph", "rlm"]
 
 dependencies = [
     # LangChain 1.x with model-agnostic content_blocks API
-    "langchain>=1.2.6",
+    "langchain>=1.2.7",
     "langchain-core>=1.2.7",
-    "langgraph>=1.0.6",
+    "langgraph>=1.0.7",
 
     # LLM providers (all supported) - LangChain 1.x compatible
     "langchain-openai>=1.1.7",
@@ -20,37 +20,37 @@ dependencies = [
     "langchain-google-genai>=4.2.0",
 
     # Data & config
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
-    "python-dotenv>=1.0.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "python-dotenv>=1.2.1",
 
     # CLI
-    "typer>=0.12.0",
-    "rich>=13.0.0",
+    "typer>=0.21.1",
+    "rich>=14.3.0",
 
     # Web UI
-    "streamlit>=1.40.0",
+    "streamlit>=1.53.1",
 
     # PDF parsing (for CV upload)
-    "pymupdf>=1.24.0",
+    "pymupdf>=1.26.7",
 
     # PDF generation (for CV export)
-    "fpdf2>=2.8.0",
+    "fpdf2>=2.8.5",
 
     # Tracing & observability
     "langsmith>=0.6.4",
 
     # HTTP/2 support for better connection reliability
-    "h2>=4.0.0",
+    "h2>=4.3.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.0.0",
-    "ruff>=0.5.0",
-    "mypy>=1.10.0",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.14",
+    "mypy>=1.19.1",
 ]
 
 [project.scripts]
