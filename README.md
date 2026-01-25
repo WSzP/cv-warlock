@@ -99,14 +99,6 @@ RLM is enabled by default. To disable it:
 
 For detailed technical documentation on RLM architecture and implementation, see [docs/RLM_INTEGRATION.md](docs/RLM_INTEGRATION.md).
 
-## Vibe Coding
-
-This project was created using [Claude Code 2](https://claude.com/product/claude-code) - [Opus 4.5](https://www.anthropic.com/news/claude-opus-4-5).  
-
-The `.claude` folder and `CLAUDE.md` are committed, so you can adapt this to your specific needs, or use the project as a vibe coding LangChain/LangGraph testbed.
-
-In the `.claude` folder, you can find custom agents that can help you if you wish to create features that are not yet implemented, such as a PostgreSQL database, a NextJS or React responsive website, and localization (i18n). Finally, you can use my custom-made web design agent, `wyr`, to create a great web design. If I create a NextJS frontend to replace Streamlit, I will use that.
-
 ## Requirements
 
 - **Python 3.11+** (minimum required)

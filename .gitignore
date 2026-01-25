@@ -219,3 +219,7 @@ nul*
 
 # PLAN .md files created by Claude AI during planning
 PLAN_*.md
+
+# Claude Code configuration (may contain sensitive permissions/settings)
+CLAUDE.md
+.claude/
