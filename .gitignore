@@ -221,5 +221,4 @@ nul*
 PLAN_*.md
 
 # Claude Code configuration (may contain sensitive permissions/settings)
-CLAUDE.md
 .claude/
