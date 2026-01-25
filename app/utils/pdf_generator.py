@@ -1032,9 +1032,13 @@ def _parse_experience_entries(content: list[str]) -> list[dict[str, Any]]:
             company = ""
             date_location = ""
 
-            # Next line might be company/date
-            if i + 1 < len(content):
-                next_line = content[i + 1].strip()
+            # Next non-empty line might be company/date
+            next_idx = i + 1
+            while next_idx < len(content) and not content[next_idx].strip():
+                next_idx += 1
+
+            if next_idx < len(content):
+                next_line = content[next_idx].strip()
                 # Check if it's italic (company) or contains date patterns
                 if next_line.startswith("*") or re.search(r"\d{4}", next_line):
                     # Parse company | location | date pattern
@@ -1044,7 +1048,7 @@ def _parse_experience_entries(content: list[str]) -> list[dict[str, Any]]:
                         company = parts[0]
                     if len(parts) >= 2:
                         date_location = " | ".join(parts[1:])
-                    i += 1
+                    i = next_idx
 
             current_entry = {
                 "title": title,
@@ -1182,8 +1186,13 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             institution = ""
             date_location = ""
 
-            if i + 1 < len(content):
-                next_line = content[i + 1].strip()
+            # Next non-empty line might be institution/date
+            next_idx = i + 1
+            while next_idx < len(content) and not content[next_idx].strip():
+                next_idx += 1
+
+            if next_idx < len(content):
+                next_line = content[next_idx].strip()
                 # Check for institution line - may start with ** for bold
                 # Don't skip lines starting with ** as those are institution names
                 is_bullet = next_line.startswith(("-", "•")) or (
@@ -1197,7 +1206,7 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
                         institution = parts[0]
                     if len(parts) >= 2:
                         date_location = " | ".join(parts[1:])
-                    i += 1
+                    i = next_idx
 
             pdf.add_experience_header(title, institution, date_location)
             i += 1
