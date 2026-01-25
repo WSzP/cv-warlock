@@ -85,6 +85,7 @@ COVER_LETTER_GENERATION_PROMPT = """Generate a plain text cover letter for a tec
 === CONSTRAINTS ===
 - CHARACTER LIMIT: {character_limit} (STRICT)
 - PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - STRUCTURE: 4 paragraphs with blank line between each
 - METRIC: Feature this achievement: {metric_to_feature}
 - KEYWORDS: Incorporate naturally: {keywords}
@@ -176,6 +177,7 @@ COVER_LETTER_REFINE_PROMPT = """Refine this cover letter for a technology leader
 === CONSTRAINTS ===
 - Maximum {character_limit} characters (STRICT)
 - Plain text only - no markdown or formatting
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - Must include metric: {metric_to_feature}
 - Must include keywords: {keywords}
 - Must demonstrate leadership qualities: {leadership_qualities}

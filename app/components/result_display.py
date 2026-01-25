@@ -351,9 +351,10 @@ def render_tailored_cv(result: dict[str, Any]) -> None:
     with col2:
         # Generate PDF on demand with selected style
         try:
-            pdf_bytes = generate_cv_pdf(cv_content, style=pdf_style)
+            pdf_bytes, page_count = generate_cv_pdf(cv_content, style=pdf_style)
+            page_label = "page" if page_count == 1 else "pages"
             st.download_button(
-                label="Download PDF",
+                label=f"Download PDF ({page_count} {page_label})",
                 data=pdf_bytes,
                 file_name=f"{base_filename}.pdf",
                 mime="application/pdf",

@@ -17,7 +17,8 @@ Preferred: {preferred_skills}
 STRATEGY: Add relevant skills from job requirements to the candidate's existing skills.
 
 RULES:
-1. Start with all required skills from job posting (candidate claims these)
+1. NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
+2. Start with all required skills from job posting (candidate claims these)
 2. Add preferred skills that match candidate's background
 3. Include candidate's existing skills that are relevant to the role
 4. Use EXACT job posting terminology (React.js not React, CI/CD not continuous integration)
@@ -71,7 +72,8 @@ TARGET SKILLS TO EMPHASIZE: {skills_to_emphasize}
 KEYWORDS TO INCORPORATE: {target_requirements}
 
 CRITICAL RULES:
-1. DO NOT change title, company, or dates - they are IMMUTABLE
+1. NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
+2. DO NOT change title, company, or dates - they are IMMUTABLE
 2. ONLY rewrite the bullet points/description text
 3. Emphasize skills from the target list naturally
 4. Use power verbs: Led, Built, Reduced, Implemented, Designed, Optimized
@@ -111,6 +113,7 @@ FORMAT (2-4 sentences):
 3. Fit: Connect skills to THIS role's needs
 
 RULES:
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - Reference skills that appear in the tailored skills section
 - Include 1+ hard metric from their background
 - Mirror 2-3 exact terms from job posting

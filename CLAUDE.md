@@ -198,6 +198,14 @@ Settings loaded via Pydantic Settings in `config.py`.
 
 **IMPORTANT**: When asked to commit, ALWAYS run `uv run ruff format .` first. This is implicit in any commit request.
 
+## CV and Cover Letter Content Generation Guidelines
+
+When generating text for any part of the CV (summary, experiences, skills, etc.) or cover letter:
+
+- **Avoid em dashes** (—) and **en dashes** (–) in all generated content
+- Use hyphens (-) or commas instead where appropriate
+- Use semicolons (;) to separate related clauses if needed
+
 ## Dependency Management
 
 **CRITICAL**: Always use the LATEST versions of all dependencies. Outdated libraries are unacceptable.

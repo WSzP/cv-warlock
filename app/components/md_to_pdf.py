@@ -128,13 +128,14 @@ def render_md_to_pdf_tool() -> None:
     if generate_clicked and md_content.strip():
         with st.spinner("Generating PDF..."):
             try:
-                pdf_bytes = generate_cv_pdf(md_content, style=selected_style)
+                pdf_bytes, page_count = generate_cv_pdf(md_content, style=selected_style)
 
                 # Store in session state for download
                 st.session_state["generated_pdf"] = pdf_bytes
                 st.session_state["pdf_generated"] = True
                 st.session_state["pdf_style"] = selected_style.value
                 st.session_state["pdf_source_md"] = md_content  # Store for filename extraction
+                st.session_state["pdf_page_count"] = page_count
                 st.success(
                     f"PDF generated successfully with {STYLE_OPTIONS[selected_style]['label']} style!"
                 )
@@ -149,8 +150,10 @@ def render_md_to_pdf_tool() -> None:
             # Generate filename from CV name
             source_md = st.session_state.get("pdf_source_md", "")
             base_filename = _extract_cv_filename(source_md, "cv")
+            page_count = st.session_state.get("pdf_page_count", 1)
+            page_label = "page" if page_count == 1 else "pages"
             st.download_button(
-                label="Download PDF",
+                label=f"Download PDF ({page_count} {page_label})",
                 data=st.session_state["generated_pdf"],
                 file_name=f"{base_filename}.pdf",
                 mime="application/pdf",

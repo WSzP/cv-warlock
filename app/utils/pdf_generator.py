@@ -922,7 +922,7 @@ def parse_markdown_cv(markdown: str) -> dict[str, Any]:
     return result
 
 
-def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.MODERN) -> bytes:
+def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.MODERN) -> tuple[bytes, int]:
     """Generate a well-structured PDF from markdown CV.
 
     Args:
@@ -930,7 +930,7 @@ def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.MODERN) -> byt
         style: The visual style to use ('plain' or 'modern'). Default is 'modern'.
 
     Returns:
-        PDF content as bytes.
+        Tuple of (PDF content as bytes, page count).
     """
     # Convert string to CVStyle enum if needed
     if isinstance(style, str):
@@ -981,8 +981,8 @@ def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.MODERN) -> byt
         pdf.add_section_header(section["header"])
         _render_section_content(pdf, section["header"], section["content"])
 
-    # Return PDF as bytes
-    return bytes(pdf.output())
+    # Return PDF as bytes with page count
+    return bytes(pdf.output()), pdf.page
 
 
 def _render_section_content(pdf: CVPDFGenerator, header: str, content: list[str]) -> None:
