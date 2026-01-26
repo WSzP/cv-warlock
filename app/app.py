@@ -999,7 +999,7 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
 
                     for error_msg in result["errors"]:
                         error_info = parse_error_details(
-                            error_msg, params["provider"], params["model"]
+                            error_msg, params["provider"], params.get("model", "auto")
                         )
                         render_error_details(error_info, elapsed)
 
@@ -1070,7 +1070,9 @@ By weaving these qualities with concrete examples, you paint a picture of a 2026
             elapsed = time.time() - wall_start_time
 
             # Parse the exception for detailed feedback
-            error_info = parse_error_details(str(e), params["provider"], params["model"])
+            error_info = parse_error_details(
+                str(e), params["provider"], params.get("model", "auto")
+            )
 
             # Add context about where it failed
             st.divider()
