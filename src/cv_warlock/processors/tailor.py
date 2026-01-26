@@ -1035,6 +1035,17 @@ Achievements:
         for cert in cv_data.certifications:
             certs_str += f"- {cert.name} ({cert.issuer})\n"
 
+        # Format publications
+        pubs_str = ""
+        for pub in cv_data.publications:
+            pub_line = f"- {pub.title} ({pub.publisher}"
+            if pub.year:
+                pub_line += f", {pub.year}"
+            pub_line += ")"
+            if pub.url:
+                pub_line += f": {pub.url}"
+            pubs_str += pub_line + "\n"
+
         chain = self.assembly_prompt | model
         result = chain.invoke(
             {
@@ -1044,6 +1055,7 @@ Achievements:
                 "tailored_skills": tailored_skills,
                 "education": education_str or "Not provided",
                 "certifications": certs_str or "Not provided",
+                "publications": pubs_str or "Not provided",
             }
         )
 

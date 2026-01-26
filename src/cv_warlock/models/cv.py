@@ -111,12 +111,30 @@ class Project(BaseModel):
 
 
 class Certification(BaseModel):
-    """Certification or credential."""
+    """Certification or credential.
+
+    Examples: AWS Solutions Architect, PMP, CISSP, Google Cloud Professional.
+    NOT for books, papers, or publications - use Publication model instead.
+    """
 
     name: str
     issuer: str
     date: str | None = None
     url: str | None = None
+
+
+class Publication(BaseModel):
+    """Publication entry (books, papers, articles authored by the candidate).
+
+    Examples: Books, research papers, journal articles, blog posts.
+    NOT for certifications or credentials - use Certification model instead.
+    """
+
+    title: str = Field(description="Title of the publication")
+    publisher: str = Field(description="Publisher, journal, or platform name")
+    year: str | None = Field(default=None, description="Year of publication")
+    url: str | None = Field(default=None, description="URL or DOI link")
+    description: str | None = Field(default=None, description="Brief description if provided")
 
 
 class CVData(BaseModel):
@@ -129,6 +147,7 @@ class CVData(BaseModel):
     skills: list[str] = Field(default_factory=list)
     projects: list[Project] = Field(default_factory=list)
     certifications: list[Certification] = Field(default_factory=list)
+    publications: list[Publication] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
     raw_education_text: str | None = Field(
         default=None,
@@ -140,7 +159,9 @@ class CVData(BaseModel):
     def coerce_to_list(cls, v: Any) -> list[str]:
         return _coerce_to_list(v)
 
-    @field_validator("experiences", "education", "projects", "certifications", mode="before")
+    @field_validator(
+        "experiences", "education", "projects", "certifications", "publications", mode="before"
+    )
     @classmethod
     def coerce_model_lists(cls, v: Any) -> list[Any]:
         return _coerce_to_model_list(v)

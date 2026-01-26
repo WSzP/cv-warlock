@@ -25,7 +25,15 @@ CV_EXTRACTION_PROMPT = """Extract ALL structured data from this CV. Preserve exa
 
 **PROJECTS**: Name, description, tech, your role, results
 
-**CERTIFICATIONS**: Name, issuer, date, expiration
+**CERTIFICATIONS** (professional credentials ONLY):
+- Examples: AWS Solutions Architect, PMP, CISSP, Google Cloud Professional, Scrum Master
+- Name, issuer, date, expiration
+- NOT books, papers, or publications - those go in PUBLICATIONS
+
+**PUBLICATIONS** (books, papers, articles authored by candidate):
+- Examples: Books, research papers, journal articles, technical blog posts
+- Title, publisher/journal, year, URL/DOI
+- NOT certifications or credentials - those go in CERTIFICATIONS
 
 **CONTACT**: Name, email, phone, LinkedIn, GitHub, location
 - **raw_contact_line**: Copy the EXACT contact line from the CV header (preserve markdown links like `[email](mailto:email)` and `[phone](tel:phone)` EXACTLY as written)

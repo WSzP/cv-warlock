@@ -134,9 +134,11 @@ SKILLS: {tailored_skills}
 EXPERIENCE: {tailored_experiences}
 EDUCATION (IMMUTABLE - COPY EXACTLY): {education}
 CERTIFICATIONS: {certifications}
+PUBLICATIONS: {publications}
 
-SECTION ORDER: Contact > Summary > Skills > Experience > Education > Certifications (only if provided)
-If CERTIFICATIONS shows "Not provided", do NOT include a Certifications section.
+SECTION ORDER: Contact > Summary > Skills > Experience > Education > Certifications > Publications
+- If CERTIFICATIONS shows "Not provided", do NOT include a Certifications section.
+- If PUBLICATIONS shows "Not provided", do NOT include a Publications section.
 
 CRITICAL: Do NOT add a Projects section. Projects are NOT part of this CV format.
 
@@ -167,4 +169,10 @@ OUTPUT FORMAT (EXACTLY these sections, no others):
 ## Education
 [COPY EDUCATION SECTION EXACTLY AS PROVIDED - NO MODIFICATIONS]
 
-Output ONLY these sections. Do NOT add Projects, Publications, Awards, or any other sections."""
+## Certifications (only if provided)
+[List certifications]
+
+## Publications (only if provided)
+[List publications - books, papers, articles authored by the candidate]
+
+Output ONLY these sections. Do NOT add Projects, Awards, or any other sections not listed above."""
