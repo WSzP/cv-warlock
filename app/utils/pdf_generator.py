@@ -998,6 +998,9 @@ def _render_section_content(pdf: CVPDFGenerator, header: str, content: list[str]
     # Education: similar to experience but simpler
     elif any(kw in header_lower for kw in ["education", "academic", "qualification"]):
         _render_education_section(pdf, content)
+    # Publications: special handling for books/papers with URLs
+    elif any(kw in header_lower for kw in ["publication", "book", "paper", "article"]):
+        _render_publications_section(pdf, content)
     # Other sections: render as paragraphs/bullets
     else:
         _render_generic_section(pdf, content)
@@ -1231,6 +1234,72 @@ def _render_education_section(pdf: CVPDFGenerator, content: list[str]) -> None:
             pdf.add_paragraph(clean)
 
         i += 1
+
+
+def _render_publications_section(pdf: CVPDFGenerator, content: list[str]) -> None:
+    """Render publications section with proper formatting for books/papers.
+
+    Expected format: - Title (Publisher, Year): URL
+    Renders as: Title with publisher/year, clickable link on separate line.
+    """
+    for line in content:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Skip non-bullet lines
+        if not line.startswith(("-", "*", "•")):
+            # Regular text - render as paragraph
+            clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
+            pdf.add_paragraph(clean)
+            continue
+
+        # Remove bullet marker
+        text = re.sub(r"^[-*•]\s*", "", line)
+
+        # Parse publication format: Title (Publisher, Year): URL
+        # or: Title (Publisher, Year): [Link Text](URL)
+        pub_match = re.match(
+            r"^(.+?)\s*\(([^)]+)\)(?::\s*(?:\[([^\]]+)\]\(([^)]+)\)|(\S+)))?\s*$",
+            text,
+        )
+
+        if pub_match:
+            title = pub_match.group(1).strip()
+            publisher_info = pub_match.group(2).strip()  # "Publisher, Year"
+            link_text = pub_match.group(3)  # From markdown link
+            link_url = pub_match.group(4)  # From markdown link
+            plain_url = pub_match.group(5)  # Plain URL
+
+            # Determine URL and display text
+            url = link_url or plain_url
+            display_url = link_text or (
+                plain_url[:50] + "..." if plain_url and len(plain_url) > 50 else plain_url
+            )
+
+            # Render title in bold with publisher info
+            pdf.set_x(pdf.l_margin)
+            pdf.set_font(pdf.font_name, "B", pdf.config.body_size)
+            if pdf.style == CVStyle.MODERN:
+                pdf.set_text_color(*pdf.config.accent_color)
+            else:
+                pdf.set_text_color(*pdf.config.text_primary)
+
+            title_text = f"{title} ({publisher_info})"
+            pdf.multi_cell(0, 5, title_text, align="L")
+
+            # Render URL as clickable link on next line (indented)
+            if url:
+                pdf.set_x(pdf.l_margin + 5)
+                pdf.set_font(pdf.font_name, "", pdf.config.body_size - 1)
+                pdf._write_link(display_url or url, url, 4)
+                pdf.set_text_color(*pdf.config.text_primary)
+                pdf.ln(5)
+            else:
+                pdf.ln(1)
+        else:
+            # Fallback: render as simple bullet with link handling
+            pdf.add_bullet_point(text)
 
 
 def _render_generic_section(pdf: CVPDFGenerator, content: list[str]) -> None:
