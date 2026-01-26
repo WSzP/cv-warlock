@@ -581,30 +581,40 @@ def main():
 
         st.slider(
             "Character limit",
-            min_value=500,
+            min_value=400,
             max_value=5000,
             value=2000,
-            step=250,
+            step=100,
             help="Target length for generated cover letter",
             key="cover_letter_char_limit",
         )
 
-        # Show guidance based on character limit
+        # Show guidance based on character limit (matches processor tiers)
         char_limit = st.session_state.get("cover_letter_char_limit", 2000)
-        if char_limit < 1500:
+        if char_limit <= 600:
             st.caption(
-                "**Short format:** Best for quick applications or character-limited forms. "
-                "Will focus on 2-3 key points."
+                "**Micro format (400-600):** Single paragraph, 3-4 sentences. "
+                "One key achievement with metric. Best for strict character limits."
+            )
+        elif char_limit <= 800:
+            st.caption(
+                "**Short format (600-800):** 1-2 paragraphs, 5-6 sentences. "
+                "1-2 key points with one leadership quality."
+            )
+        elif char_limit <= 1200:
+            st.caption(
+                "**Compact format (800-1200):** 2 paragraphs. "
+                "Includes problem-solution framing and call to action."
             )
         elif char_limit < 3000:
             st.caption(
-                "**Standard format:** Ideal for most applications. "
-                "Balances detail with readability."
+                "**Standard format (1200+):** 3-4 paragraphs. "
+                "Full structure with achievements, leadership, and value proposition."
             )
         else:
             st.caption(
                 "**Extended format:** For applications allowing longer responses. "
-                "Includes more context and achievements."
+                "Includes more context and detailed achievements."
             )
 
         st.divider()

@@ -186,3 +186,147 @@ COVER_LETTER_REFINE_PROMPT = """Refine this cover letter for a technology leader
 - Ensure problem-solution framing connects your experience to their needs
 
 Write ONLY the improved cover letter. No explanations."""
+
+
+# =============================================================================
+# LENGTH-SPECIFIC GENERATION PROMPTS
+# =============================================================================
+# These prompts adapt structure based on character limit.
+# The reasoning stays the same; only the generation structure changes.
+
+
+COVER_LETTER_GENERATION_MICRO_PROMPT = """Generate a MICRO cover letter (400-600 characters) for a tech leadership role.
+
+=== REASONING (extract key points only) ===
+{reasoning_json}
+
+=== STRICT CONSTRAINTS ===
+- CHARACTER LIMIT: {character_limit} (ABSOLUTE MAXIMUM - count carefully!)
+- PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-) or commas instead.
+
+=== MICRO FORMAT (1 paragraph, 3-4 sentences) ===
+Structure: Hook sentence + ONE key achievement with metric + Brief value proposition + Call to action
+
+Example structure (adapt to content):
+"[Company]'s [initiative] aligns with my [relevant experience]. As [role], I [ONE specific achievement with metric]. I bring [key value] to [their challenge]. I welcome the opportunity to discuss how I can contribute to [company]."
+
+=== WHAT TO INCLUDE ===
+- Opening hook referencing the company specifically
+- ONE impressive metric: {metric_to_feature}
+- ONE keyword from job: {keywords}
+- Brief interview request
+
+=== WHAT TO OMIT (no space) ===
+- Multiple achievements (pick the BEST one only)
+- Detailed leadership qualities (imply through the achievement)
+- Extended company research
+- Multiple paragraphs
+
+=== OUTPUT ===
+Write a single dense paragraph. No salutation, no signature.
+MUST be under {character_limit} characters - this is critical."""
+
+
+COVER_LETTER_GENERATION_SHORT_PROMPT = """Generate a SHORT cover letter (600-800 characters) for a tech leadership role.
+
+=== REASONING (extract key points only) ===
+{reasoning_json}
+
+=== STRICT CONSTRAINTS ===
+- CHARACTER LIMIT: {character_limit} (ABSOLUTE MAXIMUM - count carefully!)
+- PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-) or commas instead.
+
+=== SHORT FORMAT (1-2 paragraphs, 5-6 sentences total) ===
+P1: Company-specific hook + strongest qualification + ONE key achievement with metric
+P2 (if space): Brief leadership quality + call to action
+
+=== WHAT TO INCLUDE ===
+- Opening hook referencing the company specifically
+- ONE impressive metric: {metric_to_feature}
+- 1-2 keywords from job: {keywords}
+- ONE leadership quality: {leadership_qualities}
+- Interview request
+
+=== WHAT TO OMIT (limited space) ===
+- Multiple achievements (pick TOP 1-2 only)
+- Extended problem-solution framing
+- Detailed company research
+
+=== OUTPUT ===
+Write 1-2 short paragraphs. No salutation, no signature.
+MUST be under {character_limit} characters - this is critical."""
+
+
+COVER_LETTER_GENERATION_COMPACT_PROMPT = """Generate a COMPACT cover letter (800-1200 characters) for a tech leadership role.
+
+=== REASONING (follow this strategy) ===
+{reasoning_json}
+
+=== STRICT CONSTRAINTS ===
+- CHARACTER LIMIT: {character_limit} (STRICT)
+- PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-) or commas instead.
+- STRUCTURE: 2 paragraphs with blank line between
+
+=== COMPACT FORMAT (2 paragraphs) ===
+P1: Company-specific hook + role interest + strongest qualification + key achievement with metric
+P2: Leadership quality + problem-solution framing + value proposition + call to action
+
+=== WHAT TO INCLUDE ===
+- Opening hook (company-specific, not generic)
+- 1-2 key achievements with metrics: {metric_to_feature}
+- 2-3 keywords from job: {keywords}
+- Leadership qualities: {leadership_qualities}
+- Problem-solution framing (brief)
+- Interview request
+
+=== OPENING (first sentence is critical) ===
+GOOD: "[Company]'s [specific initiative] resonates with my experience..."
+AVOID: "I am writing to apply...", "Dear Hiring Manager..."
+
+=== OUTPUT ===
+Write 2 paragraphs separated by blank line. No salutation, no signature.
+Stay under {character_limit} characters."""
+
+
+COVER_LETTER_GENERATION_STANDARD_PROMPT = """Generate a plain text cover letter for a tech leadership role.
+
+=== REASONING (follow this strategy) ===
+{reasoning_json}
+
+=== CONSTRAINTS ===
+- CHARACTER LIMIT: {character_limit} (STRICT)
+- PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
+- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
+- STRUCTURE: 3-4 paragraphs with blank line between each
+- METRIC: Feature this achievement: {metric_to_feature}
+- KEYWORDS: Incorporate naturally: {keywords}
+
+=== 3-4 PARAGRAPH FORMULA ===
+P1: Company-specific hook + role interest + strongest qualification
+P2: Key achievement with metric + solves THEIR problem (problem-solution framing)
+P3: Leadership qualities ({leadership_qualities}) + skills alignment + unique value
+P4 (optional if space): Value proposition + enthusiasm + interview request
+
+If tight on space, combine P3 and P4 into one closing paragraph.
+
+=== OPENING (first sentence is critical) ===
+GOOD: "[Company]'s [specific initiative] resonates with my experience..."
+GOOD: "My track record of [result] directly addresses [Company]'s need for..."
+AVOID: "I am writing to apply...", "I am interested in...", "Dear Hiring Manager..."
+
+=== OUTPUT ===
+Write ONLY the cover letter body. No salutation, no signature.
+Plain text paragraphs separated by blank lines.
+Stay under {character_limit} characters."""
+
+
+# Mapping for easy lookup by tier
+GENERATION_PROMPTS_BY_TIER = {
+    "micro": COVER_LETTER_GENERATION_MICRO_PROMPT,
+    "short": COVER_LETTER_GENERATION_SHORT_PROMPT,
+    "compact": COVER_LETTER_GENERATION_COMPACT_PROMPT,
+    "standard": COVER_LETTER_GENERATION_STANDARD_PROMPT,
+}

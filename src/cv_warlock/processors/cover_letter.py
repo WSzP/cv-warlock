@@ -24,8 +24,8 @@ from cv_warlock.models.reasoning import (
 )
 from cv_warlock.models.state import MatchAnalysis
 from cv_warlock.prompts.cover_letter import (
-    COVER_LETTER_GENERATION_PROMPT,
     COVER_LETTER_REASONING_PROMPT,
+    GENERATION_PROMPTS_BY_TIER,
 )
 
 
@@ -56,8 +56,14 @@ class CoverLetterGenerator:
 
     # Character limit configuration
     DEFAULT_CHARACTER_LIMIT = 2000
-    MIN_CHARACTER_LIMIT = 500
+    MIN_CHARACTER_LIMIT = 400
     MAX_CHARACTER_LIMIT = 5000
+
+    # Length tiers for structure adaptation
+    TIER_MICRO = 600  # 400-600: 1-2 sentences, single point
+    TIER_SHORT = 800  # 601-800: 2-3 sentences, 1-2 points
+    TIER_COMPACT = 1200  # 801-1200: 2 paragraphs, 2-3 points
+    TIER_STANDARD = 2000  # 1201+: 3-4 paragraphs, full structure
 
     def __init__(self, llm_provider: LLMProvider, fast_provider: LLMProvider | None = None):
         """Initialize generator with LLM providers.
@@ -72,7 +78,25 @@ class CoverLetterGenerator:
 
         # Prompts
         self.reasoning_prompt = ChatPromptTemplate.from_template(COVER_LETTER_REASONING_PROMPT)
-        self.generation_prompt = ChatPromptTemplate.from_template(COVER_LETTER_GENERATION_PROMPT)
+        # Generation prompts are selected dynamically based on character limit
+
+    def _get_length_tier(self, character_limit: int) -> str:
+        """Determine the length tier for structure adaptation.
+
+        Args:
+            character_limit: Target character limit.
+
+        Returns:
+            Tier name: 'micro', 'short', 'compact', or 'standard'.
+        """
+        if character_limit <= self.TIER_MICRO:
+            return "micro"
+        elif character_limit <= self.TIER_SHORT:
+            return "short"
+        elif character_limit <= self.TIER_COMPACT:
+            return "compact"
+        else:
+            return "standard"
 
     def generate(
         self,
@@ -158,7 +182,8 @@ class CoverLetterGenerator:
         """Generate cover letter from reasoning (Step 2).
 
         Uses the fast provider for generation since this is plain text output
-        and doesn't require structured extraction.
+        and doesn't require structured extraction. Selects the appropriate
+        prompt template based on the character limit tier.
 
         Args:
             reasoning: Strategic reasoning from step 1.
@@ -167,10 +192,15 @@ class CoverLetterGenerator:
         Returns:
             Plain text cover letter.
         """
+        # Select the appropriate prompt based on character limit
+        tier = self._get_length_tier(character_limit)
+        prompt_template = GENERATION_PROMPTS_BY_TIER[tier]
+        generation_prompt = ChatPromptTemplate.from_template(prompt_template)
+
         # Use fast provider for generation (plain text, no structured output needed)
         model = self.fast_provider.get_chat_model()
 
-        chain = self.generation_prompt | model
+        chain = generation_prompt | model
         result = chain.invoke(
             {
                 "reasoning_json": _compress_cover_letter_reasoning(reasoning),
