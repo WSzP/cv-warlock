@@ -34,6 +34,23 @@ class JobRequirements(BaseModel):
     responsibilities: list[str] = Field(default_factory=list)
     benefits: list[str] = Field(default_factory=list)
 
+    @field_validator("required_experience_years", mode="before")
+    @classmethod
+    def coerce_experience_years(cls, v: Any) -> int | None:
+        """Convert invalid values (like '<UNKNOWN>') to None."""
+        if v is None:
+            return None
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            # Try to parse as integer
+            try:
+                return int(v)
+            except ValueError:
+                # LLM returned something like '<UNKNOWN>' or 'Not specified'
+                return None
+        return None
+
     @field_validator(
         "required_skills",
         "preferred_skills",

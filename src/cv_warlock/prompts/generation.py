@@ -8,6 +8,9 @@ These prompts implement a section-by-section tailoring strategy:
 
 SKILLS_TAILORING_PROMPT = """Create an ATS-optimized skills section for this CV.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 CANDIDATE'S EXISTING SKILLS: {all_skills}
 
 JOB REQUIREMENTS:
@@ -17,8 +20,7 @@ Preferred: {preferred_skills}
 STRATEGY: Add relevant skills from job requirements to the candidate's existing skills.
 
 RULES:
-1. NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
-2. Start with all required skills from job posting (candidate claims these)
+1. Start with all required skills from job posting (candidate claims these)
 2. Add preferred skills that match candidate's background
 3. Include candidate's existing skills that are relevant to the role
 4. Use EXACT job posting terminology (React.js not React, CI/CD not continuous integration)
@@ -59,6 +61,9 @@ Output ONLY the skills section."""
 
 EXPERIENCE_TAILORING_PROMPT = """Rewrite the job description bullets to emphasize relevant skills.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 EXPERIENCE (IMMUTABLE - DO NOT CHANGE):
 Title: {title}
 Company: {company}
@@ -72,8 +77,7 @@ TARGET SKILLS TO EMPHASIZE: {skills_to_emphasize}
 KEYWORDS TO INCORPORATE: {target_requirements}
 
 CRITICAL RULES:
-1. NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
-2. DO NOT change title, company, or dates - they are IMMUTABLE
+1. DO NOT change title, company, or dates - they are IMMUTABLE
 2. ONLY rewrite the bullet points/description text
 3. Emphasize skills from the target list naturally
 4. Use power verbs: Led, Built, Reduced, Implemented, Designed, Optimized
@@ -95,6 +99,11 @@ Output ONLY bullet points:
 
 SUMMARY_TAILORING_PROMPT = """Create a professional summary that introduces the tailored CV.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+WRONG: "experience—bridging technical" or "profile—rare among"
+CORRECT: "experience, bridging technical" or "profile; rare among"
+
 ORIGINAL SUMMARY: {original_summary}
 
 TARGET: {job_title} at {company}
@@ -113,7 +122,6 @@ FORMAT (2-4 sentences):
 3. Fit: Connect skills to THIS role's needs
 
 RULES:
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - Reference skills that appear in the tailored skills section
 - Include 1+ hard metric from their background
 - Mirror 2-3 exact terms from job posting
@@ -127,6 +135,9 @@ Output ONLY the summary."""
 
 
 CV_ASSEMBLY_PROMPT = """Assemble these sections into a clean, ATS-compatible CV in Markdown.
+
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
 
 CONTACT (IMMUTABLE - COPY EXACTLY): {contact}
 SUMMARY: {tailored_summary}

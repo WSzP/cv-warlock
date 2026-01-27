@@ -789,7 +789,7 @@ Cover letters have re-emerged as a critical tool for landing leadership roles. B
 
 **Header and Salutation:** Include your name, contact info, date, and address the letter to the hiring manager by name if possible. A personalized salutation creates a positive first impression.
 
-**Opening Paragraph (Introduction):** Grab attention with a compelling hook—a top achievement or summary that directly relates to the job. State the role you're applying for and convey enthusiasm. For example: *"With 15+ years in IT leadership, I have driven 40% revenue growth through digital transformation…"*
+**Opening Paragraph (Introduction):** Grab attention with a compelling hook, a top achievement or summary that directly relates to the job. State the role you're applying for and convey enthusiasm. For example: *"With 15+ years in IT leadership, I have driven 40% revenue growth through digital transformation…"*
 
 **Body Paragraphs – Achievements and Value Alignment:** Showcase your most relevant accomplishments with metrics (e.g., "increased system uptime 30%" or "saved $1M in costs"). Mirror the job requirements and tie your expertise to their mission. Customization is crucial—72% of hiring managers prioritize tailored letters.
 

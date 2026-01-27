@@ -79,13 +79,15 @@ Output structured reasoning per CoverLetterReasoning schema."""
 
 COVER_LETTER_GENERATION_PROMPT = """Generate a plain text cover letter for a tech leadership role.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === REASONING (follow this strategy) ===
 {reasoning_json}
 
 === CONSTRAINTS ===
 - CHARACTER LIMIT: {character_limit} (STRICT)
 - PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - STRUCTURE: 4 paragraphs with blank line between each
 - METRIC: Feature this achievement: {metric_to_feature}
 - KEYWORDS: Incorporate naturally: {keywords}
@@ -162,6 +164,9 @@ Set should_refine=true if quality is below GOOD or over character limit."""
 
 COVER_LETTER_REFINE_PROMPT = """Refine this cover letter for a technology leadership role based on the critique. Fix identified issues while preserving what works.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === CURRENT COVER LETTER ===
 {current_cover_letter}
 
@@ -177,7 +182,6 @@ COVER_LETTER_REFINE_PROMPT = """Refine this cover letter for a technology leader
 === CONSTRAINTS ===
 - Maximum {character_limit} characters (STRICT)
 - Plain text only - no markdown or formatting
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - Must include metric: {metric_to_feature}
 - Must include keywords: {keywords}
 - Must demonstrate leadership qualities: {leadership_qualities}
@@ -197,13 +201,15 @@ Write ONLY the improved cover letter. No explanations."""
 
 COVER_LETTER_GENERATION_MICRO_PROMPT = """Generate a MICRO cover letter (400-600 characters) for a tech leadership role.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === REASONING (extract key points only) ===
 {reasoning_json}
 
 === STRICT CONSTRAINTS ===
 - CHARACTER LIMIT: {character_limit} (ABSOLUTE MAXIMUM - count carefully!)
 - PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-) or commas instead.
 
 === MICRO FORMAT (1 paragraph, 3-4 sentences) ===
 Structure: Hook sentence + ONE key achievement with metric + Brief value proposition + Call to action
@@ -230,13 +236,15 @@ MUST be under {character_limit} characters - this is critical."""
 
 COVER_LETTER_GENERATION_SHORT_PROMPT = """Generate a SHORT cover letter (600-800 characters) for a tech leadership role.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === REASONING (extract key points only) ===
 {reasoning_json}
 
 === STRICT CONSTRAINTS ===
 - CHARACTER LIMIT: {character_limit} (ABSOLUTE MAXIMUM - count carefully!)
 - PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-) or commas instead.
 
 === SHORT FORMAT (1-2 paragraphs, 5-6 sentences total) ===
 P1: Company-specific hook + strongest qualification + ONE key achievement with metric
@@ -261,13 +269,15 @@ MUST be under {character_limit} characters - this is critical."""
 
 COVER_LETTER_GENERATION_COMPACT_PROMPT = """Generate a COMPACT cover letter (800-1200 characters) for a tech leadership role.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === REASONING (follow this strategy) ===
 {reasoning_json}
 
 === STRICT CONSTRAINTS ===
 - CHARACTER LIMIT: {character_limit} (STRICT)
 - PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-) or commas instead.
 - STRUCTURE: 2 paragraphs with blank line between
 
 === COMPACT FORMAT (2 paragraphs) ===
@@ -293,13 +303,15 @@ Stay under {character_limit} characters."""
 
 COVER_LETTER_GENERATION_STANDARD_PROMPT = """Generate a plain text cover letter for a tech leadership role.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === REASONING (follow this strategy) ===
 {reasoning_json}
 
 === CONSTRAINTS ===
 - CHARACTER LIMIT: {character_limit} (STRICT)
 - PLAIN TEXT ONLY: No markdown, bullets, headers, or formatting
-- NEVER use em dashes (—) or en dashes (–). Use hyphens (-), commas, or semicolons instead.
 - STRUCTURE: 3-4 paragraphs with blank line between each
 - METRIC: Feature this achievement: {metric_to_feature}
 - KEYWORDS: Incorporate naturally: {keywords}

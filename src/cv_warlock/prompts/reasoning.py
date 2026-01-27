@@ -69,6 +69,9 @@ Provide your reasoning as structured output following the SummaryReasoning schem
 
 SUMMARY_GENERATION_PROMPT = """You are an elite CV writer. Generate a professional summary based on the strategic reasoning provided.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas, or semicolons instead. This is a HARD requirement.
+
 === YOUR REASONING ===
 {reasoning_json}
 
@@ -128,6 +131,9 @@ Set should_refine=true if quality is below GOOD."""
 
 
 SUMMARY_REFINE_PROMPT = """Refine this professional summary based on the critique. Fix the identified issues while preserving what works.
+
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
 
 === CURRENT SUMMARY ===
 {current_summary}
@@ -260,6 +266,9 @@ Return a BatchExperienceReasoning with reasoning for ALL experiences. Match each
 
 EXPERIENCE_GENERATION_PROMPT = """Generate experience bullets based on your strategic reasoning.
 
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
+
 === YOUR REASONING ===
 {reasoning_json}
 
@@ -332,6 +341,9 @@ Set should_refine=true if any bullet fails multiple checks or overall quality is
 
 
 EXPERIENCE_REFINE_PROMPT = """Refine these experience bullets based on the critique.
+
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
 
 === CURRENT BULLETS ===
 {current_bullets}
@@ -423,6 +435,9 @@ Provide structured reasoning output following the SkillsReasoning schema."""
 
 
 SKILLS_GENERATION_PROMPT = """Generate the skills section based on your strategic reasoning.
+
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
 
 === YOUR REASONING ===
 {reasoning_json}
@@ -517,6 +532,9 @@ Set should_refine=true if any required skill is missing or wrong terminology is 
 
 
 SKILLS_REFINE_PROMPT = """Refine this skills section based on the critique.
+
+*** CRITICAL: NEVER USE EM DASHES (—) OR EN DASHES (–) ANYWHERE IN YOUR OUTPUT ***
+Use commas or semicolons instead. This is a HARD requirement.
 
 === CURRENT SKILLS SECTION ===
 {current_skills}
