@@ -404,10 +404,12 @@ Think through each step:
    - If candidate says "ML" but job says "Machine Learning", use job's version
    - Create mapping: candidate_term -> job_posting_term
 
-3. **DUAL FORMAT TERMS**:
-   - Which acronyms benefit from including full form?
-   - Examples: "Machine Learning (ML)", "Amazon Web Services (AWS)"
-   - This catches both ATS search variants
+3. **ABBREVIATION STRATEGY**:
+   - Use whichever form is most recognizable on its own
+   - Well-known acronyms: use the acronym alone (AWS, SQL, API, REST, CI/CD)
+   - Less-known terms: write out in full (Google Cloud Platform, not GCP)
+   - NEVER use redundant dual formats like "AWS (Amazon Web Services)" or "GCP (Google Cloud Platform)"
+   - Match job posting terminology when specified
 
 4. **CATEGORIZATION STRATEGY**:
    - How to group skills logically?
@@ -449,7 +451,7 @@ Use commas or semicolons instead. This is a HARD requirement.
 3. Include matched preferred skills
 4. Group by logical categories
 5. Order: Required matches -> Preferred matches -> Relevant transferable
-6. Include dual formats for key acronyms: "AWS (Amazon Web Services)"
+6. Use recognizable form only: well-known acronyms (AWS, SQL) stay abbreviated; less-known terms (Google Cloud Platform) written out; never both
 7. Do NOT include skills candidate doesn't have (no fabrication)
 8. Do NOT include irrelevant skills (they dilute the signal)
 9. TENSORFLOW RULE: Only include TensorFlow if EXPLICITLY required in job posting.

@@ -311,7 +311,7 @@ class SkillsReasoning(BaseModel):
     )
     dual_format_terms: list[str] = Field(
         default_factory=list,
-        description="Terms to include both ways: 'AWS (Amazon Web Services)'",
+        description="Less-known terms to write out in full (e.g., 'Google Cloud Platform' not 'GCP')",
     )
 
     # Organization strategy

@@ -196,11 +196,11 @@ class TestCompressFunctions:
             required_skills_matched=["Python", "AWS", "Docker"],
             required_skills_missing=["Terraform"],
             preferred_skills_matched=["Kubernetes"],
-            terminology_mapping={"Amazon Web Services": "AWS"},
-            dual_format_terms=["AWS (Amazon Web Services)"],
+            terminology_mapping={"GCP": "Google Cloud Platform"},
+            dual_format_terms=["Google Cloud Platform"],
             category_groupings={
                 "Languages": ["Python", "Go"],
-                "Cloud": ["AWS", "GCP"],
+                "Cloud": ["AWS", "Google Cloud Platform"],
             },
             ordering_rationale="Required skills first",
             skills_to_omit=["Basic Excel"],
@@ -512,6 +512,84 @@ Fourth without prefix
         assert result.experience_company == "First Job"
         assert result.final_bullets == ["Learned coding", "Built features"]
         assert "PASSTHROUGH" in result.reasoning.emphasis_strategy
+
+    def test_format_passthrough_experience_condenses_many_bullets(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test that passthrough condensation limits bullets to max 2 for old roles."""
+        exp = Experience(
+            title="Engineer",
+            company="Old Corp",
+            start_date="2010",
+            end_date="2014",
+            achievements=[
+                "First achievement",
+                "Second achievement",
+                "Third achievement",
+                "Fourth achievement",
+                "Fifth achievement",
+            ],
+        )
+
+        tailor = CVTailor(mock_provider)
+        result = tailor._format_passthrough_experience(exp)
+
+        # Should only include first 2 bullets
+        assert "- First achievement" in result
+        assert "- Second achievement" in result
+        # Should NOT include 3rd, 4th, 5th bullets
+        assert "Third achievement" not in result
+        assert "Fourth achievement" not in result
+        assert "Fifth achievement" not in result
+
+    def test_create_passthrough_result_condenses_many_bullets(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test that passthrough result limits bullets to max 2 for old roles."""
+        exp = Experience(
+            title="Old Role",
+            company="Past Company",
+            start_date="2008",
+            end_date="2012",
+            achievements=[
+                "Led team of 5",
+                "Built critical system",
+                "Improved efficiency by 30%",
+                "Mentored juniors",
+            ],
+        )
+
+        tailor = CVTailor(mock_provider)
+        result = tailor._create_passthrough_result(exp)
+
+        # Should only have first 2 bullets
+        assert len(result.final_bullets) == 2
+        assert result.final_bullets == ["Led team of 5", "Built critical system"]
+
+    def test_format_passthrough_custom_max_bullets(
+        self,
+        mock_provider: MagicMock,
+    ) -> None:
+        """Test that passthrough can use custom max_bullets parameter."""
+        exp = Experience(
+            title="Engineer",
+            company="Old Corp",
+            start_date="2010",
+            end_date="2014",
+            achievements=["One", "Two", "Three", "Four", "Five"],
+        )
+
+        tailor = CVTailor(mock_provider)
+        # Override to 3 bullets
+        result = tailor._format_passthrough_experience(exp, max_bullets=3)
+
+        assert "- One" in result
+        assert "- Two" in result
+        assert "- Three" in result
+        assert "Four" not in result
+        assert "Five" not in result
 
 
 class TestCVTailorSkills:

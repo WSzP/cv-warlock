@@ -24,7 +24,7 @@ RULES:
 2. Add preferred skills that match candidate's background
 3. Include candidate's existing skills that are relevant to the role
 4. Use EXACT job posting terminology (React.js not React, CI/CD not continuous integration)
-5. Include dual formats for acronyms: "Amazon Web Services (AWS)"
+5. Use recognizable form only: well-known acronyms (AWS, SQL) stay abbreviated; less-known terms (Google Cloud Platform) written out; never both
 6. Group logically: Languages, Frameworks, Cloud/DevOps, Databases, Tools
 7. Order: Required matches > Preferred matches > Relevant existing
 8. Omit irrelevant skills that dilute ATS score

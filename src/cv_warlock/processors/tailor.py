@@ -149,7 +149,7 @@ def _compress_skills_reasoning(reasoning: SkillsReasoning) -> str:
 
     return f"""Required matched: {", ".join(reasoning.required_skills_matched[:7])}
 Preferred matched: {", ".join(reasoning.preferred_skills_matched[:5])}
-Dual format: {", ".join(reasoning.dual_format_terms[:5])}
+Write out in full: {", ".join(reasoning.dual_format_terms[:5])}
 Categories:
 {categories}"""
 
@@ -701,11 +701,24 @@ Achievements:
         period = f"{exp.start_date} - {exp.end_date or 'Present'}"
         return f"### {exp.title} | {exp.company}\n*{period}*"
 
-    def _format_passthrough_experience(self, exp: Experience) -> str:
-        """Format an experience as-is without tailoring (for old jobs)."""
+    def _format_passthrough_experience(self, exp: Experience, max_bullets: int = 2) -> str:
+        """Format an experience with minimal bullets (for old jobs outside lookback window).
+
+        Old roles are condensed to a few key bullets to keep the CV scannable
+        while still showing career progression.
+
+        Args:
+            exp: The experience entry.
+            max_bullets: Maximum bullets to include (default 2 for old roles).
+
+        Returns:
+            Formatted experience with header and condensed bullets.
+        """
         header = self._format_experience_header(exp)
         if exp.achievements:
-            bullets = "\n".join(f"- {a}" for a in exp.achievements)
+            # Take only the first N achievements (typically most important)
+            condensed = exp.achievements[:max_bullets]
+            bullets = "\n".join(f"- {a}" for a in condensed)
         elif exp.description:
             bullets = f"- {exp.description}"
         else:
@@ -838,9 +851,23 @@ Achievements:
 
         return all_tailored_texts, all_results, current_context
 
-    def _create_passthrough_result(self, exp: Experience) -> ExperienceGenerationResult:
-        """Create a placeholder result for experiences outside lookback window."""
-        original_bullets = exp.achievements if exp.achievements else [exp.description or ""]
+    def _create_passthrough_result(
+        self, exp: Experience, max_bullets: int = 2
+    ) -> ExperienceGenerationResult:
+        """Create a placeholder result for experiences outside lookback window.
+
+        Args:
+            exp: The experience entry.
+            max_bullets: Maximum bullets to include (default 2 for old roles).
+
+        Returns:
+            ExperienceGenerationResult with condensed bullets.
+        """
+        # Condense to max_bullets for old roles
+        if exp.achievements:
+            original_bullets = exp.achievements[:max_bullets]
+        else:
+            original_bullets = [exp.description or ""]
 
         return ExperienceGenerationResult(
             experience_title=exp.title,
