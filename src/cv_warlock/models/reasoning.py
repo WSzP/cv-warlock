@@ -282,6 +282,26 @@ class BatchExperienceReasoning(BaseModel):
         description="Reasoning for each experience, indexed by position"
     )
 
+    @field_validator("experiences", mode="before")
+    @classmethod
+    def parse_experiences_list(cls, v: Any) -> list[dict[str, Any]]:
+        """Parse experiences that may be a stringified JSON list.
+
+        Some LLMs return the list as a JSON string instead of a parsed list.
+        """
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return parsed
+                except json.JSONDecodeError:
+                    pass
+        return []
+
 
 # =============================================================================
 # SKILLS REASONING MODELS

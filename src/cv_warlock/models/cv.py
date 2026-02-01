@@ -153,6 +153,10 @@ class CVData(BaseModel):
         default=None,
         description="Original education section exactly as it appears in the CV - DO NOT modify during tailoring",
     )
+    raw_publications_text: str | None = Field(
+        default=None,
+        description="Original publications/books section exactly as it appears in the CV, including the original header (## Books or ## Publications) - DO NOT modify during tailoring",
+    )
 
     @field_validator("skills", "languages", mode="before")
     @classmethod

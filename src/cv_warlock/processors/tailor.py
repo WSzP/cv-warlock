@@ -1062,16 +1062,21 @@ Achievements:
         for cert in cv_data.certifications:
             certs_str += f"- {cert.name} ({cert.issuer})\n"
 
-        # Format publications
-        pubs_str = ""
-        for pub in cv_data.publications:
-            pub_line = f"- {pub.title} ({pub.publisher}"
-            if pub.year:
-                pub_line += f", {pub.year}"
-            pub_line += ")"
-            if pub.url:
-                pub_line += f": {pub.url}"
-            pubs_str += pub_line + "\n"
+        # Format publications - prefer raw text to preserve EXACT original formatting
+        # Publications/Books section is IMMUTABLE during tailoring - never modify it
+        if cv_data.raw_publications_text:
+            pubs_str = cv_data.raw_publications_text
+        else:
+            # Fallback to structured data if raw text not available
+            pubs_str = ""
+            for pub in cv_data.publications:
+                pub_line = f"- {pub.title} ({pub.publisher}"
+                if pub.year:
+                    pub_line += f", {pub.year}"
+                pub_line += ")"
+                if pub.url:
+                    pub_line += f": {pub.url}"
+                pubs_str += pub_line + "\n"
 
         chain = self.assembly_prompt | model
         result = chain.invoke(

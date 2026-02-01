@@ -34,6 +34,7 @@ CV_EXTRACTION_PROMPT = """Extract ALL structured data from this CV. Preserve exa
 - Examples: Books, research papers, journal articles, technical blog posts
 - Title, publisher/journal, year, URL/DOI
 - NOT certifications or credentials - those go in CERTIFICATIONS
+- **raw_publications_text**: Copy the ENTIRE publications/books section EXACTLY as it appears in the CV, INCLUDING the original section header (e.g., "## Books" or "## Publications"). This field is IMMUTABLE during tailoring. Preserve the EXACT original title - if the section is titled "Books", keep it as "Books", do NOT rename to "Publications".
 
 **CONTACT**: Name, email, phone, LinkedIn, GitHub, location
 - **raw_contact_line**: Copy the EXACT contact line from the CV header (preserve markdown links like `[email](mailto:email)` and `[phone](tel:phone)` EXACTLY as written)

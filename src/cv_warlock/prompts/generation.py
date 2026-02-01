@@ -147,9 +147,10 @@ EDUCATION (IMMUTABLE - COPY EXACTLY): {education}
 CERTIFICATIONS: {certifications}
 PUBLICATIONS: {publications}
 
-SECTION ORDER: Contact > Summary > Skills > Experience > Education > Certifications > Publications
+SECTION ORDER: Contact > Summary > Skills > Experience > Education > Certifications > Publications/Books
 - If CERTIFICATIONS shows "Not provided", do NOT include a Certifications section.
-- If PUBLICATIONS shows "Not provided", do NOT include a Publications section.
+- If PUBLICATIONS shows "Not provided", do NOT include a Publications/Books section.
+- CRITICAL: If PUBLICATIONS includes a section header (e.g., "## Books" or "## Publications"), preserve that EXACT header. Do NOT rename "Books" to "Publications" or vice versa.
 
 CRITICAL: Do NOT add a Projects section. Projects are NOT part of this CV format.
 
@@ -183,7 +184,7 @@ OUTPUT FORMAT (EXACTLY these sections, no others):
 ## Certifications (only if provided)
 [List certifications]
 
-## Publications (only if provided)
-[List publications - books, papers, articles authored by the candidate]
+## Publications OR ## Books (only if provided - USE THE EXACT ORIGINAL TITLE)
+[COPY THE PUBLICATIONS/BOOKS SECTION EXACTLY AS PROVIDED - NO MODIFICATIONS TO TITLE OR CONTENT]
 
 Output ONLY these sections. Do NOT add Projects, Awards, or any other sections not listed above."""
