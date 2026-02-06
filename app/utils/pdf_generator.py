@@ -570,17 +570,24 @@ class CVPDFGenerator(FPDF):
     def add_experience_header(self, title: str, company: str, date_location: str) -> None:
         """Add experience entry header with title, company, and date/location.
 
-        If title contains '|', renders part before '|' in bold, rest in regular.
+        If title contains '|' or en-dash, renders part before separator in bold, rest in regular.
         """
         self.set_x(self.l_margin)
         title_clean = title.strip()
         title_size = self.config.job_title_size
 
-        # Check if title contains '|' - split into bold and regular parts
+        # Detect separator: pipe '|' or en-dash '–'
+        separator = None
         if "|" in title_clean:
-            parts = title_clean.split("|", 1)
+            separator = "|"
+        elif "\u2013" in title_clean:  # en-dash
+            separator = "\u2013"
+
+        # Check if title contains separator - split into bold and regular parts
+        if separator:
+            parts = title_clean.split(separator, 1)
             bold_part = parts[0].strip()
-            regular_part = "| " + parts[1].strip() if len(parts) > 1 else ""
+            regular_part = separator + " " + parts[1].strip() if len(parts) > 1 else ""
 
             # Render bold part
             self.set_font(self.font_name, "B", title_size)
@@ -596,7 +603,7 @@ class CVPDFGenerator(FPDF):
                 self.set_text_color(*self.config.text_primary)
             self.ln(7)
         else:
-            # No '|' - render entire title in bold
+            # No separator - render entire title in bold
             self.set_font(self.font_name, "B", title_size)
             self.set_text_color(*self.config.text_primary)
             self.multi_cell(0, 7, title_clean, align="L")
@@ -831,6 +838,7 @@ class CVPDFGenerator(FPDF):
         max_x = self.w - self.r_margin
         pill_spacing = 3
         row_height = 7
+        page_bottom = self.h - self.b_margin
 
         for skill in skill_list:
             self.set_font(self.font_name, "", 8)
@@ -840,6 +848,12 @@ class CVPDFGenerator(FPDF):
             if x + pill_width > max_x:
                 x = self.l_margin
                 y += row_height
+
+            # Check if we need a page break
+            if y + row_height > page_bottom:
+                self.add_page()
+                y = self.get_y()
+                x = self.l_margin
 
             # Draw the pill
             self._draw_skill_pill(skill, x, y)
@@ -986,20 +1000,45 @@ def generate_cv_pdf(markdown: str, style: CVStyle | str = CVStyle.MODERN) -> tup
 
 
 def _render_section_content(pdf: CVPDFGenerator, header: str, content: list[str]) -> None:
-    """Render section content with appropriate formatting based on section type."""
+    """Render section content with appropriate formatting based on section type.
+
+    Supports both English and Hungarian section names.
+    """
     header_lower = header.lower()
 
     # Experience/Work sections: parse job entries
-    if any(kw in header_lower for kw in ["experience", "work", "employment", "history"]):
+    # Hungarian: "tapasztalat" = experience, "önkéntes" = volunteer
+    if any(
+        kw in header_lower
+        for kw in ["experience", "work", "employment", "history", "tapasztalat", "önkéntes"]
+    ):
         _render_experience_section(pdf, content)
     # Skills sections: render as category lists
-    elif any(kw in header_lower for kw in ["skill", "technical", "competenc"]):
+    # Hungarian: "készség" = skill, "kompetencia" = competence
+    elif any(
+        kw in header_lower for kw in ["skill", "technical", "competenc", "készség", "kompetencia"]
+    ):
         _render_skills_section(pdf, content)
     # Education: similar to experience but simpler
-    elif any(kw in header_lower for kw in ["education", "academic", "qualification"]):
+    # Hungarian: "tanulmány" = studies, "végzettség" = qualification, "képzés" = training
+    elif any(
+        kw in header_lower
+        for kw in [
+            "education",
+            "academic",
+            "qualification",
+            "tanulmány",
+            "végzettség",
+            "képzés",
+        ]
+    ):
         _render_education_section(pdf, content)
     # Publications: special handling for books/papers with URLs
-    elif any(kw in header_lower for kw in ["publication", "book", "paper", "article"]):
+    # Hungarian: "könyv" = book, "publikáció" = publication
+    elif any(
+        kw in header_lower
+        for kw in ["publication", "book", "paper", "article", "könyv", "publikáció"]
+    ):
         _render_publications_section(pdf, content)
     # Other sections: render as paragraphs/bullets
     else:
@@ -1140,7 +1179,8 @@ def _render_skills_section(pdf: CVPDFGenerator, content: list[str]) -> None:
 
         # Check for category: skills pattern (handles bold markers around category)
         # Matches patterns like: "Languages:", "**Languages:**", "*Languages:**", "High-Growth SaaS:"
-        category_match = re.match(r"^[\*_]*([A-Za-z][A-Za-z0-9 &/\-]+?)[\*_]*:\s*(.*)$", line)
+        # Uses Unicode \w to support accented characters (e.g., "Programozási nyelvek:")
+        category_match = re.match(r"^[\*_]*([\w][\w &/\-]+?)[\*_]*:\s*(.*)$", line, re.UNICODE)
         if category_match and not line.startswith(("-", "•")):
             category = category_match.group(1).strip()
             skills = category_match.group(2).strip()
