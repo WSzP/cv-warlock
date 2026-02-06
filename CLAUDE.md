@@ -198,6 +198,8 @@ Settings loaded via Pydantic Settings in `config.py`.
 
 **IMPORTANT**: When asked to commit, ALWAYS run `uv run ruff format .` first. This is implicit in any commit request.
 
+**IMPORTANT**: Commit messages must describe the actual changes, NOT echo the user's prompt. The user's instruction (e.g., "lint and commit all changes") is NOT a commit message. Always write a descriptive message summarizing what changed and why.
+
 ## CV and Cover Letter Content Generation Guidelines
 
 When generating text for any part of the CV (summary, experiences, skills, etc.) or cover letter:
