@@ -12,7 +12,7 @@ dependencies = [
     # LangChain 1.x with model-agnostic content_blocks API
     "langchain>=1.2.7",
     "langchain-core>=1.2.7",
-    "langgraph>=1.0.7",
+    "langgraph>=1.1.6",
 
     # LLM providers (all supported) - LangChain 1.x compatible
     "langchain-openai>=1.1.7",
