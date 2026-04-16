@@ -38,7 +38,7 @@ dependencies = [
     "fpdf2>=2.8.5",
 
     # Tracing & observability
-    "langsmith>=0.6.4",
+    "langsmith>=0.7.31",
 
     # HTTP/2 support for better connection reliability
     "h2>=4.3.0",
