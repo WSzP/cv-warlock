@@ -22,7 +22,7 @@ dependencies = [
     # Data & config
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
-    "python-dotenv>=1.2.1",
+    "python-dotenv>=1.2.2",
 
     # CLI
     "typer>=0.21.1",
