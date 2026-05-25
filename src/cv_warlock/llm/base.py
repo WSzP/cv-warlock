@@ -62,7 +62,7 @@ def get_llm_provider(
     if provider == "openai":
         from cv_warlock.llm.openai import OpenAIProvider
 
-        return OpenAIProvider(model=model or "gpt-5.2", api_key=api_key)
+        return OpenAIProvider(model=model or "gpt-5.5", api_key=api_key)
     elif provider == "anthropic":
         from cv_warlock.llm.anthropic import AnthropicProvider
 

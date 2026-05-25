@@ -80,7 +80,7 @@ class RLMProvider(LLMProvider):
         if self.sub_provider_name == "anthropic":
             return "claude-sonnet-4-5-20250929"
         elif self.sub_provider_name == "openai":
-            return "gpt-5.2"
+            return "gpt-5.5"
         elif self.sub_provider_name == "google":
             return "gemini-3-pro-preview"
         return self.root_model

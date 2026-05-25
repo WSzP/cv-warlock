@@ -464,7 +464,7 @@ def main():
         provider = st.selectbox(
             "LLM Provider",
             options=["anthropic", "openai", "google"],
-            index=0,
+            index=1,
             help="Choose the AI provider. Model is auto-selected via Dual-Model Strategy.",
         )
 

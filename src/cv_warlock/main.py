@@ -53,7 +53,7 @@ def tailor(
     provider: Annotated[
         Literal["openai", "anthropic", "google"],
         typer.Option("--provider", "-p", help="LLM provider (model auto-selected)"),
-    ] = "anthropic",
+    ] = "openai",
     lookback_years: Annotated[
         int | None,
         typer.Option(
@@ -218,7 +218,7 @@ def analyze(
     provider: Annotated[
         Literal["openai", "anthropic", "google"],
         typer.Option("--provider", "-p", help="LLM provider (model auto-selected)"),
-    ] = "anthropic",
+    ] = "openai",
     rlm: Annotated[
         bool,
         typer.Option(
