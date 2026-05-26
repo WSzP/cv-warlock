@@ -51,7 +51,7 @@ class TestGetLLMProvider:
     def test_openai_default_model(self, mock_provider: MagicMock) -> None:
         """Test that openai uses default model when not specified."""
         get_llm_provider("openai")
-        mock_provider.assert_called_once_with(model="gpt-5.2", api_key=None)
+        mock_provider.assert_called_once_with(model="gpt-5.5", api_key=None)
 
     @patch("cv_warlock.llm.anthropic.AnthropicProvider")
     def test_anthropic_default_model(self, mock_provider: MagicMock) -> None:
