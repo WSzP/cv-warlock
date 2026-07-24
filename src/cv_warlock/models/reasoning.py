@@ -36,6 +36,27 @@ def _parse_stringified_list(value: Any) -> list[str]:
     return []
 
 
+def _parse_category_skills(value: Any) -> list[str]:
+    """Parse a category's skill value, which may be a list or a comma-separated string.
+
+    Some LLMs return category_groupings values as "PyTorch, Scikit-learn, spaCy"
+    instead of ["PyTorch", "Scikit-learn", "spaCy"].
+    """
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("[") and value.endswith("]"):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [skill.strip() for skill in value.split(",") if skill.strip()]
+    return []
+
+
 class QualityLevel(StrEnum):
     """Quality assessment levels for generated content."""
 
@@ -356,6 +377,13 @@ class SkillsReasoning(BaseModel):
     @classmethod
     def parse_list_fields(cls, v: Any) -> list[str]:
         return _parse_stringified_list(v)
+
+    @field_validator("category_groupings", mode="before")
+    @classmethod
+    def parse_category_groupings(cls, v: Any) -> Any:
+        if not isinstance(v, dict):
+            return v
+        return {category: _parse_category_skills(skills) for category, skills in v.items()}
 
 
 class SkillsCritique(BaseModel):
