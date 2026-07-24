@@ -32,7 +32,7 @@ dependencies = [
     "streamlit>=1.54.0",
 
     # PDF parsing (for CV upload)
-    "pymupdf>=1.26.7",
+    "pymupdf>=1.27.2.2",
 
     # PDF generation (for CV export)
     "fpdf2>=2.8.5",
