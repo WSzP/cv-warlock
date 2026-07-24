@@ -10,7 +10,7 @@ keywords = ["cv", "resume", "ai", "langchain", "langgraph", "rlm"]
 
 dependencies = [
     # LangChain 1.x with model-agnostic content_blocks API
-    "langchain>=1.2.11",
+    "langchain>=1.3.9",
     "langchain-core>=1.2.11",
     "langgraph>=1.0.10",
 
