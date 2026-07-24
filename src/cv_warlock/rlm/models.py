@@ -1,12 +1,12 @@
 """Pydantic models for RLM components."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     """Type of action the model wants to perform."""
 
     CODE = "code"  # Execute Python code

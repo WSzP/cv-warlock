@@ -8,7 +8,7 @@ and generation results for each CV section. This enables:
 """
 
 import json
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
@@ -36,7 +36,7 @@ def _parse_stringified_list(value: Any) -> list[str]:
     return []
 
 
-class QualityLevel(str, Enum):
+class QualityLevel(StrEnum):
     """Quality assessment levels for generated content."""
 
     EXCELLENT = "excellent"

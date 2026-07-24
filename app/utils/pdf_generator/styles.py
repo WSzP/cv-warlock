@@ -5,10 +5,10 @@ typography settings, layout parameters, and feature flags.
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class CVStyle(str, Enum):
+class CVStyle(StrEnum):
     """Available CV PDF styles."""
 
     PLAIN = "plain"
