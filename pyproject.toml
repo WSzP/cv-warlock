@@ -41,7 +41,7 @@ dependencies = [
     "langsmith>=0.8.18",
 
     # HTTP/2 support for better connection reliability
-    "h2>=4.3.0",
+    "h2>=4.4.1",
 ]
 
 [project.optional-dependencies]
