@@ -10,6 +10,14 @@ from pathlib import Path
 
 from fpdf import FPDF  # type: ignore[import-untyped]
 
+from app.utils.pdf_generator.logos import (
+    LogoRun,
+    TitleRun,
+    extract_logo_token,
+    logo_aspect_ratio,
+    logo_baseline_ratio,
+    plan_title_runs,
+)
 from app.utils.pdf_generator.styles import STYLE_CONFIGS, CVStyle
 
 # Get the fonts directory (relative to project root)
@@ -402,6 +410,16 @@ class CVPDFGenerator(FPDF):
         title_clean = title.strip()
         title_size = self.config.job_title_size
 
+        # Company logo, from a markdown image token or the company registry
+        runs = plan_title_runs(title_clean)
+        if any(isinstance(run, LogoRun) for run in runs):
+            self._render_title_runs(runs, title_size)
+            self._render_company_line(company, date_location)
+            return
+
+        # No logo, but a broken token must never print as text
+        title_clean, _, _ = extract_logo_token(title_clean)
+
         # Detect separator: pipe '|' or en-dash
         separator = None
         if "|" in title_clean:
@@ -434,7 +452,10 @@ class CVPDFGenerator(FPDF):
             self.set_text_color(*self.config.text_primary)
             self.multi_cell(0, 7, title_clean, align="L")
 
-        # Company and date on same line (if both provided)
+        self._render_company_line(company, date_location)
+
+    def _render_company_line(self, company: str, date_location: str) -> None:
+        """Render the company and date/location line under an entry title."""
         if company or date_location:
             self.set_font(self.font_name, "", self.config.body_size)
             self.set_x(self.l_margin)
@@ -464,6 +485,61 @@ class CVPDFGenerator(FPDF):
                 self.set_text_color(*self.config.text_primary)
 
         self.ln(1)
+
+    def _render_title_runs(self, runs: list[TitleRun], title_size: int) -> None:
+        """Render a title as inline text and logo runs on one line."""
+        line_height = 7.0
+        self.set_font(self.font_name, "B", title_size)
+
+        for run in runs:
+            if isinstance(run, LogoRun):
+                self._draw_inline_logo(run.path, line_height)
+                continue
+
+            self.set_font(self.font_name, "B" if run.bold else "", title_size)
+            self.set_text_color(
+                *(self.config.text_primary if run.bold else self.config.text_secondary)
+            )
+            self.write(line_height, run.text)
+
+        self.set_text_color(*self.config.text_primary)
+        self.ln(line_height)
+
+    def _draw_inline_logo(self, path: Path, line_height: float) -> None:
+        """Draw a vector logo on the current line, sized by height.
+
+        Width comes from the SVG viewBox, so the file's aspect ratio is
+        preserved, and the logo's lettering rests on the text baseline
+        rather than its outer box, so a padded logo does not float. Gaps
+        scale with
+        the logo: a solid block needs more air than a letter does, so the
+        leading gap is wide, while the run after it usually starts with a
+        space of its own, so the trailing gap is narrow.
+
+        A logo that would cross the right margin is skipped rather than
+        bleeding into it, and an unreadable file is skipped too: a CV must
+        never fail to render over a logo.
+        """
+        height = self.config.inline_logo_height
+
+        try:
+            width = height * logo_aspect_ratio(path)
+        except Exception:
+            return
+
+        x = self.get_x() + height * 0.6
+        if x + width > self.w - self.r_margin:
+            return
+
+        # fpdf2 puts the text baseline at 0.5 * line height + 0.3 * font size
+        baseline = self.get_y() + line_height / 2 + 0.3 * self.font_size
+
+        try:
+            self.image(str(path), x=x, y=baseline - height * logo_baseline_ratio(path), h=height)
+        except Exception:
+            return
+
+        self.set_x(x + width + height * 0.2)
 
     def add_bullet_point(self, text: str, indent: int = 0) -> None:
         """Add a bullet point with proper formatting.

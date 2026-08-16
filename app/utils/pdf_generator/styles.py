@@ -56,6 +56,7 @@ class StyleConfig:
     use_skill_pills: bool  # Display skills as pill badges
     use_entry_cards: bool  # Subtle background for job entries
     contact_separator: str
+    inline_logo_height: float = 3.5  # Height (mm) of company logos in job titles
 
 
 # Style presets
