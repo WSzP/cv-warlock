@@ -1,8 +1,27 @@
 """Job specification data models."""
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+SeniorityLevel = Literal["entry", "mid", "senior", "lead", "executive"]
+JobType = Literal["full-time", "part-time", "contract", "freelance"]
+RemotePolicy = Literal["remote", "hybrid", "onsite"]
+
+_CATEGORICAL_VALUES: dict[str, frozenset[str]] = {
+    "seniority_level": frozenset(get_args(SeniorityLevel)),
+    "job_type": frozenset(get_args(JobType)),
+    "remote": frozenset(get_args(RemotePolicy)),
+}
+
+# Spelling variants of an allowed value, after lowercasing and joining words
+# with hyphens. Only true synonyms belong here; posting vocabulary with a
+# different meaning (e.g. EU tender "far-site") must stay unmapped.
+_CATEGORICAL_ALIASES: dict[str, str] = {
+    "fulltime": "full-time",
+    "parttime": "part-time",
+    "on-site": "onsite",
+}
 
 
 class JobRequirements(BaseModel):
@@ -18,9 +37,25 @@ class JobRequirements(BaseModel):
     required_education: str | None = None
 
     # Job characteristics
-    seniority_level: Literal["entry", "mid", "senior", "lead", "executive"] | None = None
-    job_type: Literal["full-time", "part-time", "contract", "freelance"] | None = None
-    remote: Literal["remote", "hybrid", "onsite"] | None = None
+    seniority_level: SeniorityLevel | None = None
+    job_type: JobType | None = None
+    remote: RemotePolicy | None = None
+
+    @field_validator("seniority_level", "job_type", "remote", mode="before")
+    @classmethod
+    def coerce_categorical(cls, v: Any, info: ValidationInfo) -> str | None:
+        """Normalise spelling variants, and drop values outside the allowed set.
+
+        LLMs copy posting vocabulary verbatim (e.g. 'Far-site', 'Advanced').
+        Rejecting it would discard every other field extracted from the job.
+        """
+        if not isinstance(v, str):
+            return None
+        normalised = "-".join(v.strip().lower().replace("_", " ").split())
+        normalised = _CATEGORICAL_ALIASES.get(normalised, normalised)
+        if normalised in _CATEGORICAL_VALUES[str(info.field_name)]:
+            return normalised
+        return None
 
     # Keywords and themes
     keywords: list[str] = Field(default_factory=list)

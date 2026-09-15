@@ -1,7 +1,5 @@
 """Tests for JobRequirements data model."""
 
-import pytest
-
 from cv_warlock.models.job_spec import JobRequirements
 
 
@@ -46,10 +44,10 @@ class TestJobRequirements:
             job = JobRequirements(job_title="Engineer", seniority_level=level)
             assert job.seniority_level == level
 
-    def test_seniority_level_invalid_raises(self) -> None:
-        """Test that invalid seniority_level raises ValidationError."""
-        with pytest.raises(ValueError):
-            JobRequirements(job_title="Engineer", seniority_level="invalid")
+    def test_seniority_level_invalid_becomes_none(self) -> None:
+        """An unrecognised seniority_level is dropped, not fatal to the extraction."""
+        job = JobRequirements(job_title="Engineer", seniority_level="invalid")  # type: ignore[arg-type]
+        assert job.seniority_level is None
 
     def test_job_type_literals(self) -> None:
         """Test that job_type accepts valid literals."""
@@ -57,10 +55,10 @@ class TestJobRequirements:
             job = JobRequirements(job_title="Engineer", job_type=job_type)
             assert job.job_type == job_type
 
-    def test_job_type_invalid_raises(self) -> None:
-        """Test that invalid job_type raises ValidationError."""
-        with pytest.raises(ValueError):
-            JobRequirements(job_title="Engineer", job_type="invalid")
+    def test_job_type_invalid_becomes_none(self) -> None:
+        """An unrecognised job_type is dropped, not fatal to the extraction."""
+        job = JobRequirements(job_title="Engineer", job_type="invalid")  # type: ignore[arg-type]
+        assert job.job_type is None
 
     def test_remote_literals(self) -> None:
         """Test that remote accepts valid literals."""
@@ -68,10 +66,10 @@ class TestJobRequirements:
             job = JobRequirements(job_title="Engineer", remote=remote)
             assert job.remote == remote
 
-    def test_remote_invalid_raises(self) -> None:
-        """Test that invalid remote raises ValidationError."""
-        with pytest.raises(ValueError):
-            JobRequirements(job_title="Engineer", remote="invalid")
+    def test_remote_invalid_becomes_none(self) -> None:
+        """An unrecognised remote value is dropped, not fatal to the extraction."""
+        job = JobRequirements(job_title="Engineer", remote="invalid")  # type: ignore[arg-type]
+        assert job.remote is None
 
     def test_lists_default_to_empty(self) -> None:
         """Test that all list fields default to empty lists."""
@@ -91,6 +89,73 @@ class TestJobRequirements:
         assert job.company is None
         assert job.required_experience_years is None
         assert job.required_education is None
+        assert job.seniority_level is None
+        assert job.job_type is None
+        assert job.remote is None
+
+
+class TestCategoricalFieldValidators:
+    """Tests for seniority_level, job_type and remote coercion.
+
+    These fields are closed sets, but job postings use vocabulary the sets do
+    not cover. A value the model copies verbatim from the posting must not
+    discard every other field that was extracted correctly.
+    """
+
+    def test_far_site_posting_extracts_instead_of_failing(self) -> None:
+        """Regression: an EU tender marked 'Far-site' failed the whole job extraction.
+
+        The payload mirrors what gpt-5-mini returned for the DGT T.2 posting.
+        'Far-site' means the contractor's premises, which is not the same as
+        remote work, so it is dropped rather than guessed.
+        """
+        job = JobRequirements.model_validate(
+            {
+                "job_title": "Back-end Developer (Advanced)",
+                "company": "DGT T.2",
+                "required_skills": ["C++", "TypeScript", "Python", "Bash", "Perl"],
+                "required_experience_years": 10,
+                "seniority_level": "Advanced",
+                "job_type": "Far-site",
+                "remote": "Far-site",
+            }
+        )
+        assert job.job_title == "Back-end Developer (Advanced)"
+        assert job.required_skills == ["C++", "TypeScript", "Python", "Bash", "Perl"]
+        assert job.required_experience_years == 10
+        assert job.remote is None
+        assert job.job_type is None
+        assert job.seniority_level is None
+
+    def test_case_and_whitespace_are_normalised(self) -> None:
+        job = JobRequirements(
+            job_title="Engineer",
+            seniority_level=" Senior ",  # type: ignore[arg-type]
+            job_type="Full-Time",  # type: ignore[arg-type]
+            remote="HYBRID",  # type: ignore[arg-type]
+        )
+        assert job.seniority_level == "senior"
+        assert job.job_type == "full-time"
+        assert job.remote == "hybrid"
+
+    def test_spelling_variants_map_to_the_canonical_value(self) -> None:
+        for variant in ["on-site", "On site", "on_site"]:
+            job = JobRequirements(job_title="Engineer", remote=variant)  # type: ignore[arg-type]
+            assert job.remote == "onsite", variant
+        for variant in ["full time", "Full_Time", "fulltime"]:
+            job = JobRequirements(job_title="Engineer", job_type=variant)  # type: ignore[arg-type]
+            assert job.job_type == "full-time", variant
+        for variant in ["part time", "parttime"]:
+            job = JobRequirements(job_title="Engineer", job_type=variant)  # type: ignore[arg-type]
+            assert job.job_type == "part-time", variant
+
+    def test_non_string_values_become_none(self) -> None:
+        job = JobRequirements(
+            job_title="Engineer",
+            seniority_level=3,  # type: ignore[arg-type]
+            job_type=["contract"],  # type: ignore[arg-type]
+            remote=True,  # type: ignore[arg-type]
+        )
         assert job.seniority_level is None
         assert job.job_type is None
         assert job.remote is None
